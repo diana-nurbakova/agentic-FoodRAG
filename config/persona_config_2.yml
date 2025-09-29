@@ -1,0 +1,72 @@
+# Config describing constraints for the persona generation.
+# Tag config
+tags: # Here both likes and dislikes are hard constraints, meaning they always must be present/absent
+  likes:
+    min_num: 0
+    max_num: 1
+  dislikes:
+    min_num: 0
+    max_num: 2
+  invalid_items:
+    - test
+
+# Ingredient config
+ingredients: # Here both likes and dislikes are hard constraints, meaning they always must be present/absent
+  include_food_on: true # If the food classes should be included as ingredient options, e.g. "fruit" or "vegetable" which allows multiple ingredients to be selected
+  include_food_com: false # If the real food ingredients from the recipes source (food.com) should be included as ingredient options
+  likes:
+    min_num: 0
+    max_num: 1
+  dislikes:
+    min_num: 0
+    max_num: 2
+  invalid_items:
+    - test
+
+# Nutrition config for the relative intake means the intake per meal per 100g
+relative_nutrients:
+  min_num: 0
+  max_num: 1
+  possible_nutrients:
+    - calories [kcal]
+    - caloriesFromFat [kcal]
+    - totalFat [g]
+    - saturatedFat [g]
+    - cholesterol [mg]
+    - sodium [mg]
+    - totalCarbohydrate [g]
+    - dietaryFiber [g]
+    - sugars [g]
+    - protein [g]
+    - fsa_score
+    - who_score
+    - nutri_score
+
+# Nutrition config for the daily intake
+total_nutrients:
+  min_num: 0
+  max_num: 1
+  deviation_min: 0.8 # possible minimal deviation from the daily intake
+  deviation_max: 1.2 # possible maximal deviation from the daily intake
+  possible_nutrients:
+    - calories [kcal]
+    - caloriesFromFat [kcal]
+    - totalFat [g]
+    - saturatedFat [g]
+    - cholesterol [mg]
+    - sodium [mg]
+    - totalCarbohydrate [g]
+    - dietaryFiber [g]
+    - sugars [g]
+    - protein [g]
+    - fsa_score
+    - who_score
+    - nutri_score
+
+# Nutrition config for the calories per meal distribution
+calories_per_meal_distribution:
+  breakfast: 0.22
+  lunch: 0.32
+  dinner: 0.32
+  snack 1: 0.07
+  snack 2: 0.07

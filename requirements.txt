@@ -1,0 +1,31 @@
+numpy
+pandas
+jupyter
+rdflib
+pymupdf
+spacy
+llama-index
+llama-cpp-python
+llama-index-readers-file
+llama-index-vector-stores-postgres
+llama-index-embeddings-huggingface # pip install -U llama-index-embeddings-huggingface if pydantic error occurs
+llama-index-llms-llama-cpp
+#llama-index-graph-stores-nebula #old graph store, using neo4j now
+llama-index-graph-stores-neo4j
+llama-index-llms-litellm
+llama-index-embeddings-litellm
+llama-index-experimental
+llama-index-program-guidance
+llama-index-question-gen-guidance
+ipython-ngql
+psycopg2-binary
+pgvector
+asyncpg
+sqlalchemy[asyncio]
+greenlet
+ruamel.yaml
+pandarallel
+matplotlib
+ragas
+scikit-learn
+gensim

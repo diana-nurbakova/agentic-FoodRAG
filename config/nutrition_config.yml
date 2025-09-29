@@ -1,0 +1,252 @@
+# Config describing constraints for nutrition limits and ingredients for the persona generation
+# NOTE: The dataset refers to kcal values wrongly as cal values. This is corrected in the config.
+
+# Defining the limits for the different nutrients. All values are just intuitive values from multiple semi-trustful
+# sources. All values are reference intake values for an adult per day per 100g unless otherwise stated.
+RELATIVE_NUTRIENTS:
+  # Calories in kcal per 100g
+  # Source: https://www.healthline.com/nutrition/how-many-calories-per-day
+  # Note: Used additionally NutriScore in score_util for fitting values:
+  # Engery = kcal * 4.184 [KJ]
+  # Medium_lower [kcal] = 150 / 4.184 = 35.85
+  # Medium_upper [kcal] = 250 / 4.184 = 59.75
+  calories [kcal]:
+    low: # in general healthiest category
+      lower: 0
+      upper: 35.85
+    medium:
+      lower: 35.85
+      upper: 59.75
+    high:
+      lower: 59.75
+      upper: 597.5
+
+  # Calories from fat in kcal per 100g
+  # Source: https://www.urmc.rochester.edu/encyclopedia/content.aspx?contenttypeid=85&contentid=P00221
+  # Note: Calories from fat = Total calories * 0.3
+  # Note: Used additionally NutriScore in score_util for fitting values
+  caloriesFromFat [kcal]:
+    low: # in general healthiest category
+      lower: 0
+      upper: 10.76
+    medium:
+      lower: 10.76
+      upper: 17.93
+    high:
+      lower: 17.93
+      upper: 179.3
+
+  # Total fat in g per 100g
+  # Source: https://www.bhf.org.uk/informationsupport/support/healthy-living/healthy-eating/fats-explained
+  # Note: Values here = Saturated fat + 5g and used additionally Who Score in score_util for fitting values
+  totalFat [g]:
+    low: # in general healthiest category
+      lower: 0
+      upper: 15
+    medium:
+      lower: 15
+      upper: 30
+    high:
+      lower: 30
+      upper: 300
+
+  # Saturated fat in g per 100g
+  # Source: https://www.nhs.uk/live-well/eat-well/how-to-eat-a-balanced-diet/eat-less-saturated-fat/
+  # Note: Used additionally Who and FSA Score in score_util for fitting values
+  saturatedFat [g]:
+    low: # in general healthiest category
+      lower: 0
+      upper: 1.5
+    medium:
+      lower: 1.5
+      upper: 10
+    high:
+      lower: 10
+      upper: 100
+
+  # Cholesterol in mg per 100g
+  # Source: https://www.healthline.com/health/high-cholesterol/levels-by-age and
+  # https://www.heartuk.org.uk/low-cholesterol-foods/foods-that-contain-cholesterol
+  cholesterol [mg]:
+    low: # in general healthiest category
+      lower: 0
+      upper: 50
+    medium:
+      lower: 50
+      upper: 250
+    high:
+      lower: 250
+      upper: 2500
+
+  # Sodium in mg per 100g
+  # Source: https://www.lifespan.org/lifespan-living/how-much-sodium-day-do-you-need
+  # Note: Used additionally Who and FSA Score in score_util for fitting values
+  sodium [mg]:
+    low: # in general healthiest category
+      lower: 0
+      upper: 300
+    medium:
+      lower: 300
+      upper: 2000
+    high:
+      lower: 2000
+      upper: 20000
+
+  # Total carbohydrates in g per 100g
+  # Source: WHO Score
+  totalCarbohydrate [g]:
+    low: # in general healthiest category
+      lower: 0
+      upper: 55
+    medium:
+      lower: 55
+      upper: 75
+    high:
+      lower: 75
+      upper: 750
+
+  # Dietary fiber in g per 100g
+  # Source: https://www.ucsfhealth.org/education/increasing-fiber-intake
+  # Note: Used additionally Who Score in score_util for fitting values
+  dietaryFiber [g]:
+    low:
+      lower: 0
+      upper: 1
+    medium: # in general healthiest category
+      lower: 1
+      upper: 3
+    high:
+      lower: 3
+      upper: 30
+
+  # Sugars in g per 100g
+  # Source: https://www.who.int/news/item/04-03-2015-who-calls-on-countries-to-reduce-sugars-intake-among-adults-and-children
+  # Note: Used additionally Who Score in score_util for fitting values
+  sugars [g]:
+    low: # in general healthiest category
+      lower: 0
+      upper: 2
+    medium:
+      lower: 2
+      upper: 10
+    high:
+      lower: 10
+      upper: 100
+
+  # Protein in g per 100g
+  # Source: https://www.webmd.com/food-recipes/protein
+  # Note: Used additionally Who Score in score_util for fitting values
+  protein [g]:
+    low:
+      lower: 0
+      upper: 10
+    medium: # in general healthiest category
+      lower: 10
+      upper: 15
+    high:
+      lower: 15
+      upper: 150
+
+
+
+# Defining the limits for the different nutrients. Those values are meant per day. Values are reference intake values
+# for an adult per day unless based on a caloric intake of 2000 kcal.
+# Source: https://en.wikipedia.org/wiki/Reference_Daily_Intake
+TOTAL_NUTRIENTS:
+  # Calories in kcal per day
+  calories [kcal]: 2000
+
+  # Calories from fat in kcal per day
+  # Source: https://www.urmc.rochester.edu/encyclopedia/content.aspx?contenttypeid=85&contentid=P00221
+  # Note: Calories from fat = Total calories * 0.3
+  caloriesFromFat [kcal]: 600
+
+  # Total fat in g per day
+  totalFat [g]: 78
+
+  # Saturated fat in g per day
+  saturatedFat [g]: 20
+
+  # Cholesterol in mg per day
+  cholesterol [mg]: 300
+
+  # Sodium in mg per day
+  sodium [mg]: 2300
+
+  # Total carbohydrates in g per day
+  totalCarbohydrate [g]: 275
+
+  # Dietary fiber in g per day
+  dietaryFiber [g]: 28
+
+  # Sugars in g per day
+  sugars [g]: 50
+
+  # Protein in g per day
+  protein [g]: 50
+
+
+NUTRITION_SCORES:
+  # WHO score as used in the HUMMUS dataset (normalized)
+  # The higher a score the better/healthier, scope [0,1].
+  # Independent of a daily intake.
+  who_score:
+    low:
+      lower: 0
+      upper: 1
+    medium:
+      lower: 0.5
+      upper: 1
+    high: # in general healthiest category
+      lower: 0.75
+      upper: 1
+
+  # FSA score as used in the HUMMUS dataset (normalized)
+  # The higher a score the better/healthier, scope [0,1].
+  # Independent of a daily intake.
+  fsa_score:
+    low:
+      lower: 0
+      upper: 1
+    medium:
+      lower: 0.5
+      upper: 1
+    high: # in general healthiest category
+      lower: 0.75
+      upper: 1
+
+  # Nutri score as used in the HUMMUS dataset (normalized)
+  # The higher a score the better/healthier, scope [0,1].
+  # Independent of a daily intake.
+  # Note: A --> 1, B --> 0.75, C --> 0.5, D --> 0.25, E --> 0
+  nutri_score:
+    low:
+      lower: 0
+      upper: 1
+    medium:
+      lower: 0.5
+      upper: 1
+    high: # in general healthiest category
+      lower: 0.75
+      upper: 1
+
+
+# List of all nutrition types as named in the HUMMUS dataset
+ALL_NUTRITION_TYPES:
+  - calories [kcal]
+  - caloriesFromFat [kcal]
+  - totalFat [g]
+  - saturatedFat [g]
+  - cholesterol [mg]
+  - sodium [mg]
+  - totalCarbohydrate [g]
+  - dietaryFiber [g]
+  - sugars [g]
+  - protein [g]
+
+# List of all nutrition scores as named in the HUMMUS dataset
+ALL_NUTRITION_SCORES:
+  - who_score
+  - fsa_score
+  - nutri_score
+
