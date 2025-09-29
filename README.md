@@ -37,9 +37,8 @@ The system is based/uses LlamaIndex [[2](#2)] and Nebula Graph [[3](#3)].
 
 ### Notes
 
-- Vanilla RAG: query augmentation not used.
-- What kind of graph (for non vanilla RAG) might be helpful for our Meal Plan Recommender
-- Focus on Vector Store first and how to retrieve results
+- There is a lot of explorative code in this repo, if there is any question or problem contact us via mail or directly in this repo
+- All Jupyter-files include parameters for testing only (e.g. we pre-process as-is only a small version of HUMMUS). For our bigger-scale experiments we used threshold-discarding on HUMMUS (with params k=(2,2)) among other params when initially creating the preprocessed dataset (refer to the call in `create_embeddings.ipynb`).
 
 # Resources
 
