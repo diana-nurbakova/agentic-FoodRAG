@@ -7,7 +7,7 @@ The system is based/uses LlamaIndex [[2](#2)] and Nebula Graph [[3](#3)].
 
 1. Clone the repository
 2. Install python 3.11.9 (preferably with conda)
-3. Install the requirements with `pip install -r requirements.txt`
+3. Install the requirements with `pip install -r requirements.txt` (the file 'frozen_requirements.txt' includes version numbers but also non necessary libs)
 4. Preprocess the data
     1. Download the [HummusKG dataset](https://gitlab.com/felix134/connected-recipe-data-set)
     2. Extract the dataset and provide its path in all to-be-used Jupyter Notebooks
