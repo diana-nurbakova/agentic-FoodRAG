@@ -13,7 +13,7 @@ The system is based/uses LlamaIndex [[2](#2)] and Nebula Graph [[3](#3)].
     2. Extract the dataset and provide its path in all to-be-used Jupyter Notebooks. Note: The files from steps "b." and "c." must be downloaded from tertiary sources as HUMMUS is based on them but they are not published by HUMMUS. The following variables are only required once when initializing the data (an init code example is found in `create_embeddings.ipynb`):
         1. The variable `data_location` points to the raw dataset from food.com, namely `members.csv`, `recipes.csv`,
            and `reviews.csv`.
-        2. The variable `graph_location` points to the original FoodKG [[4](#4)], FoodOntology [[6](#6)], and USDA/FoodData [[7](#7)] files.
+        2. The variable `graph_location` points to the original FoodKG [[4](#4)] requiring the FoodOntology [[6](#6)] and USDA/FoodData [[7](#7)] files.
         3. The variable `additional_location` points to the additional files including tag information [[5](#5)] (Also available at https://www.kaggle.com/shuyangli94/food-com-recipes-and-user-interactions).
     3. Create a question-answer dataset for retriever evaluation later on
        1. Execute `qa_generation_1.ipynb` to create a question-answer dataset for evaluation (has to be done only once). For
