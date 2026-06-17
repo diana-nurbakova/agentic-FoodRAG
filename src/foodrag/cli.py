@@ -130,11 +130,30 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+# Pipeline stages delegate to their module's own argparse-based main().
+_STAGE_MODULES = {
+    "init-hummus": "foodrag.pipeline.init_hummus",
+    "embed": "foodrag.pipeline.embed",
+    "init-vector-store": "foodrag.pipeline.vector_store",
+    "init-graph-stores": "foodrag.pipeline.graph_stores",
+    "gen-qa": "foodrag.pipeline.gen_qa",
+}
+
+
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
+    # delegate pipeline-stage commands to their module main()
+    if argv and argv[0] in _STAGE_MODULES:
+        import importlib
+
+        module = importlib.import_module(_STAGE_MODULES[argv[0]])
+        return module.main(argv[1:])
+
     parser = build_parser()
     args = parser.parse_args(argv)
     if not getattr(args, "func", None):
+        print("Commands: init-data, models-check, bench-embeddings, "
+              + ", ".join(_STAGE_MODULES))
         parser.print_help()
         return 0
     return args.func(args)
