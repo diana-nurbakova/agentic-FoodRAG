@@ -1,0 +1,70 @@
+# Locked model configuration for the Food RAG system.
+#
+# All model ids, endpoints and embedding dims live here (never hardcoded in
+# notebooks/scripts). API keys are read from the environment / .env by the
+# names given in `providers[*].api_key_env` — keys never appear in this file.
+#
+# Providers expose OpenAI-compatible endpoints, so LiteLLM is pointed at
+# `api_base` with the model id prefixed `openai/` (matching the original setup).
+
+providers:
+  deepinfra:
+    api_base: "https://api.deepinfra.com/v1/openai"
+    api_key_env: DEEPINFRA_API_KEY
+  openrouter:
+    api_base: "https://openrouter.ai/api/v1"
+    api_key_env: OPENROUTER_API_KEY
+  huggingface:        # local embeddings via sentence-transformers (no api_base)
+    local: true
+    api_key_env: HF_TOKEN
+
+# Main generation LLM (the agent / generator).
+llm:
+  provider: deepinfra
+  model: "meta-llama/Llama-3.3-70B-Instruct"
+  temperature: 0.1
+  max_retries: 5
+  request_timeout: 120
+
+# Active embedding model (the one the vector store / retrievers use).
+# Locked to the winner of `bench-embeddings` (WS5); BGE-M3 is the default
+# because it matches the system's hybrid (dense+sparse) design at dim 1024.
+embedding:
+  provider: deepinfra
+  model: "BAAI/bge-m3"
+  dim: 1024
+  chunk_size: 512
+
+# Candidates compared by `bench-embeddings`. All API models are 1024d (shared
+# pgvector schema); the local mpnet baseline is 768d (separate bench table).
+embedding_candidates:
+  - name: bge-m3
+    provider: deepinfra
+    model: "BAAI/bge-m3"
+    dim: 1024
+  - name: qwen3-4b
+    provider: deepinfra
+    model: "Qwen/Qwen3-Embedding-4B"
+    dim: 1024
+  - name: arctic-l
+    provider: deepinfra
+    model: "Snowflake/snowflake-arctic-embed-l"
+    dim: 1024
+  - name: mpnet-base
+    provider: huggingface
+    model: "sentence-transformers/all-mpnet-base-v2"
+    dim: 768
+
+# LLM-as-judge models. MUST differ from `llm.model` (enforced in code).
+# Used for QA question-rating and answer evaluation; compared head-to-head.
+judges:
+  default: deepseek-v3
+  models:
+    - name: deepseek-v3
+      provider: deepinfra
+      model: "deepseek-ai/DeepSeek-V3"
+    - name: gemma
+      provider: openrouter
+      # NOTE: confirm the exact id against OpenRouter's live catalog; the user
+      # referenced a ~27-31B Gemma. Update here if it differs.
+      model: "google/gemma-3-27b-it"
