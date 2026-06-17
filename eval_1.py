@@ -13,19 +13,19 @@ from llama_index.embeddings.litellm import LiteLLMEmbedding
 from llama_index.graph_stores.nebula import NebulaGraphStore
 from llama_index.llms.litellm import LiteLLM
 
-from src.food_rag.utils import nebula_helper, qa_helper, embedding_helper, hummus_docify, postgres_helper
-from src.food_rag.evaluation import retriever_evaluator
-from src.food_rag.retriever import advanced_retriever
-from src.food_rag.retriever import db_retriever
-from src.food_rag.retriever import kg_retriever
-from src.food_rag.retriever import pandas_retriever
-from src.food_rag.retriever import wrapper_retriever
-from src.persona import qa_generator
-from src.utils import load_util
-from src.utils import network_util
-from src.food_rag.utils.embedding_helper import QA_SUB_PATH
-from src.food_rag.evaluation.retriever_evaluator import RUN_PATH
-from src.utils import hummus_util
+from foodrag.food_rag.utils import nebula_helper, qa_helper, embedding_helper, hummus_docify, postgres_helper
+from foodrag.food_rag.evaluation import retriever_evaluator
+from foodrag.food_rag.retriever import advanced_retriever
+from foodrag.food_rag.retriever import db_retriever
+from foodrag.food_rag.retriever import kg_retriever
+from foodrag.food_rag.retriever import pandas_retriever
+from foodrag.food_rag.retriever import wrapper_retriever
+from foodrag.persona import qa_generator
+from foodrag.utils import load_util
+from foodrag.utils import network_util
+from foodrag.food_rag.utils.embedding_helper import QA_SUB_PATH
+from foodrag.food_rag.evaluation.retriever_evaluator import RUN_PATH
+from foodrag.utils import hummus_util
 
 ## Output Paths
 data_path = './data'

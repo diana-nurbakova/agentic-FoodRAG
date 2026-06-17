@@ -7,47 +7,38 @@ from llama_index.core import Settings
 from llama_index.embeddings.litellm import LiteLLMEmbedding
 from llama_index.llms.litellm import LiteLLM
 
-from src.utils import load_util
+from foodrag.utils import load_util
 
 # Output Path
 data_path = './data'
-embedding_path = data_path + '/embeddings/jina_v2_base_de'
 qa_name = 'big_1'
 
-## Raw HUMMUS data
-data_location = './data/init/'
-graph_location = './data/init/graph/'
-additional_location = './data/init/additional/'
-
-print("Loading configs and LLM/Emedding model...")
+print("Loading configs and LLM/Embedding model...")
 
 # Load configs
 nutrition_config = load_util.get_config('config/nutrition_config.yml')
 persona_config = load_util.get_config('config/persona_config.yml')
 
-# Load key
-api_key = load_util.load_file('config/api_key')
+# Resolve dataset locations from the manifest (config/data_manifest.yml) and
+# validate everything required is present before the (expensive) init.
+from foodrag.data import DataLoader
+from foodrag.config import settings as foodrag_settings
 
-# Init LLM
-llm = LiteLLM(  # Doc see @ --> https://docs.litellm.ai/docs/providers/openai_compatible
-    api_base="https://llms-inference.innkube.fim.uni-passau.de",
-    api_key=api_key,
-    model="openai/llama3.1",
-    max_retries=100,
-    cooldown_time=60,
-)
+_loader = DataLoader.from_manifest()
+_loader.require()
+data_location = str(_loader.data_location)
+graph_location = str(_loader.graph_location)
+additional_location = str(_loader.additional_location)
 
-# Remote Embedding model
-embed_model = LiteLLMEmbedding(  # Doc see @ --> https://docs.litellm.ai/docs/providers/openai_compatible
-    api_base="https://llms-inference.innkube.fim.uni-passau.de",
-    api_key=api_key,
-    model_name="jinaai/jina-embeddings-v2-base-de",
-)
+# Init LLM + embedding from config/models.yml + .env (DeepInfra/OpenRouter/HF).
+llm = foodrag_settings.build_llm()
+embed_model = foodrag_settings.build_embedding()
+foodrag_settings.apply_global_settings(llm=llm, embed_model=embed_model)
 
-# Set Global Settings
-Settings.llm = llm
-Settings.embed_model = embed_model
-Settings.chunk_size = 512
+# Embedding output dir keyed by the active embedding model id (avoids clashes
+# when switching models).
+_emb_model = foodrag_settings.load_models_config().embedding['model']
+embedding_path = data_path + '/embeddings/' + _emb_model.replace('/', '_')
 
 print("Init hummus data...")
 

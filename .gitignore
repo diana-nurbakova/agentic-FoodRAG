@@ -132,6 +132,9 @@ venv.bak/
 # The data-ignoring globs above also match the source package src/foodrag/data/.
 # The source tree is always code, never data — never ignore it.
 !src/**
+# ...but still never track byte-code caches under src (the negation above would
+# otherwise re-include them).
+src/**/__pycache__/
 
 */error_analysis.txt
 */logfile.txt
