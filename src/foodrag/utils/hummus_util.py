@@ -145,15 +145,18 @@ def replace_nan_with_empty_list(value):
 
 
 def try_parse(string_object):
+    """Parse JSON/Python-literal text, with robust recovery from messy LLM output.
+
+    Delegates to foodrag.llm.json_recovery (fenced-block extraction, light
+    repairs, json -> ast fallbacks). Preserves the historical contract of
+    raising SyntaxError when nothing can be parsed.
+    """
+    from foodrag.llm.json_recovery import JSONRecoveryError, recover_json
+
     try:
-        return json.loads(string_object)
-    except json.JSONDecodeError:
-        try:
-            return ast.literal_eval(string_object)
-        except SyntaxError:
-            raise SyntaxError('String not parseable.')
-        except ValueError:
-            raise SyntaxError('String not parseable.')
+        return recover_json(string_object)
+    except JSONRecoveryError:
+        raise SyntaxError('String not parseable.')
 
 
 def _parse_string_list(string_object):

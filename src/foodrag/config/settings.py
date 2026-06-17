@@ -120,15 +120,23 @@ def _litellm_model_name(provider: ProviderSpec, model: str) -> str:
     return model if model.startswith("openai/") else f"openai/{model}"
 
 
-def build_llm(spec: Optional[dict[str, Any]] = None, config: Optional[ModelsConfig] = None, **overrides):
-    """Build a LlamaIndex LLM from a model spec (defaults to config.llm)."""
-    from llama_index.llms.litellm import LiteLLM
+def build_llm(
+    spec: Optional[dict[str, Any]] = None,
+    config: Optional[ModelsConfig] = None,
+    logged: bool = True,
+    **overrides,
+):
+    """Build a LlamaIndex LLM from a model spec (defaults to config.llm).
 
+    By default returns a :class:`~foodrag.llm.logged_llm.LoggedLiteLLM` with
+    structured call logging + standardized retry. Set ``logged=False`` for a
+    plain LiteLLM.
+    """
     config = config or load_models_config()
     load_env()
     spec = {**(spec or config.llm), **overrides}
     provider = config.provider(spec["provider"])
-    return LiteLLM(
+    kwargs = dict(
         api_base=provider.api_base,
         api_key=provider.api_key(),
         model=_litellm_model_name(provider, spec["model"]),
@@ -136,6 +144,13 @@ def build_llm(spec: Optional[dict[str, Any]] = None, config: Optional[ModelsConf
         temperature=spec.get("temperature", 0.1),
         request_timeout=spec.get("request_timeout", 120),
     )
+    if logged:
+        from foodrag.llm.logged_llm import LoggedLiteLLM
+
+        return LoggedLiteLLM(**kwargs)
+    from llama_index.llms.litellm import LiteLLM
+
+    return LiteLLM(**kwargs)
 
 
 def build_judge(name: Optional[str] = None, config: Optional[ModelsConfig] = None, **overrides):
