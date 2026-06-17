@@ -26,6 +26,10 @@ class VectorStoreProvider(ABC):
     def connect(self, table_name: str, embed_dim: int) -> Any:
         """Return a llama-index BasePydanticVectorStore for ``table_name``."""
 
+    def reset_database(self) -> "VectorStoreProvider":
+        """Drop/recreate the backing store once (default: no-op)."""
+        return self
+
     def index(self, table_name: str, embed_dim: int) -> Any:
         """Return a VectorStoreIndex built on top of :meth:`connect`."""
         from llama_index.core import VectorStoreIndex
@@ -41,13 +45,24 @@ class PgVectorProvider(VectorStoreProvider):
     def __init__(self, credentials: Optional[dict] = None, reset: bool = False):
         self.credentials = credentials or postgres_credentials()
         self.reset = reset
+        self._initialised = False
+
+    def reset_database(self) -> "PgVectorProvider":
+        from foodrag.food_rag.utils.postgres_helper import PostgresHelper
+
+        PostgresHelper(self.credentials, reset=True)  # drop + create db + extension
+        self._initialised = True
+        return self
 
     def connect(self, table_name: str, embed_dim: int) -> Any:
         from foodrag.food_rag.utils.postgres_helper import PostgresHelper
 
-        return PostgresHelper(self.credentials, reset=self.reset).connect(
-            table_name=table_name, embed_dim=embed_dim
-        )
+        # Only (re)initialise the database once: resetting on every connect drops
+        # the DB out from under still-open connections (ObjectInUse).
+        reset = self.reset and not self._initialised
+        helper = PostgresHelper(self.credentials, reset=reset)
+        self._initialised = True
+        return helper.connect(table_name=table_name, embed_dim=embed_dim)
 
 
 # Registry of available providers. Embedded backends (qdrant/lancedb) can be
