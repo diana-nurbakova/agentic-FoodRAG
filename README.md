@@ -1,66 +1,125 @@
-# Food RAG
+# Agentic Food RAG
 
-Repository of the food RAG system based on the HUMMUS KG [[1](#1)].
-The system is based/uses LlamaIndex [[2](#2)] and Nebula Graph [[3](#3)].
+A health-aware, personalised **meal-plan recommender**: it takes a natural-language request
+(e.g. *"a low-sugar dinner without nuts"*) and returns a full daily meal plan that respects
+dietary preferences, allergies, nutritional constraints, and health guidelines (WHO/FSA/NutriScore).
+It is built on the **HUMMUS** knowledge graph (food.com recipes linked to the FoodOn ontology and
+USDA nutrition data) with an **agentic Retrieval-Augmented Generation** pipeline (LlamaIndex).
 
-## Installation & Usage:
+This is a refactored, reproducible version of the original research prototype
+[gitlab.com/felix134/agentic-food-rag](https://gitlab.com/felix134/agentic-food-rag) — packaged with
+`uv`, explicit data loading, configurable model providers, Dockerized stores, logging/retry/JSON
+recovery, resumable runs, and a test suite. See [PROJECT_DESCRIPTION.md](PROJECT_DESCRIPTION.md) for
+the methodology and architecture.
 
-1. Clone the repository
-2. Install python 3.11.9 (preferably with conda)
-3. Install the requirements with `pip install -r requirements.txt`
-4. Preprocess the data
-    1. Download the [HummusKG dataset](https://gitlab.com/felix134/connected-recipe-data-set)
-    2. Extract the dataset and provide its path in all to-be-used Jupyter Notebooks. Note: The files from steps "b." and "c." must be downloaded from tertiary sources as HUMMUS is based on them but they are not published by HUMMUS. The following variables are only required once when initializing the data (an init code example is found in `create_embeddings.ipynb`):
-        1. The variable `data_location` points to the raw dataset from food.com, namely `members.csv`, `recipes.csv`,
-           and `reviews.csv`.
-        2. The variable `graph_location` points to the original FoodKG [[4](#4)] requiring the FoodOntology [[6](#6)] and USDA/FoodData [[7](#7)] files.
-        3. The variable `additional_location` points to the additional files including tag information [[5](#5)] (Also available at https://www.kaggle.com/shuyangli94/food-com-recipes-and-user-interactions).
-    3. Create a question-answer dataset for retriever evaluation later on
-       1. Execute `qa_generation_1.ipynb` to create a question-answer dataset for evaluation (has to be done only once). For
-          the second question-answer dataset, including only ingredient class requirements (instead of direct inferred
-          ingredients), execute `qa_generation_2.ipynb`.
-       2. The question-answer dataset will be saved in the `data/qa` folder
-    4. Execute `create_embeddings.ipynb` to preprocess the embeddings (has to be done only once). Here, we also init the HUMMUS data.
-    5. Initialize the stores:
-        1. Execute `init_vector_store.ipynb` to preprocess the db (has to be done only once)
-        2. Execute `init_graph_store_1.ipynb` and optionally `init_graph_store_2.ipynb` to preprocess the KGs (has to be done only
-           once, and only for the desired graphs)
-    6. The preprocessed Hummus KG will be saved in the `data/hummus` folder, the Nebula KG in the `data/nebula_kg`
-       folder, the graph store in the `data/graph_store` folder, and the embeddings in the  `data/embeddings` folder
-5. Run the Food RAG system by following the notebook's instructions: `food_RAG_agents.ipynb`.
-6. For the complete evaluation refer to the `eval_1.ipynb` and the `eval_2.ipynb` notebooks. The evaluation results will be saved in the `data/runs`
-   folder. Alternatively, you can run the evaluation script with `python eval_1.py`.
+> **Status:** refactor in progress on branch `refactor/uv-loader`. The data-prep, embedding,
+> store, QA-generation, agent and evaluation stages are wired to the new infrastructure; running
+> the full pipeline at scale incurs real API cost (see *Costs*).
 
-## System Overview
+---
 
-![img.png](img/food_rag_overview.png)
+## Quickstart
 
-## Evaluation Overview
+```bash
+# 1. Install Python 3.11 + dependencies (uv manages both)
+uv sync --extra dev
 
-![img.png](img/food_rag_eval.png)
+# 2. Configure secrets + store settings
+cp .env.example .env        # then fill in DEEPINFRA_API_KEY, OPENROUTER_API_KEY, HF_TOKEN
 
+# 3. Start the backing stores (Postgres+pgvector, Neo4j)
+docker compose up -d        # add --profile nebula for the legacy NebulaGraph path
 
-# Resources
+# 4. Check models + data are reachable
+uv run foodrag models-check         # 1-token LLM + embedding smoke test
+uv run foodrag init-data            # validate the dataset manifest
+```
 
-[<a id="1">1</a>] Felix Bölz, Diana Nurbakova, Sylvie Calabretto, Armin Gerl, Lionel Brunie, and Harald Kosch. 2023.
-HUMMUS: A Linked, Healthiness-Aware, User-centered and Argument-Enabling Recipe Data Set for Recommendation. In
-Proceedings of the 17th ACM Conference on Recommender Systems (RecSys '23). Association for Computing Machinery, New
-York, NY, USA, 1–11. https://doi.org/10.1145/3604915.3609491
+## Models & providers
 
-[<a id="2">2</a>] LlamaIndex Repository. https://docs.llamaindex.ai/en/stable/
+Locked in [config/models.yml](config/models.yml); keys come from `.env` (never hardcoded):
 
-[<a id="3">3</a>]  Nebula Graph Repository. https://www.nebula-graph.io/
+| Role | Default | Provider |
+|---|---|---|
+| Main LLM (agent) | `meta-llama/Llama-3.3-70B-Instruct` | DeepInfra |
+| Embedding | `BAAI/bge-m3` (1024-d) | DeepInfra |
+| Judge(s) | `deepseek-ai/DeepSeek-V3`, Gemma | DeepInfra / OpenRouter |
 
-[<a id="4">4</a>] Haussmann, S., Seneviratne, O., Chen, Y., Ne’eman, Y., Codella, J., Chen, C. H., … Zaki, M. J. (2019). FoodKG: A
-Semantics-Driven Knowledge Graph for Food Recommendation. In Lecture Notes in Computer Science (including subseries
-Lecture Notes in Artificial Intelligence and Lecture Notes in Bioinformatics) (Vol. 11779 LNCS, pp. 146–162).
-Springer. https://doi.org/10.1007/978-3-030-30796-7_10
+The embedding model is **benchmark-then-lock**: `uv run foodrag bench-embeddings --smoke` compares
+candidates (BGE-M3, Qwen3-Embedding-4B, bge-large-en, all-mpnet-base-v2) on a retrieval task.
+Run it on the real QA set to pick the production embedding.
 
-[<a id="5">5</a>] Majumder, B. P., Li, S., Ni, J., & McAuley, J. (2019). Generating personalized recipes from historical user
-preferences. In EMNLP-IJCNLP 2019 - 2019 Conference on Empirical Methods in Natural Language Processing and 9th
-International Joint Conference on Natural Language Processing, Proceedings of the Conference (pp. 5976–5982).
-Association for Computational Linguistics. https://doi.org/10.18653/v1/d19-1613
+## Data
 
-[<a id="6">6</a>] Dooley, D.M., Griffiths, E.J., Gosal, G.S. et al. FoodOn: a harmonized food ontology to increase global food traceability, quality control and data integration. npj Sci Food 2, 23 (2018). https://doi.org/10.1038/s41538-018-0032-6
+All external inputs are described once in [config/data_manifest.yml](config/data_manifest.yml)
+(path, size, source URL, how to unzip/download). The loader validates them and recovers what it can:
 
-[<a id="7">7</a>] SR Legacy Food, https://fdc.nal.usda.gov/
+```bash
+uv run python -m foodrag.data status     # show presence of every required file
+uv run python -m foodrag.data prepare    # unzip local archives + download public files (FoodOn)
+uv run python -m foodrag.data validate   # non-zero exit if anything required is missing
+```
+
+Sources: HUMMUS recipes/reviews/members ([GitLab](https://gitlab.com/felix134/connected-recipe-data-set)),
+food.com tags ([Kaggle](https://www.kaggle.com/shuyangli94/food-com-recipes-and-user-interactions),
+free account), FoodKG mappings, the [FoodOn](https://foodon.org/) ontology, and
+[USDA FoodData](https://fdc.nal.usda.gov/download-datasets). Data lives under `data/` (gitignored).
+
+## Pipeline
+
+Each stage is available as a **CLI subcommand**, a thin **script**, and an importable
+**`foodrag.pipeline`** module (with an injectable `run()` for testing). Run in order:
+
+| Stage | CLI | Module |
+|---|---|---|
+| 1. Init HUMMUS | `foodrag init-hummus` | `foodrag.pipeline.init_hummus` |
+| 2. Embed | `foodrag embed [--sample N]` | `foodrag.pipeline.embed` |
+| 3. Vector store | `foodrag init-vector-store` | `foodrag.pipeline.vector_store` |
+| 4. Graph store | `foodrag init-graph-stores` | `foodrag.pipeline.graph_stores` |
+| 5. Generate QA | `foodrag gen-qa` | `foodrag.pipeline.gen_qa` |
+| 6. Run agents | — (see notebook) | `foodrag.pipeline.run_agents` |
+| 7. Evaluate | — (see notebook) | `foodrag.pipeline.evaluate` |
+
+The original Jupyter **notebooks** are preserved under [notebooks/](notebooks/) and made runnable
+(they import `foodrag.*` and call the config factory). Each starts with a bootstrap cell
+(`from foodrag.notebook import setup; setup()`) that runs from the repo root and loads `.env`.
+
+## Reliability
+
+- **Logging** — every LLM/embedding call is appended to `data/logs/llm_calls-<date>.jsonl`
+  (model, prompt, response, latency, tokens, cost). See `foodrag.llm.call_log`.
+- **Retry** — one standard exponential-backoff policy (`foodrag.llm.llm_retry`).
+- **JSON recovery** — robust parsing of messy LLM output (`foodrag.llm.recover_json`).
+- **Resumable runs** — `foodrag.llm.RunStore` checkpoints per item so a crashed
+  embedding/QA/eval run re-runs only the missing/errored items.
+
+## Tests
+
+```bash
+uv run pytest -m unit                 # fast, no data/services (CI default)
+uv run pytest -m integration          # needs `docker compose up` (pgvector/neo4j)
+uv run pytest -m "data or llm"        # needs local data / API keys (opt-in)
+```
+
+## Costs
+
+Embedding all ~270k recipes and LLM meal-type annotation/QA generation go through paid APIs and can
+take hours. Use `--sample N` and small QA sizes for smoke tests; run full-scale deliberately.
+
+## Repository layout
+
+```
+config/        models.yml, data_manifest.yml, nutrition/persona configs
+src/foodrag/   config/ data/ llm/ stores/ experiments/ pipeline/ + food_rag/ persona/ utils/ hummus_transformation/
+scripts/       thin per-stage CLI wrappers
+notebooks/     original notebooks (runnable, legacy)
+tests/         pytest suite
+docker-compose.yml, pyproject.toml, uv.lock
+```
+
+## Credits
+
+Refactor of the Food RAG system by Felix Bölz et al.; built on **HUMMUS**
+(Bölz, Nurbakova, Calabretto, Gerl, Brunie, Kosch — RecSys '23,
+[doi:10.1145/3604915.3609491](https://doi.org/10.1145/3604915.3609491)), LlamaIndex, FoodKG, FoodOn,
+and USDA FoodData Central.
