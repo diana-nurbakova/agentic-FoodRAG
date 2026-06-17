@@ -129,6 +129,10 @@ venv.bak/
 */*/data/*
 */*/data/*/*
 */*/data/*/*/*
+# The data-ignoring globs above also match the source package src/foodrag/data/.
+# The source tree is always code, never data — never ignore it.
+!src/**
+
 */error_analysis.txt
 */logfile.txt
 logfile.txt

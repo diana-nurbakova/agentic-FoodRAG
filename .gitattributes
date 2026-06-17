@@ -1,0 +1,17 @@
+# Normalize line endings: store text as LF in the repo, check out native.
+* text=auto
+*.py text eol=lf
+*.toml text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.md text eol=lf
+*.lock text eol=lf
+# Notebooks are JSON; keep LF and don't let them be treated oddly.
+*.ipynb text eol=lf
+# Binary / large assets
+*.zip binary
+*.pkl binary
+*.owl binary
+*.ttl binary
+*.pdf binary
+*.png binary

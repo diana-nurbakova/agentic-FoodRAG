@@ -512,7 +512,7 @@ def load_graph_data(graph_location, include_usda, s3=None):
     if s3 is None:
         ingredients_df = pd.read_csv(Path(graph_location, 'graph_ingredient_mapping.csv')).loc[:,
                          ['ing_name', 'recipe', 'foodKG_mapped_ingredient']]
-        labeled_ingredients_df = pd.read_csv(graph_location + 'graph_ingredient_labels.csv').loc[:,
+        labeled_ingredients_df = pd.read_csv(Path(graph_location, 'graph_ingredient_labels.csv')).loc[:,
                                  ['ingredient_name', 'ingredient_id', 'label']]
     else:
         with s3.open(Path(graph_location, 'graph_ingredient_mapping.csv')) as file:

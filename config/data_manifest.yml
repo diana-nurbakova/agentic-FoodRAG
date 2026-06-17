@@ -1,0 +1,112 @@
+# Data manifest for the agentic Food RAG system.
+#
+# Single source of truth for every external file the pipeline needs: where it
+# must live on disk, how big it is, where it comes from, and (when possible)
+# how to obtain it automatically. The DataLoader (foodrag.data) uses this to
+# validate presence, auto-unzip archives already on disk, and download the
+# public sources. Auth-gated sources (Kaggle) are documented, not scripted.
+#
+# Paths are relative to the repository root unless absolute.
+# `role` maps a dataset's directory onto the get_hummus(...) location params.
+
+version: 1
+
+datasets:
+
+  hummus_raw:
+    description: "HUMMUS raw food.com recipes / reviews / members (HUMMUS-enriched CSVs)."
+    role: data_location
+    dir: data/hummus/hummus_data/raw
+    kind: files
+    source:
+      name: "HUMMUS connected-recipe-data-set"
+      url: "https://gitlab.com/felix134/connected-recipe-data-set"
+      public: true
+      note: "Public GitLab repo. Download the data release and place the CSVs (or their .zip) here."
+    files:
+      - name: recipes.csv
+        unzip_from: recipes.zip
+        size: 1127130859
+      - name: reviews.csv
+        unzip_from: reviews.zip
+        size: 721405890
+      - name: members.csv
+        unzip_from: members.zip
+        size: 53958595
+
+  foodcom_tags:
+    description: "food.com tags (RAW_recipes.csv) from the Kaggle food.com dataset."
+    role: additional_location
+    dir: data/hummus/hummus_data/additional
+    kind: files
+    source:
+      name: "Food.com Recipes and Interactions (Kaggle)"
+      url: "https://www.kaggle.com/shuyangli94/food-com-recipes-and-user-interactions"
+      public: false
+      note: >-
+        Requires a free Kaggle account. Download the dataset archive and extract
+        RAW_recipes.csv into this directory (the loader will extract it from a
+        local archive.zip if present).
+    files:
+      - name: RAW_recipes.csv
+        unzip_from: archive.zip
+        size: 294520189
+
+  foodkg:
+    description: "FoodKG ingredient mappings, FoodKG->FoodOn / ->USDA links, and the FoodOn ontology."
+    role: graph_location
+    dir: data/hummus/food_kg
+    kind: files
+    source:
+      name: "FoodKG bundle (shipped with the HUMMUS food_kg release)"
+      url: "https://gitlab.com/felix134/connected-recipe-data-set"
+      public: true
+    files:
+      - name: graph_ingredient_mapping.csv
+        unzip_from: graph_ingredient_mapping.zip
+      - name: graph_ingredient_labels.csv
+        unzip_from: graph_ingredient_labels.zip
+      - name: food_kg_to_food_on.pkl
+      - name: food_kg_to_usda.pkl
+        required: false
+        note: "Only needed when include_usda=True."
+      - name: foodon.owl
+        download_url: "https://purl.obolibrary.org/obo/foodon.owl"
+        note: "Public FoodOn ontology (stable PURL); auto-downloadable."
+
+  foodon_imports:
+    description: "FoodOn ontology import closure (.owl files referenced by foodon.owl)."
+    role: null
+    dir: data/hummus/food_kg/imports
+    kind: directory
+    min_files: 1
+    source:
+      name: "FoodOn imports (shipped with the HUMMUS food_kg release)"
+      url: "https://foodon.org/"
+      public: true
+
+  usda:
+    description: "USDA FoodData Central nutrition datasets (JSON)."
+    role: null
+    dir: data/hummus/food_kg/usda_data
+    kind: directory
+    min_files: 1
+    source:
+      name: "USDA FoodData Central"
+      url: "https://fdc.nal.usda.gov/download-datasets"
+      public: true
+      note: >-
+        FDC distributes versioned .zip files whose names change per release, so
+        auto-download is not scripted. Download the SR Legacy / Foundation /
+        Survey (and optionally Branded) JSON datasets and unzip them here.
+    files:
+      - name: sr_legacy_foods.json
+        size: 210486988
+      - name: foundations_foods.json
+        size: 5924195
+      - name: survey_foods.json
+        size: 68413340
+      - name: branded_foods.json
+        size: 3288618518
+        required: false
+        note: "~3.3 GB; very RAM-heavy to load. Optional; omit unless branded foods are needed."
