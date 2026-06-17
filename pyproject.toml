@@ -1,0 +1,115 @@
+[project]
+name = "foodrag"
+version = "0.1.0"
+description = "Health-aware, personalised meal-plan recommender (agentic RAG over the HUMMUS KG). Refactor of gitlab.com/felix134/agentic-food-rag."
+readme = "README.md"
+requires-python = ">=3.11,<3.12"
+license = { text = "MIT" }
+authors = [{ name = "Diana Nurbakova" }]
+
+# Direct dependencies, pinned to the versions the original code was validated
+# against (frozen_requirements.txt). llama-index's API changes between minor
+# versions, so these pins are load-bearing for the existing code to run.
+dependencies = [
+    # core data / sci
+    "numpy==1.26.4",
+    "pandas==2.2.3",
+    "scipy==1.13.1",
+    "scikit-learn==1.5.2",
+    "gensim==4.3.3",
+    "matplotlib==3.9.2",
+    "pandarallel==1.6.5",
+    "rdflib==7.1.1",
+    "pymupdf==1.24.11",
+    "spacy==3.8.2",
+    "rank-bm25==0.2.2",
+    # llama-index stack. Constraints are bounded ranges within the 0.12 era so
+    # the (internally inconsistent) frozen pip-freeze can be reconciled; exact
+    # reproducible versions are captured in uv.lock.
+    "llama-index>=0.12.23,<0.13",
+    "llama-index-core>=0.12.37,<0.13",
+    "llama-index-readers-file>=0.4,<0.5",
+    "llama-index-vector-stores-postgres>=0.4,<0.5",
+    "llama-index-embeddings-huggingface>=0.5,<0.6",
+    "llama-index-embeddings-litellm>=0.3,<0.4",
+    "llama-index-llms-litellm>=0.3,<0.4",
+    "llama-index-graph-stores-neo4j>=0.4,<0.5",
+    "llama-index-experimental>=0.5,<0.6",
+    "llama-index-program-guidance>=0.3,<0.4",
+    "llama-index-question-gen-guidance>=0.3,<0.4",
+    "litellm>=1.49,<2",
+    "sentence-transformers>=3.2,<4",
+    "transformers>=4.46,<4.49",
+    # vector / graph store clients
+    "psycopg2-binary==2.9.10",
+    "pgvector==0.3.6",
+    "asyncpg==0.29.0",
+    "sqlalchemy[asyncio]==2.0.36",
+    "greenlet==3.1.1",
+    "neo4j==5.27.0",
+    "ipython-ngql==0.14.3",
+    # evaluation
+    "ragas==0.2.1",
+    # config / io / robustness (used by the refactor)
+    "ruamel.yaml==0.18.6",
+    "pyyaml==6.0.2",
+    "python-dotenv==1.0.1",
+    "tenacity==8.5.0",
+    "requests==2.32.3",
+    "tqdm==4.66.5",
+    "huggingface-hub==0.26.0",
+    # notebooks (kept as legacy, must stay runnable)
+    "jupyter==1.1.1",
+    "ipywidgets==8.1.5",
+]
+
+[project.optional-dependencies]
+# NebulaGraph path (retained behind a toggle; heavier infra).
+nebula = [
+    # NOTE: 0.4.x changed the store API vs the original 0.2.0; nebula_helper.py
+    # may need adaptation when this (legacy, toggled) path is exercised in WS4.
+    "llama-index-graph-stores-nebula>=0.4,<0.5",
+    "nebula3-python==3.8.2",
+]
+# Local GGUF inference via llama.cpp. Not needed for the DeepInfra/OpenRouter
+# setup; requires C/C++ build tools, so kept optional to keep core sync reliable.
+local-llm = [
+    "llama-cpp-python>=0.2.90",
+    "llama-index-llms-llama-cpp>=0.4,<0.5",
+]
+dev = [
+    "pytest==8.3.3",
+    "pytest-cov==5.0.0",
+    "ruff==0.6.9",
+]
+
+[project.scripts]
+# Reproducible CLI entrypoints (implemented in WS5 under foodrag.cli).
+foodrag = "foodrag.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/foodrag"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "unit: fast tests, no external data or services (default in CI)",
+    "data: requires the local HUMMUS/FoodKG data on disk",
+    "integration: requires Docker stores (postgres/neo4j/nebula)",
+    "llm: requires provider API keys (DeepInfra/OpenRouter), opt-in",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.uv]
+# keep the project itself importable in editable mode during `uv sync`
+package = true
+# the repo lives under a cloud-synced (OneDrive) folder where hardlinks fail
+# (os error 396); copy installed files instead.
+link-mode = "copy"

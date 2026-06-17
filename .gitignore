@@ -87,8 +87,9 @@ target/
 # Jupyter Notebook
 .ipynb_checkpoints
 
-# pyenv
+# pyenv  (but keep the uv-pinned interpreter version for reproducibility)
 .python-version
+!.python-version
 
 # celery beat schedule file
 celerybeat-schedule
@@ -133,3 +134,13 @@ venv.bak/
 logfile.txt
 */logfile_*.txt
 logfile_*.txt
+config/api-key
+test.ipynb
+
+# Top-level data directory: external datasets + generated artifacts (multi-GB).
+# The patterns above only catch nested */data/*, not the root data/ dir.
+/data/
+
+# Tooling caches (uv venv is covered by .venv above)
+.ruff_cache/
+uv-cache/
