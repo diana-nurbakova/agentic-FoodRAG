@@ -41,8 +41,11 @@ embedding:
 # Candidates compared by `bench-embeddings`. Each model is embedded into its
 # OWN pgvector table sized to its dim (dims differ, so there is no shared
 # schema). Verified live on DeepInfra: bge-m3=1024, qwen3-4b=2560.
-# NOTE: Snowflake/snowflake-arctic-embed-l (the original's model) is NOT hosted
-# on DeepInfra (404), so bge-large-en-v1.5 stands in as a 1024d alternative.
+# NOTE: the original's Snowflake/snowflake-arctic-embed-l is unavailable on our
+# providers (404 on DeepInfra; deprecated on NVIDIA NIM -> 403), so it is
+# dropped. bge-large-en-v1.5 stands in as a 1024d alternative. If continuity
+# with the original is needed, arctic-embed-v2.0 could be added if a provider
+# hosts it.
 embedding_candidates:
   - name: bge-m3
     provider: deepinfra
@@ -55,10 +58,6 @@ embedding_candidates:
   - name: bge-large-en
     provider: deepinfra
     model: "BAAI/bge-large-en-v1.5"
-    dim: 1024
-  - name: arctic-l
-    provider: nvidia
-    model: "snowflake/arctic-embed-l"
     dim: 1024
   - name: mpnet-base
     provider: huggingface

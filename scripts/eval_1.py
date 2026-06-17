@@ -39,28 +39,12 @@ print("Loading configs and LLM/Emnedding model...")
 nutrition_config = load_util.get_config('config/nutrition_config.yml')
 persona_config = load_util.get_config('config/persona_config.yml')
 
-# Load key
-api_key = load_util.load_file('config/api_key')
+# Init LLM + embedding from config/models.yml + .env (DeepInfra/OpenRouter/HF).
+from foodrag.config import settings as foodrag_settings
 
-# Init LLM
-llm = LiteLLM(  # Doc see @ --> https://docs.litellm.ai/docs/providers/openai_compatible
-    api_base="https://llms-inference.innkube.fim.uni-passau.de",
-    api_key=api_key,
-    model="openai/llama3.1",
-    max_retries=100,
-    cooldown_time=60,
-)
-
-embed_model = LiteLLMEmbedding(  # Doc see @ --> https://docs.litellm.ai/docs/providers/openai_compatible
-    api_base="https://llms-inference.innkube.fim.uni-passau.de",
-    api_key=api_key,
-    model_name="openai/Snowflake/snowflake-arctic-embed-l",
-)
-
-# Set Global Settings
-Settings.llm = llm
-Settings.embed_model = embed_model
-Settings.chunk_size = 512
+llm = foodrag_settings.build_llm()
+embed_model = foodrag_settings.build_embedding()
+foodrag_settings.apply_global_settings(llm=llm, embed_model=embed_model)
 
 print("Init KG and postgres...")
 
