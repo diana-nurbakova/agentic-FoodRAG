@@ -45,7 +45,9 @@ def load_env(dotenv_path: Optional[Path] = None, override: bool = False) -> None
 class ProviderSpec:
     name: str
     api_base: Optional[str] = None
+    api_base_env: Optional[str] = None  # resolve base URL from env (e.g. OLLAMA_BASE_URL)
     api_key_env: Optional[str] = None
+    kind: str = "openai"  # "openai" (LiteLLM) | "ollama" (PagodaOllamaLLM)
     local: bool = False
 
     def api_key(self) -> Optional[str]:
@@ -59,6 +61,17 @@ class ProviderSpec:
             )
         return key
 
+    def resolved_api_base(self) -> Optional[str]:
+        if self.api_base_env:
+            base = os.environ.get(self.api_base_env)
+            if not base:
+                raise RuntimeError(
+                    f"Provider {self.name!r} needs env var {self.api_base_env!r}; "
+                    f"it is not set (add it to .env)."
+                )
+            return base
+        return self.api_base
+
 
 @dataclass
 class ModelsConfig:
@@ -67,6 +80,7 @@ class ModelsConfig:
     embedding: dict[str, Any]
     embedding_candidates: list[dict[str, Any]] = field(default_factory=list)
     judges: dict[str, Any] = field(default_factory=dict)
+    annotation: dict[str, Any] = field(default_factory=dict)
 
     def provider(self, name: str) -> ProviderSpec:
         if name not in self.providers:
@@ -100,7 +114,9 @@ def load_models_config(path: Optional[str] = None) -> ModelsConfig:
         name: ProviderSpec(
             name=name,
             api_base=spec.get("api_base"),
+            api_base_env=spec.get("api_base_env"),
             api_key_env=spec.get("api_key_env"),
+            kind=spec.get("kind", "openai"),
             local=spec.get("local", False),
         )
         for name, spec in (raw.get("providers") or {}).items()
@@ -111,6 +127,7 @@ def load_models_config(path: Optional[str] = None) -> ModelsConfig:
         embedding=raw.get("embedding") or {},
         embedding_candidates=raw.get("embedding_candidates") or [],
         judges=raw.get("judges") or {},
+        annotation=raw.get("annotation") or {},
     )
 
 
@@ -136,8 +153,27 @@ def build_llm(
     load_env()
     spec = {**(spec or config.llm), **overrides}
     provider = config.provider(spec["provider"])
+
+    # Ollama-on-Pagoda uses the official ollama client (not LiteLLM) for its
+    # proxy-aware streaming/retry behavior.
+    if provider.kind == "ollama":
+        from foodrag.llm.ollama_pagoda import PagodaOllamaLLM
+
+        return PagodaOllamaLLM(
+            model=spec["model"],
+            base_url=provider.resolved_api_base(),
+            api_key=provider.api_key() or "",
+            temperature=spec.get("temperature", 0.1),
+            num_predict=spec.get("num_predict", -1),
+            keep_alive=spec.get("keep_alive", "30m"),
+            max_attempts=spec.get("max_attempts", 12),
+            read_timeout=spec.get("read_timeout", 600.0),
+            context_window=spec.get("context_window", 8192),
+            log_calls=logged,
+        )
+
     kwargs = dict(
-        api_base=provider.api_base,
+        api_base=provider.resolved_api_base(),
         api_key=provider.api_key(),
         model=_litellm_model_name(provider, spec["model"]),
         max_retries=spec.get("max_retries", 5),
@@ -151,6 +187,13 @@ def build_llm(
     from llama_index.llms.litellm import LiteLLM
 
     return LiteLLM(**kwargs)
+
+
+def build_annotation_llm(config: Optional[ModelsConfig] = None, logged: bool = True, **overrides):
+    """Build the meal-type annotation LLM (defaults to config.annotation, e.g. Pagoda Ollama)."""
+    config = config or load_models_config()
+    spec = config.annotation or config.llm
+    return build_llm(spec=spec, config=config, logged=logged, **overrides)
 
 
 def build_judge(name: Optional[str] = None, config: Optional[ModelsConfig] = None, **overrides):

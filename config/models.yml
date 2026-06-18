@@ -17,6 +17,10 @@ providers:
   nvidia:             # NVIDIA NIM (hosts e.g. snowflake/arctic-embed-l, NV-Embed)
     api_base: "https://integrate.api.nvidia.com/v1"
     api_key_env: NVIDIA_KEY
+  pagoda:             # Ollama on the lab server (free, slow; needs lab VPN)
+    kind: ollama
+    api_base_env: OLLAMA_BASE_URL
+    api_key_env: OLLAMA_API_KEY
   huggingface:        # local embeddings via sentence-transformers (no api_base)
     local: true
     api_key_env: HF_TOKEN
@@ -30,6 +34,17 @@ llm:
   temperature: 0.1
   max_retries: 5
   request_timeout: 120
+
+# Meal-type annotation LLM. This is the huge (~270k recipe) but free pass, run
+# on Pagoda (Ollama, Llama 3.3 70B) -- slow is fine. See foodrag.llm.ollama_pagoda.
+annotation:
+  provider: pagoda
+  model: "llama3.3:70b"
+  temperature: 0.1
+  num_predict: -1
+  keep_alive: "30m"
+  max_attempts: 12
+  read_timeout: 600
 
 # Active embedding model (the one the vector store / retrievers use).
 # Locked to the winner of `bench-embeddings` (WS5); BGE-M3 is the default

@@ -3,6 +3,7 @@ from foodrag.config import settings
 from foodrag.config.settings import (
     ModelsConfig,
     apply_global_settings,
+    build_annotation_llm,
     build_embedding,
     build_judge,
     build_llm,
@@ -14,6 +15,7 @@ __all__ = [
     "settings",
     "ModelsConfig",
     "apply_global_settings",
+    "build_annotation_llm",
     "build_embedding",
     "build_judge",
     "build_llm",

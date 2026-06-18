@@ -44,7 +44,8 @@ def run(
     if annotate_meal_type and llm is None:
         from foodrag.config import settings
 
-        llm = settings.build_llm()
+        # meal-type annotation is the huge, free pass -> Pagoda Ollama by default
+        llm = settings.build_annotation_llm()
 
     kw = loader.hummus_kwargs()
     return load_util.get_hummus(
