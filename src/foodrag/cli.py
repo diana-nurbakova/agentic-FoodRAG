@@ -133,6 +133,7 @@ def build_parser() -> argparse.ArgumentParser:
 # Pipeline stages delegate to their module's own argparse-based main().
 _STAGE_MODULES = {
     "init-hummus": "foodrag.pipeline.init_hummus",
+    "annotate": "foodrag.pipeline.annotate",
     "embed": "foodrag.pipeline.embed",
     "init-vector-store": "foodrag.pipeline.vector_store",
     "init-graph-stores": "foodrag.pipeline.graph_stores",
