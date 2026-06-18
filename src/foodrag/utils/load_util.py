@@ -553,8 +553,10 @@ def _load_usda_data(path, s3):
     # Merge usda sources and convert to df
     usda_df = pd.DataFrame([food_desc for outer_key, food_list in usda_json.items() for food_desc in food_list])
 
-    # Drop column 'FoodUpdateLog' and 'foodAttributes'
-    usda_df.drop(columns=['foodUpdateLog', 'foodAttributes', 'labelNutrients'], inplace=True)
+    # Drop bulky/irrelevant columns. errors='ignore' because some of these
+    # (foodUpdateLog, labelNutrients) only exist in the Branded dataset, which
+    # is optional and may be excluded.
+    usda_df.drop(columns=['foodUpdateLog', 'foodAttributes', 'labelNutrients'], inplace=True, errors='ignore')
 
     # Drop columns with only NaN values
     usda_df.dropna(axis=1, how='all', inplace=True)
