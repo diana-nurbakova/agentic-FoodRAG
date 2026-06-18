@@ -856,9 +856,16 @@ def _get_usda(hummus_data, **kwargs):
     else:
         nutrient_columns = usda_fields.nutrient_columns
 
-    # Get nutrient information for the ingredients from the usda dataset
-    usda_df = hummus_data['usda_df'][['dataType'] + usda_fields.id_columns + usda_fields.text_columns +
-                                     nutrient_columns]
+    # Get nutrient information for the ingredients from the usda dataset.
+    # Only keep columns that actually exist: many nutrient columns in
+    # usda_fields only occur in the Branded dataset (added sugars, sugar
+    # alcohols, taurine, ...), which is optional and may be excluded.
+    requested_columns = ['dataType'] + usda_fields.id_columns + usda_fields.text_columns + nutrient_columns
+    available_columns = [c for c in requested_columns if c in hummus_data['usda_df'].columns]
+    usda_df = hummus_data['usda_df'][available_columns]
+    # Narrow nutrient_columns to those actually present, so the casting loop and
+    # rename below don't reference branded-only columns.
+    nutrient_columns = [c for c in nutrient_columns if c in usda_df.columns]
 
     # Filter out all rows with are not of type 'SR Legacy' (which is the sub dataset the mappings lead to)
     usda_df = usda_df[usda_df['dataType'] == 'SR Legacy']
