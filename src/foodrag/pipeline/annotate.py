@@ -64,6 +64,8 @@ def run(
     limit: Optional[int] = None,
     workers: int = 2,
     llm: Any = None,
+    provider: Optional[str] = None,
+    model: Optional[str] = None,
     hummus_data: Any = None,
     save: bool = True,
     chunk_size: int = 2000,
@@ -71,13 +73,23 @@ def run(
 ) -> dict:
     """Annotate meal types resumably; returns {annotated, total, store}.
 
-    ``llm`` and ``hummus_data`` are injectable for testing.
+    ``llm`` and ``hummus_data`` are injectable for testing. If ``llm`` is None,
+    ``provider``/``model`` override the default annotation LLM (else config's
+    annotation block, e.g. Pagoda).
     """
     from foodrag.config import settings
     from foodrag.llm.runstore import RunStore
     from foodrag.utils import load_util
 
-    llm = llm or settings.build_annotation_llm()
+    if llm is None:
+        if provider:
+            llm = settings.build_llm(spec={
+                "provider": provider,
+                "model": model or "meta-llama/Llama-3.3-70B-Instruct",
+                "temperature": 0.1, "max_retries": 3,
+            })
+        else:
+            llm = settings.build_annotation_llm()
     if hummus_data is None:
         hummus_data = load_util.get_current_hummus(data_path)
     recipes_df = hummus_data["recipes_df"]
@@ -123,14 +135,17 @@ def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="Resumable LLM meal-type annotation of recipes.")
     p.add_argument("--data-path", default="data")
     p.add_argument("--limit", type=int, help="annotate only the first N recipes (calibration)")
-    p.add_argument("--workers", type=int, default=2, help="concurrent workers (Pagoda allows 2)")
+    p.add_argument("--workers", type=int, default=2, help="concurrent workers (Pagoda allows 2; DeepInfra many)")
+    p.add_argument("--provider", help="override annotation LLM provider (e.g. deepinfra)")
+    p.add_argument("--model", help="override annotation LLM model id")
     p.add_argument("--no-save", action="store_true", help="checkpoint only; don't rewrite recipes_df.csv")
     return p
 
 
 def main(argv: Optional[list[str]] = None) -> int:
     args = build_parser().parse_args(argv)
-    out = run(data_path=args.data_path, limit=args.limit, workers=args.workers, save=not args.no_save)
+    out = run(data_path=args.data_path, limit=args.limit, workers=args.workers,
+              provider=args.provider, model=args.model, save=not args.no_save)
     print(f"Annotated {out['annotated']}/{out['total']} recipes -> {out['store']}")
     return 0
 
