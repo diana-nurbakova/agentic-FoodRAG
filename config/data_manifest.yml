@@ -109,4 +109,8 @@ datasets:
       - name: branded_foods.json
         size: 3288618518
         required: false
-        note: "~3.3 GB; very RAM-heavy to load. Optional; omit unless branded foods are needed."
+        note: >-
+          ~3.3 GB of commercial packaged products. EXCLUDED BY DEFAULT in code
+          (load_util.USDA_EXCLUDED_FILES): the FoodKG ingredient mappings resolve
+          to SR Legacy foods, so branded is never used. May sit here harmlessly;
+          it is not loaded. To include it, pass exclude=() / clear that constant.

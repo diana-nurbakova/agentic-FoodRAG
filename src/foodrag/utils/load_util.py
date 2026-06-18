@@ -535,13 +535,23 @@ def load_graph_data(graph_location, include_usda, s3=None):
     return ingredients_df, labeled_ingredients_df, food_on_ontology, food_on_mappings, usda_df, usda_json, usda_mappings
 
 
-def _load_usda_data(path, s3):
-    # Load usda data
-    usda_data = load_folder_files(path, s3)
+# USDA datasets excluded by default. branded_foods.json is ~3.3GB of commercial
+# packaged products; the FoodKG ingredient mappings resolve to SR Legacy foods
+# (the KG build filters to dataType == 'SR Legacy'), so branded is never used.
+# Set to () (or pass exclude=()) to include it.
+USDA_EXCLUDED_FILES = ('branded_foods.json',)
 
-    # split json and csv data
-    # usda_csvs = {k: v for k, v in usda_data.items() if k.endswith('.csv')}
-    usda_jsons = {k: v for k, v in usda_data.items() if k.endswith('.json')}
+
+def _load_usda_data(path, s3, exclude=USDA_EXCLUDED_FILES):
+    # Load usda data, skipping excluded files (don't even read them into memory).
+    exclude = set(exclude or ())
+    if s3 is None:
+        file_names = [f for f in os.listdir(path) if f.endswith('.json') and f not in exclude]
+        usda_jsons = {f: load_file(Path(path, f), s3=None) for f in file_names}
+    else:
+        usda_data = load_folder_files(path, s3)
+        usda_jsons = {k: v for k, v in usda_data.items()
+                      if k.endswith('.json') and Path(k).name not in exclude}
 
     # Merge usda csv data on feature fdc_id
     # alt_usda_df = reduce(lambda left, right: _conditional_merge(left, right, on='fdc_id'), usda_csvs.values())
