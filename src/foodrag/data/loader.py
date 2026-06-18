@@ -103,12 +103,20 @@ class DataLoader:
     def hummus_kwargs(self) -> dict[str, str]:
         """Location kwargs for ``foodrag.utils.load_util.get_hummus``.
 
-        Returns string paths (load_util builds ``Path(location, filename)``).
+        Paths carry a trailing separator: the legacy loaders mix
+        ``Path(location, file)`` with bare ``location + file`` string concat, so
+        a trailing sep is required for the concat call sites to resolve.
         """
+        import os
+
+        def _with_sep(p) -> str:
+            s = str(p)
+            return s if s.endswith((os.sep, "/")) else s + os.sep
+
         return {
-            "data_location": str(self.data_location),
-            "graph_location": str(self.graph_location),
-            "additional_location": str(self.additional_location),
+            "data_location": _with_sep(self.data_location),
+            "graph_location": _with_sep(self.graph_location),
+            "additional_location": _with_sep(self.additional_location),
         }
 
     # -- status ------------------------------------------------------------

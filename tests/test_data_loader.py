@@ -176,6 +176,8 @@ def test_hummus_kwargs_resolves_roles(tmp_path: Path):
         """,
     )
     kw = loader.hummus_kwargs()
-    assert kw["data_location"].endswith("raw")
-    assert kw["graph_location"].endswith("g")
-    assert kw["additional_location"].endswith("add")
+    # paths carry a trailing separator (required by legacy string-concat sites)
+    for key, name in [("data_location", "raw"), ("graph_location", "g"), ("additional_location", "add")]:
+        assert kw[key].rstrip("/\\").endswith(name)
+        assert kw[key].endswith(("/", "\\"))
+

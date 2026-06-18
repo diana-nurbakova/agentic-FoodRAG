@@ -75,7 +75,9 @@ def test_vector_store_orchestration(monkeypatch):
         def build_index_from_nodes(self, nodes):
             self.nodes = nodes
 
-    monkeypatch.setattr(lic.VectorStoreIndex, "from_vector_store", classmethod(lambda cls, vs: FakeIndex()))
+    monkeypatch.setattr(
+        lic.VectorStoreIndex, "from_vector_store", classmethod(lambda cls, vs, **kw: FakeIndex())
+    )
 
     seen = {}
 
@@ -85,7 +87,9 @@ def test_vector_store_orchestration(monkeypatch):
             seen["dim"] = embed_dim
             return "VS"
 
-    out = vector_store.run(hummus_data={"recipes_df": "DF"}, provider=FakeProvider(), embed_dim=1024)
+    out = vector_store.run(
+        hummus_data={"recipes_df": "DF"}, provider=FakeProvider(), embed_dim=1024, embed_model=object()
+    )
     assert out == {"table": "hummus_recipes", "embed_dim": 1024, "n_nodes": 2}
     assert seen == {"table": "hummus_recipes", "dim": 1024}
 

@@ -92,25 +92,25 @@ class PreProcessedFoodOn:
             return self.get_node_names(nodes)
 
     def _get_child_nodes(self, node, depth=None):
+        # Iterative traversal with a visited-set: FoodOn's subClassOf graph
+        # contains cycles/diamonds, which made the previous recursive version
+        # overflow the stack (RecursionError).
         node = _get_URI(node)
         children = set()
-
-        # Get all direct children
-        direct_children = {
-            s for s, p, o in self.rdf_graph.triples((None, URIRef(RDFS_SUBCLASS), node))
-            if str(s).startswith(FOOD_ON_PREFIX)
-        }
-        children.update(direct_children)
-
-        # If depth is 1, return the direct children
-        if depth is not None and depth <= 1:
-            return children
-
-        # Recursively find children of the current children
-        new_depth = None if depth is None else depth - 1
-        for child in direct_children:
-            children.update(self._get_child_nodes(child, new_depth))
-
+        frontier = [(node, depth)]
+        expanded = set()
+        while frontier:
+            current, d = frontier.pop()
+            direct_children = {
+                s for s, p, o in self.rdf_graph.triples((None, URIRef(RDFS_SUBCLASS), current))
+                if str(s).startswith(FOOD_ON_PREFIX)
+            }
+            for child in direct_children:
+                children.add(child)
+                # expand each node at most once; respect the depth budget
+                if child not in expanded and (d is None or d > 1):
+                    expanded.add(child)
+                    frontier.append((child, None if d is None else d - 1))
         return children
 
     def get_direct_parent_nodes(self, node, as_url=False):
@@ -136,13 +136,20 @@ class PreProcessedFoodOn:
         else:
             return [self.get_node_names(node_path) for node_path in nodes]
 
-    def _get_parent_nodes(self, node, top_node=FOOD_ON_FOOD_PRODUCT, depth=None):
+    def _get_parent_nodes(self, node, top_node=FOOD_ON_FOOD_PRODUCT, depth=None, _on_path=None):
         node = _get_URI(node)
         top_node = _get_URI(top_node)
 
         # Base case: if the node is the top node, return a path containing only this node
         if node == top_node:
             return [[node]]
+
+        # Cycle guard: FoodOn's subClassOf graph can contain cycles; never
+        # revisit a node already on the current path.
+        _on_path = _on_path or set()
+        if node in _on_path:
+            return []
+        _on_path = _on_path | {node}
 
         # Get all parent nodes of the current node
         parents = [
@@ -162,7 +169,7 @@ class PreProcessedFoodOn:
         all_paths = []
         new_depth = None if depth is None else depth - 1
         for parent in parents:
-            parent_paths = self._get_parent_nodes(parent, top_node, new_depth)
+            parent_paths = self._get_parent_nodes(parent, top_node, new_depth, _on_path)
 
             for path in parent_paths:
                 all_paths.append([node] + path)

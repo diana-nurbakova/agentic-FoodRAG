@@ -18,6 +18,7 @@ def run(
     table_name: str = "hummus_recipes",
     reset: bool = True,
     embed_dim: Optional[int] = None,
+    embed_model: Any = None,
     hummus_data: Any = None,
     provider: Any = None,
     config: Any = None,
@@ -26,7 +27,7 @@ def run(
 
     ``hummus_data`` and ``provider`` are injectable for testing.
     """
-    from foodrag.config.settings import embedding_dim, load_models_config
+    from foodrag.config.settings import build_embedding, embedding_dim, load_models_config
     from foodrag.food_rag.utils import embedding_helper, hummus_docify
     from foodrag.pipeline.embed import embedding_path_for
     from foodrag.stores import get_vector_store_provider
@@ -34,6 +35,10 @@ def run(
 
     cfg = config or load_models_config()
     embed_dim = embed_dim or embedding_dim(config=cfg)
+    # The nodes already carry embeddings, but VectorStoreIndex resolves an embed
+    # model eagerly and would default to OpenAI; pass ours explicitly.
+    if embed_model is None:
+        embed_model = build_embedding(config=cfg)
     if hummus_data is None:
         hummus_data = load_util.get_current_hummus(data_path)
     provider = provider or get_vector_store_provider("pgvector", reset=reset)
@@ -47,7 +52,7 @@ def run(
     from llama_index.core import VectorStoreIndex
 
     vector_store = provider.connect(table_name=table_name, embed_dim=embed_dim)
-    index = VectorStoreIndex.from_vector_store(vector_store)
+    index = VectorStoreIndex.from_vector_store(vector_store, embed_model=embed_model)
     index.build_index_from_nodes(nodes=nodes)
     return {"table": table_name, "embed_dim": embed_dim, "n_nodes": len(nodes)}
 

@@ -406,8 +406,10 @@ class Neo4JTransformer:
         # Map ingredient_id to ingredient_url using ingredients_dict
         ingredients_df['ingredient_url'] = ingredients_df['ingredient_id'].map(hummus_data['ingredients_dict'])
 
-        # Map ingredient_url to usda_fdcId using usda_mappings
-        usda_mappings = {k: int(v.split('#')[-1]) for k, v in hummus_data['usda_mappings'].items()}
+        # Map ingredient_url to usda_fdcId using usda_mappings.
+        # usda_mappings is None when the data was loaded without USDA (nousda /
+        # onlyfoodon modes, or include_usda=False) -- tolerate that.
+        usda_mappings = {k: int(v.split('#')[-1]) for k, v in (hummus_data['usda_mappings'] or {}).items()}
         ingredients_df['ndb_number'] = ingredients_df['ingredient_url'].map(usda_mappings)
 
         # Recipe-Ingredient relationships

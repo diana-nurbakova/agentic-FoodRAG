@@ -401,7 +401,9 @@ async def reformulate_questions(question_answer_set, llm, path, file_name, quest
                     model=llm.model,
                     messages=[system_msg, {'role': 'user', 'content': query}],
                     api_base=llm.additional_kwargs['api_base'],
-                    api_key=llm.additional_kwargs['api_key']
+                    api_key=llm.additional_kwargs['api_key'],
+                    timeout=90,  # fail fast instead of hanging on LiteLLM's 600s default
+                    num_retries=3,
                 )
 
                 # Extract and deserialize the response content
@@ -496,7 +498,9 @@ async def rate_reformulated_questions(question_answer_set, llm, path, file_name,
                             model=llm.model,
                             messages=[system_msg, {'role': 'user', 'content': query}],
                             api_base=llm.additional_kwargs['api_base'],
-                            api_key=llm.additional_kwargs['api_key']
+                            api_key=llm.additional_kwargs['api_key'],
+                            timeout=90,  # fail fast instead of hanging on LiteLLM's 600s default
+                            num_retries=3,
                         )
 
                         # Extract and deserialize the response content (rating for each reformulated question)
