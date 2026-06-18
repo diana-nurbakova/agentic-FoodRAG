@@ -116,7 +116,7 @@ def test_graph_stores_orchestration(monkeypatch):
         def delete_all(self):
             events.append(("delete",))
 
-        def insert_data(self, data_path, mode, batch_size, verbose):
+        def insert_data(self, data_path, mode, batch_size, verbose, use_absolute_paths=False):
             events.append(("insert", mode))
 
     out = graph_stores.run(hummus_data={"x": 1}, manager=FakeMgr(), mode="all", limit_size=10)

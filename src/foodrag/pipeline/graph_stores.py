@@ -19,6 +19,7 @@ def run(
     limit_size: Optional[int] = None,
     insert: bool = True,
     clear_first: bool = True,
+    use_absolute_paths: bool = False,
     hummus_data: Any = None,
     manager: Any = None,
     config: Any = None,
@@ -50,7 +51,8 @@ def run(
             manager = Neo4jManager(cfg["uri"], cfg["user"], cfg["password"], cfg["database"])
         if clear_first:
             manager.delete_all()
-        manager.insert_data(data_path=data_path, mode=mode, batch_size=1000, verbose=True)
+        manager.insert_data(data_path=data_path, mode=mode, batch_size=1000, verbose=True,
+                            use_absolute_paths=use_absolute_paths)
         inserted = True
 
     return {"mode": mode, "inserted": inserted}
@@ -63,6 +65,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--limit", type=int, help="limit transform size (for testing)")
     p.add_argument("--no-insert", action="store_true", help="transform + save only, skip Neo4j load")
     p.add_argument("--no-clear", action="store_true", help="don't delete existing nodes first")
+    p.add_argument("--absolute-paths", action="store_true",
+                   help="LOAD CSV via absolute host paths (local Neo4j, not Docker)")
     return p
 
 
@@ -71,6 +75,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     out = run(
         data_path=args.data_path, mode=args.mode, limit_size=args.limit,
         insert=not args.no_insert, clear_first=not args.no_clear,
+        use_absolute_paths=args.absolute_paths,
     )
     print(f"KG mode={out['mode']} transformed{' + inserted into Neo4j' if out['inserted'] else ' (not inserted)'}.")
     return 0

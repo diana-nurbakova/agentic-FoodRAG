@@ -29,7 +29,7 @@ class Neo4jManager:
         """Closes the Neo4j connection."""
         self.driver.close()
 
-    def insert_data(self, data_path, mode, batch_size=1000, verbose=True):
+    def insert_data(self, data_path, mode, batch_size=1000, verbose=True, use_absolute_paths=False):
         """
         Loads CSVs into Neo4j and inserts nodes and relationships in a single query. For Cypher load-csv documentation,
         see: https://neo4j.com/docs/cypher-manual/current/clauses/load-csv/
@@ -38,6 +38,9 @@ class Neo4jManager:
         :param mode: Mode of the transformation.
         :param batch_size: Batch size for PERIODIC COMMIT (default: 1000).
         :param verbose: If True, prints progress information.
+        :param use_absolute_paths: If True, LOAD CSV uses absolute host paths (local Neo4j with
+            filesystem access). If False (default), paths are relative to the neo4j_kg import root,
+            which must be mounted into the Neo4j container's import dir (see docker-compose.yml).
         """
         # Lazy import here to avoid circular imports
         from foodrag.hummus_transformation.transform_kg import CSV_DELIMITER
@@ -46,15 +49,22 @@ class Neo4jManager:
         # Get urls
         file_names_dict = load_util.load_file(Path(data_path, SUB_DIRECTORY_NAME, mode, CONFIG_FILE_NAME))
 
+        # By default emit paths relative to the neo4j_kg import root, which is
+        # how a Dockerized Neo4j reads them (the host data/neo4j_kg is mounted to
+        # the container import dir). Pass use_absolute_paths=True for a local
+        # Neo4j that can read the host filesystem directly (the original behavior).
+        import_root = Path(data_path, SUB_DIRECTORY_NAME).resolve()
+
         node_queries = []
         relation_queries = []
         for name, object_type in file_names_dict['files'].items():
             metadata = load_util.load_file(transform_kg.get_file_metadata_path(data_path, mode, object_type, name))
-            absolute_file_path = transform_kg.get_file_path(data_path, mode, object_type, name).resolve().as_posix()
+            file_abs = transform_kg.get_file_path(data_path, mode, object_type, name).resolve()
+            csv_ref = file_abs.as_posix() if use_absolute_paths else file_abs.relative_to(import_root).as_posix()
 
             if object_type == "node":
                 query = f"""
-                LOAD CSV WITH HEADERS FROM 'file:///{absolute_file_path}' AS row FIELDTERMINATOR '{CSV_DELIMITER}'
+                LOAD CSV WITH HEADERS FROM 'file:///{csv_ref}' AS row FIELDTERMINATOR '{CSV_DELIMITER}'
                 CALL (row) {{
                     MERGE (n:{metadata['node_type']} {self._to_import_attr(metadata=metadata,
                                                                            left_include='{',
@@ -69,7 +79,7 @@ class Neo4jManager:
                 src_id_name, dst_id_name = metadata["src_id_name"], metadata["dst_id_name"]
 
                 query = f"""
-                LOAD CSV WITH HEADERS FROM 'file:///{absolute_file_path}' AS row FIELDTERMINATOR '{CSV_DELIMITER}'
+                LOAD CSV WITH HEADERS FROM 'file:///{csv_ref}' AS row FIELDTERMINATOR '{CSV_DELIMITER}'
                 CALL (row) {{
                     MATCH (a:{src_label} {{ {Neo4jManager._get_casting_function(np.integer, src_id_col, node_id_name=src_id_name)} }})
                     MATCH (b:{dst_label} {{ {Neo4jManager._get_casting_function(np.integer, dst_id_col, node_id_name=dst_id_name)} }})

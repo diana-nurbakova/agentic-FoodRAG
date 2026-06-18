@@ -39,7 +39,9 @@ services:
       - "${NEO4J_BOLT_PORT:-7687}:7687"   # Bolt
     volumes:
       - neo4jdata:/data
-      - neo4jimport:/var/lib/neo4j/import
+      # Mount the KG transform output as Neo4j's import dir so LOAD CSV can read
+      # it via container-relative file:/// paths (see neo4J_helper.insert_data).
+      - ./data/neo4j_kg:/var/lib/neo4j/import
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:7474 || exit 1"]
       interval: 10s
@@ -97,6 +99,5 @@ services:
 volumes:
   pgdata:
   neo4jdata:
-  neo4jimport:
   nebula-meta:
   nebula-storage:
