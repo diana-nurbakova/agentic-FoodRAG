@@ -57,6 +57,9 @@ class Neo4jManager:
 
         node_queries = []
         relation_queries = []
+        # (label, property) pairs the relation MATCHes look up -- we index these
+        # before inserting so the MATCHes use index seeks, not full label scans.
+        index_specs = set()
         for name, object_type in file_names_dict['files'].items():
             metadata = load_util.load_file(transform_kg.get_file_metadata_path(data_path, mode, object_type, name))
             file_abs = transform_kg.get_file_path(data_path, mode, object_type, name).resolve()
@@ -78,6 +81,11 @@ class Neo4jManager:
                 src_id_col, dst_id_col = metadata["src_id_column"], metadata["dst_id_column"]
                 src_id_name, dst_id_name = metadata["src_id_name"], metadata["dst_id_name"]
 
+                # The MATCHes below look up (src_label, clean(src_id_name)) and
+                # (dst_label, clean(dst_id_name)); index those node properties.
+                index_specs.add((src_label, Neo4jManager.clean_column_name(src_id_name)))
+                index_specs.add((dst_label, Neo4jManager.clean_column_name(dst_id_name)))
+
                 query = f"""
                 LOAD CSV WITH HEADERS FROM 'file:///{csv_ref}' AS row FIELDTERMINATOR '{CSV_DELIMITER}'
                 CALL (row) {{
@@ -95,7 +103,27 @@ class Neo4jManager:
                     print(f"Skipping {name} file as type {type} is not recognized: {str(object_type)}")
 
         with self.driver.session() as session:
-            for query in node_queries + relation_queries:
+            # 1. Create indexes on the node id-properties the relation MATCHes use.
+            # Without these, each MATCH over a 270k-node label is a full scan, so
+            # the relation phase (millions of rows) is effectively unbounded.
+            for label, prop in sorted(index_specs):
+                index_query = f"CREATE INDEX IF NOT EXISTS FOR (n:`{label}`) ON (n.`{prop}`)"
+                if verbose:
+                    print(f"Executing:{index_query}")
+                session.run(index_query)
+
+            # 2. Insert nodes (MERGE can now use the indexes too).
+            for query in node_queries:
+                if verbose:
+                    print(f"Executing:{query}")
+                session.run(query)
+
+            # 3. Wait for the indexes to finish populating before the relation
+            # MATCHes rely on them.
+            session.run("CALL db.awaitIndexes(600)")
+
+            # 4. Insert relationships.
+            for query in relation_queries:
                 if verbose:
                     print(f"Executing:{query}")
                 session.run(query)
