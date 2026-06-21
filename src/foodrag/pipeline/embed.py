@@ -38,12 +38,18 @@ def run(
     batch_size: int = 1000,
     chunk_size: int = 300,
     embed_model: Any = None,
+    provider: Optional[str] = None,
+    model: Optional[str] = None,
     hummus_data: Any = None,
     config: Any = None,
 ) -> dict:
     """Embed the selected document types; return path + per-type counts.
 
-    ``embed_model`` and ``hummus_data`` are injectable for testing.
+    ``embed_model`` and ``hummus_data`` are injectable for testing. If
+    ``embed_model`` is None, ``provider``/``model`` override the embedding
+    backend (e.g. provider='huggingface' for a local GPU bge-m3 on Colab). Keep
+    the SAME model id (BAAI/bge-m3) so the output dir and vectors stay
+    consistent with the API embeddings.
     """
     from foodrag.config.settings import build_embedding, load_models_config
     from foodrag.food_rag.utils import embedding_helper, hummus_docify
@@ -51,7 +57,12 @@ def run(
 
     cfg = config or load_models_config()
     if embed_model is None:
-        embed_model = build_embedding(config=cfg)
+        if provider:
+            spec = {"provider": provider, "model": model or cfg.embedding["model"],
+                    "dim": cfg.embedding.get("dim")}
+            embed_model = build_embedding(spec=spec, config=cfg)
+        else:
+            embed_model = build_embedding(config=cfg)
     if hummus_data is None:
         hummus_data = load_util.get_current_hummus(data_path)
 
@@ -83,6 +94,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--sample", type=int, help="embed only the first N docs per type (smoke)")
     p.add_argument("--batch-size", type=int, default=1000)
     p.add_argument("--chunk-size", type=int, default=300)
+    p.add_argument("--embed-provider", help="override embedding provider (e.g. huggingface for local GPU)")
+    p.add_argument("--embed-model", help="override embedding model id (default keeps the active model)")
     return p
 
 
@@ -94,6 +107,8 @@ def main(argv: Optional[list[str]] = None) -> int:
         sample=args.sample,
         batch_size=args.batch_size,
         chunk_size=args.chunk_size,
+        provider=args.embed_provider,
+        model=args.embed_model,
     )
     print(f"Embeddings -> {out['embedding_path']}")
     for name, n in out["counts"].items():
