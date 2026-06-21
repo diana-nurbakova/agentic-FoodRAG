@@ -138,6 +138,7 @@ _STAGE_MODULES = {
     "init-vector-store": "foodrag.pipeline.vector_store",
     "init-graph-stores": "foodrag.pipeline.graph_stores",
     "gen-qa": "foodrag.pipeline.gen_qa",
+    "run-baselines": "foodrag.pipeline.run_baselines",
 }
 
 

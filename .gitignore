@@ -151,3 +151,9 @@ test.ipynb
 # Tooling caches (uv venv is covered by .venv above)
 .ruff_cache/
 uv-cache/
+
+specs/
+thesis/
+mockups/
+
+.claude/

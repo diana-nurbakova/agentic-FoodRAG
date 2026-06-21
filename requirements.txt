@@ -5,7 +5,7 @@ rdflib
 pymupdf
 spacy
 llama-index
-llama-cpp-python
+llama-cpp-python # cpp build tools should be installed
 llama-index-readers-file
 llama-index-vector-stores-postgres
 llama-index-embeddings-huggingface # pip install -U llama-index-embeddings-huggingface if pydantic error occurs
@@ -29,3 +29,4 @@ matplotlib
 ragas
 scikit-learn
 gensim
+streamlit
