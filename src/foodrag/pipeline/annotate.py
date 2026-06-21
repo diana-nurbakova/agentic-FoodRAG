@@ -53,6 +53,38 @@ def annotate_one(row_dict: dict, llm: Any) -> list[str]:
     return []
 
 
+# Extended meal-type set kept after annotation (the 4 canonical + sensible
+# extras the model produced). Everything else (leaked food.com tags, etc.) is
+# dropped. See normalize_meal_types.
+ALLOWED_MEAL_TYPES = ("breakfast", "lunch", "dinner", "snack", "dessert", "brunch", "appetizer", "side dish")
+
+# Variant -> canonical label. "side dish ..." prefixes are handled separately.
+_MEAL_TYPE_SYNONYMS = {
+    "snacks": "snack", "desserts": "dessert", "appetizers": "appetizer",
+    "breakfasts": "breakfast", "lunches": "lunch", "dinners": "dinner", "brunches": "brunch",
+    "side-dish": "side dish", "side-dishes": "side dish", "side dishes": "side dish", "sidedish": "side dish",
+    "supper": "dinner",
+}
+
+
+def normalize_meal_types(labels) -> list[str]:
+    """Map raw LLM meal-type labels onto ALLOWED_MEAL_TYPES; drop the rest.
+
+    Lowercases, fixes plural/hyphen variants, collapses "side dish for/at ..."
+    to "side dish", maps a few synonyms (supper->dinner), keeps only allowed
+    labels, de-duplicates (order-preserving).
+    """
+    out: list[str] = []
+    for label in labels or []:
+        s = str(label).strip().lower()
+        if s.startswith("side dish") or s.startswith("side-dish"):
+            s = "side dish"
+        s = _MEAL_TYPE_SYNONYMS.get(s, s)
+        if s in ALLOWED_MEAL_TYPES and s not in out:
+            out.append(s)
+    return out
+
+
 def store_path_for(data_path: str) -> Path:
     # In a subdir so get_current_hummus's top-level file scan doesn't try to load it.
     return Path(data_path, "hummus", "annotations", "meal_type_annotations.jsonl")
@@ -124,11 +156,25 @@ def run(
         results = store.results()
         recipes_df = hummus_data["recipes_df"]
         recipes_df["meal_types"] = (
-            recipes_df[id_col].astype(str).map(results).apply(lambda x: x if isinstance(x, list) else [])
+            recipes_df[id_col].astype(str).map(results)
+            .apply(lambda x: normalize_meal_types(x) if isinstance(x, list) else [])
         )
         load_util.store_file(recipes_df, Path(data_path, "hummus", "recipes_df"))
 
     return {"annotated": len(store.results()), "total": len(recipes_df), "store": str(store.path)}
+
+
+def normalize_only(data_path: str = "data") -> dict:
+    """Re-normalize the meal_types already in recipes_df.csv (no LLM, no full
+    hummus load). Loads only recipes_df, applies normalize_meal_types, re-saves."""
+    from foodrag.utils import load_util
+
+    path = Path(data_path, "hummus", "recipes_df.csv")
+    df = load_util.load_file(path)
+    df["meal_types"] = df["meal_types"].apply(load_util.serialize).apply(normalize_meal_types)
+    load_util.store_file(df, Path(data_path, "hummus", "recipes_df"))
+    n = int(df["meal_types"].apply(lambda x: len(x) > 0).sum())
+    return {"recipes": len(df), "with_meal_types": n, "path": str(path)}
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -139,11 +185,17 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--provider", help="override annotation LLM provider (e.g. deepinfra)")
     p.add_argument("--model", help="override annotation LLM model id")
     p.add_argument("--no-save", action="store_true", help="checkpoint only; don't rewrite recipes_df.csv")
+    p.add_argument("--normalize-only", action="store_true",
+                   help="re-normalize existing recipes_df meal_types (no LLM); see normalize_meal_types")
     return p
 
 
 def main(argv: Optional[list[str]] = None) -> int:
     args = build_parser().parse_args(argv)
+    if args.normalize_only:
+        out = normalize_only(data_path=args.data_path)
+        print(f"Normalized meal_types: {out['with_meal_types']}/{out['recipes']} recipes -> {out['path']}")
+        return 0
     out = run(data_path=args.data_path, limit=args.limit, workers=args.workers,
               provider=args.provider, model=args.model, save=not args.no_save)
     print(f"Annotated {out['annotated']}/{out['total']} recipes -> {out['store']}")

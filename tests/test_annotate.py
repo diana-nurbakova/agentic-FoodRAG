@@ -78,6 +78,25 @@ def test_annotate_errors_are_recorded_not_fatal(tmp_path: Path):
     assert len(store.errors()) == 2
 
 
+@pytest.mark.parametrize(
+    "raw,expected",
+    [
+        (["lunch", "dinner"], ["lunch", "dinner"]),
+        (["Dinner", "LUNCH"], ["dinner", "lunch"]),               # lowercased
+        (["snacks", "desserts", "appetizers"], ["snack", "dessert", "appetizer"]),  # plurals
+        (["side-dish", "side dish for lunch", "side dishes"], ["side dish"]),        # variants collapse + dedup
+        (["supper"], ["dinner"]),                                  # synonym
+        (["kid-friendly", "cuisine", "60-minutes-or-less", "course"], []),          # leaked tags dropped
+        (["main-dish", "beverage"], []),                           # not in allowed set
+        (["dinner", "dinner"], ["dinner"]),                        # dedup
+        ([], []),
+        (None, []),
+    ],
+)
+def test_normalize_meal_types(raw, expected):
+    assert annotate.normalize_meal_types(raw) == expected
+
+
 def test_annotate_saves_meal_types_into_recipes_df(tmp_path: Path):
     (tmp_path / "hummus").mkdir()
     hummus = _hummus([1, 2])
