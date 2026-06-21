@@ -58,6 +58,20 @@ RELEVANT_PREDICATES = {SUB_PROPERTY_OF_PREDICATE} | {TYPE_PREDICATE} | {LABEL_PR
 CSV_DELIMITER = '|'
 
 
+def _sanitize_for_neo4j_csv(value):
+    """Make a text value safe for Neo4j LOAD CSV.
+
+    User review/recipe text contains embedded double-quotes, backslashes and
+    newlines that break Neo4j's strict CSV quote parsing. Replace quotes with
+    apostrophes, drop backslashes, collapse newlines to spaces, and replace the
+    field delimiter. Lossy, but the KG text is for retrieval, not exact reproduction.
+    """
+    if not isinstance(value, str):
+        return value
+    return (value.replace('\\', ' ').replace('"', "'")
+            .replace('\r', ' ').replace('\n', ' ').replace(CSV_DELIMITER, '/'))
+
+
 class Neo4JTransformer:
     def __init__(self, mode=None):
         """
@@ -488,8 +502,14 @@ class Neo4JObject(ABC):
     def save(self, path, mode):
         if self.df is not None:
             load_util.ensure_dir(f'{path}/{SUB_DIRECTORY_NAME}/{mode}')
-            self.df.to_csv(get_file_path(path, mode, self.object_type, self.name), index=False, sep=CSV_DELIMITER,
-                           na_rep='NULL')
+            # Sanitize text columns so Neo4j LOAD CSV can parse them: user review
+            # / recipe text contains embedded quotes, backslashes and newlines
+            # that break its strict CSV quoting at full scale.
+            df = self.df.copy()
+            for col in df.select_dtypes(include=['object']).columns:
+                df[col] = df[col].map(_sanitize_for_neo4j_csv)
+            df.to_csv(get_file_path(path, mode, self.object_type, self.name), index=False, sep=CSV_DELIMITER,
+                      na_rep='NULL')
             load_util.store_file(self.metadata, get_file_metadata_path(path, mode, self.object_type, self.name))
 
     @staticmethod
