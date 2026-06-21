@@ -165,17 +165,22 @@ class Neo4jManager:
         else:
             return feature_tmpl.format(cleaned_name=cleaned_name, name=id_name)
 
-    def delete_all(self, batch_size=10000):
+    def delete_all(self, batch_size=50000):
         """
         Deletes all nodes and relationships in the database.
 
-        Batched via CALL { } IN TRANSACTIONS (a single DETACH DELETE of millions
-        of nodes exhausts the transaction) and the result is consumed so the
-        delete actually completes before any subsequent insert.
+        Two-phase + batched: delete relationships first, then the (now
+        relationship-free) nodes. A single DETACH DELETE -- or even a batched
+        DETACH DELETE of densely-connected nodes -- exhausts the transaction
+        memory pool on a large graph (millions of nodes / tens of millions of
+        rels). The result is consumed so each phase completes.
         """
         with self.driver.session() as session:
             session.run(
-                f"MATCH (n) CALL (n) {{ DETACH DELETE n }} IN TRANSACTIONS OF {batch_size} ROWS"
+                f"MATCH ()-[r]->() CALL (r) {{ DELETE r }} IN TRANSACTIONS OF {batch_size} ROWS"
+            ).consume()
+            session.run(
+                f"MATCH (n) CALL (n) {{ DELETE n }} IN TRANSACTIONS OF {batch_size} ROWS"
             ).consume()
 
     def query(self, query):
