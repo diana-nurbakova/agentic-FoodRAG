@@ -26,11 +26,9 @@ providers:
     api_key_env: HF_TOKEN
 
 # Main generation LLM (the agent / generator).
-# Temporarily on OpenRouter (DeepInfra's Llama 3.3 70B was degraded/overloaded
-# during testing); switch provider back to deepinfra when it recovers.
 llm:
-  provider: openrouter
-  model: "meta-llama/llama-3.3-70b-instruct"
+  provider: deepinfra
+  model: "meta-llama/Llama-3.3-70B-Instruct"
   temperature: 0.1
   max_retries: 5
   request_timeout: 120
