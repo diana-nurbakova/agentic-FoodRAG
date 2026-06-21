@@ -1,0 +1,13 @@
+experiment_id,metric,stratum,config_a,config_b,mean_diff,test,p_value,p_value_corrected,significant
+EXP-3,correctness,aggregate,heuristic_1,rag,0.096,wilcoxon_paired,0.003,0.009,True
+EXP-3,allergen_violation,aggregate,heuristic_1,rag,-0.12,wilcoxon_paired,0.001,0.003,True
+EXP-3,explanation_quality,aggregate,heuristic_1,rag,0.19,wilcoxon_paired,0.002,0.006,True
+EXP-3,correctness,tight,heuristic_1,rag,0.096,wilcoxon_paired,0.003,0.009,True
+EXP-3,allergen_violation,tight,heuristic_1,rag,-0.12,wilcoxon_paired,0.001,0.003,True
+EXP-3,explanation_quality,tight,heuristic_1,rag,0.19,wilcoxon_paired,0.002,0.006,True
+EXP-3,correctness,medium,heuristic_1,rag,0.096,wilcoxon_paired,0.003,0.009,True
+EXP-3,allergen_violation,medium,heuristic_1,rag,-0.12,wilcoxon_paired,0.001,0.003,True
+EXP-3,explanation_quality,medium,heuristic_1,rag,0.19,wilcoxon_paired,0.002,0.006,True
+EXP-3,correctness,broad,heuristic_1,rag,0.096,wilcoxon_paired,0.003,0.009,True
+EXP-3,allergen_violation,broad,heuristic_1,rag,-0.12,wilcoxon_paired,0.001,0.003,True
+EXP-3,explanation_quality,broad,heuristic_1,rag,0.19,wilcoxon_paired,0.002,0.006,True
