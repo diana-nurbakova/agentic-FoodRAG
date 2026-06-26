@@ -7,6 +7,7 @@ from llama_index.core.prompts.base import (
     PromptTemplate,
     PromptType,
 )
+from llama_index.core import QueryBundle
 from llama_index.core.query_engine import KnowledgeGraphQueryEngine
 from llama_index.core.response_synthesizers import (
     BaseSynthesizer,
@@ -111,8 +112,13 @@ class KGQueryEngine(KnowledgeGraphQueryEngine, BaseRetriever, DataFrameRetriever
         :rtype: pd.DataFrame
         """
         try:
-            results: List[NodeWithScore] = super().retrieve(str_or_query_bundle)
-            # Method flow: Calls BaseRetriever.retrieve, which calls KnowledgeGraphQueryEngine._retrieve
+            # KnowledgeGraphQueryEngine is a *query* engine: its public retrieve()
+            # raises NotImplementedError ("use query directly"). Call the graph
+            # retrieval step directly — _retrieve runs the Text-to-Cypher query and
+            # returns a node whose metadata carries 'graph_store_response'.
+            query_bundle = (QueryBundle(str_or_query_bundle)
+                            if isinstance(str_or_query_bundle, str) else str_or_query_bundle)
+            results: List[NodeWithScore] = self._retrieve(query_bundle)
         except Exception as e:
             if self._verbose:
                 logger.error(f"Error in retrieving query: {str(str_or_query_bundle)}\n{e}")
@@ -134,8 +140,9 @@ class KGQueryEngine(KnowledgeGraphQueryEngine, BaseRetriever, DataFrameRetriever
         :rtype: pd.DataFrame
         """
         try:
-            results: List[NodeWithScore] = await super().aretrieve(str_or_query_bundle)
-            # Method flow: Calls BaseRetriever.aretrieve, which calls KnowledgeGraphQueryEngine._aretrieve
+            query_bundle = (QueryBundle(str_or_query_bundle)
+                            if isinstance(str_or_query_bundle, str) else str_or_query_bundle)
+            results: List[NodeWithScore] = await self._aretrieve(query_bundle)
         except Exception as e:
             if self._verbose:
                 logger.error(f"Error in retrieving query: {str(str_or_query_bundle)}\n{e}")
@@ -149,17 +156,25 @@ class KGQueryEngine(KnowledgeGraphQueryEngine, BaseRetriever, DataFrameRetriever
         return result_df
 
     def _get_recipe_df(self, results) -> pd.DataFrame:
-        # Extract and resolve documents
+        # Extract the graph-store response. Depending on the graph store / driver
+        # version it can be a dict, a list of records, or a list of values, so
+        # flatten the whole structure to scalar values rather than assuming a dict.
         try:
-            recipe_urls = [recipe_url for recipe_url in list(results[0].metadata['graph_store_response'].values())[0]]
-        except (KeyError, IndexError):
-            # If there are no recipe URLs in the metadata, return an empty DataFrame with the same columns as self.recipes_df
+            graph_response = results[0].metadata['graph_store_response']
+        except (KeyError, IndexError, TypeError):
             return self.recipes_df.iloc[0:0]
 
-        recipe_urls = self._flatten_and_deduplicate(recipe_urls)
-        result_df = self.recipes_df[self.recipes_df['recipe_url'].isin(recipe_urls)]
+        ordered_urls = [u for u in self._flatten_and_deduplicate(graph_response) if isinstance(u, str)]
+        if not ordered_urls:
+            return self.recipes_df.iloc[0:0]
 
-        return result_df
+        # Map URLs → recipe rows, preserving the graph's result order (matters for MRR).
+        indexed = self.recipes_df.set_index('recipe_url')
+        indexed = indexed[~indexed.index.duplicated(keep='first')]
+        keep = [u for u in ordered_urls if u in indexed.index]
+        if not keep:
+            return self.recipes_df.iloc[0:0]
+        return indexed.loc[keep].reset_index()
 
     def _flatten_and_deduplicate(self, nested_structure):
         seen = set()

@@ -27,6 +27,7 @@ def run(
     hummus_data: Any = None,
     food_on: Any = None,
     config: Any = None,
+    workers: int = 1,
 ) -> dict:
     """Generate the QA set(s); return the per-type counts.
 
@@ -40,9 +41,14 @@ def run(
     cfg = config or load_models_config()
     nutrition_config = load_util.get_config(nutrition_config_path)
     persona_config = load_util.get_config(persona_config_path)
-    if hummus_data is None:
+    # With workers>1 the CPU-bound simple_qa stage runs in subprocesses that each
+    # load a light hummus subset + build their own FoodOn, so the parent must NOT
+    # load the full ~7GB hummus / build FoodOn (it would risk OOM alongside the
+    # workers). The later llm_qa/scored_qa stages only need the QA set + llm.
+    parallel_simple = bool(workers and workers > 1)
+    if hummus_data is None and not parallel_simple:
         hummus_data = load_util.get_current_hummus(data_path)
-    if food_on is None:
+    if food_on is None and not parallel_simple:
         food_on = rdf_util.PreProcessedFoodOn(hummus_data).preprocess()
     if llm is None:
         llm = build_llm(config=cfg)
@@ -56,6 +62,7 @@ def run(
             hummus_data, qtype, persona_config, nutrition_config,
             data_path=data_path, sub_dir_name=qa_name, llm=llm,
             size=size, batch_size=batch_size, storage_frequency=storage_frequency, food_on=food_on,
+            workers=workers,
         )
         counts[name] = len(qa_set) if qa_set is not None else 0
     return {"qa_name": qa_name, "counts": counts}
@@ -68,6 +75,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--types", help="comma-separated subset of recipe,meal_plan")
     p.add_argument("--size", type=int, default=10)
     p.add_argument("--batch-size", type=int, default=10)
+    p.add_argument("--storage-frequency", type=int, default=10,
+                   help="save the QA set every N items; each save rewrites the whole pkl, so raise this "
+                        "for large runs (e.g. 500 for size=10000) to avoid quadratic I/O")
+    p.add_argument("--workers", type=int, default=1,
+                   help="processes for the CPU-bound simple_qa stage (each loads a light hummus subset)")
     return p
 
 
@@ -76,7 +88,8 @@ def main(argv: Optional[list[str]] = None) -> int:
     out = run(
         data_path=args.data_path, qa_name=args.qa_name,
         question_types=args.types.split(",") if args.types else None,
-        size=args.size, batch_size=args.batch_size,
+        size=args.size, batch_size=args.batch_size, workers=args.workers,
+        storage_frequency=args.storage_frequency,
     )
     print(f"QA set '{out['qa_name']}': " + ", ".join(f"{k}={v}" for k, v in out["counts"].items()))
     return 0

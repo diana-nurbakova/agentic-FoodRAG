@@ -1,10 +1,23 @@
 import asyncio
 import json
 import pandas as pd
+import litellm
 from enum import Enum
 from litellm import acompletion, OpenAIError
 from pathlib import Path
 from tqdm.notebook import tqdm
+
+# Disable litellm's async logging worker + callbacks. The QA pipeline calls
+# asyncio.run() once per stage (llm_qa, then scored_qa); litellm's global
+# LoggingWorker binds its queue to the first event loop and then floods the
+# second with "Queue is bound to a different event loop" tracebacks (thousands
+# of leaked tasks). We don't use litellm callbacks, so turn them all off.
+litellm.callbacks = []
+litellm.success_callback = []
+litellm.failure_callback = []
+litellm._async_success_callback = []
+litellm._async_failure_callback = []
+litellm.turn_off_message_logging = True
 
 from foodrag.persona import persona_generator
 from foodrag.utils import load_util
@@ -22,11 +35,71 @@ class QuestionType(Enum):
         return self.value
 
 
+# --- Parallel simple_qa (persona generation + answer querying) ---------------
+# The per-persona answer querying is CPU-bound (pandas filtering + .apply over
+# 270k recipes) and the personas are independent, so we parallelise across
+# processes. Each worker loads only the LIGHT subset of hummus it needs (not the
+# full ~7GB cache) once, then generates many personas. Module-level functions so
+# they pickle on Windows (spawn).
+_QA_WORKER: dict = {}
+
+# Only the keys persona generation + answer querying touch.
+_LIGHT_HUMMUS_FILES = {
+    'recipes_df': 'recipes_df.csv',
+    'recipe_tags': 'recipe_tags.pkl',
+    'ingredients_df': 'ingredients_df.csv',
+    'food_on_ontology': 'food_on_ontology.ttl',
+    'food_on_mappings': 'food_on_mappings.pkl',
+    'ingredients_dict': 'ingredients_dict.pkl',
+    'ingredient_names_dict': 'ingredient_names_dict.pkl',
+}
+_LIST_COLUMNS = ('tags', 'directions', 'ingredient_names', 'ingredients', 'meal_types')
+
+
+def _load_light_hummus(data_path: str) -> dict:
+    """Load only the hummus pieces needed for simple_qa (no full 7GB cache)."""
+    base = Path(data_path, 'hummus')
+    hummus = {key: load_util.load_file(base / fname) for key, fname in _LIGHT_HUMMUS_FILES.items()}
+    df = hummus['recipes_df']
+    for col in _LIST_COLUMNS:
+        if col in df.columns:
+            df[col] = df[col].apply(load_util.serialize)
+    return hummus
+
+
+def _init_qa_worker(data_path, persona_config, nutrition_config, question_type_value):
+    hummus = _load_light_hummus(data_path)
+    _QA_WORKER.update(
+        hummus=hummus,
+        food_on=rdf_util.PreProcessedFoodOn(hummus).preprocess(),
+        persona_config=persona_config,
+        nutrition_config=nutrition_config,
+        question_type=QuestionType(question_type_value),
+    )
+
+
+def _gen_qa_item(_):
+    w = _QA_WORKER
+    qt = w['question_type']
+    persona = persona_generator.generate_persona_preferences(
+        w['persona_config'], w['nutrition_config'], w['hummus'], food_on=w['food_on'])
+    meal_plan = persona_generator.get_random_meal_plan_nutrients(w['persona_config']) \
+        if qt == QuestionType.MEAL_PLAN else None
+    question = _generate_question(persona, meal_plan, qt)
+    if qt == QuestionType.RECIPE:
+        answer = _get_valid_recipes_for_persona(w['food_on'], w['persona_config'], persona, w['hummus']['recipes_df'])
+    else:
+        answer = _generate_valid_meal_plans_for_persona(
+            w['food_on'], w['persona_config'], persona, meal_plan, w['hummus']['recipes_df'])
+    return {'question': question, 'llm_questions': [], 'answer': answer,
+            'persona': persona, 'meal_plan': meal_plan if qt == QuestionType.MEAL_PLAN else None}
+
+
 # Function to generate questions and answers
 def generate_question_answer_set(hummus_data, question_type: QuestionType, persona_config,
                                  nutrition_config, data_path=None, sub_dir_name=None, llm=None, size: int = 10000,
                                  batch_size: int = 10, storage_frequency: int = 1000,
-                                 food_on: rdf_util.PreProcessedFoodOn = None) -> list[dict]:
+                                 food_on: rdf_util.PreProcessedFoodOn = None, workers: int = 1) -> list[dict]:
     """
     Generate a set of questions and answers based on the given templates and persona.
     :param hummus_data: The Hummus data including recipes and nutrition information.
@@ -65,40 +138,59 @@ def generate_question_answer_set(hummus_data, question_type: QuestionType, perso
     if stage == 'simple_qa':
         size -= len(question_answer_set)
 
-        if food_on is None:
+        use_parallel = bool(workers and workers > 1 and data_path)
+        # In the parallel path each worker builds its own FoodOn from a light
+        # hummus load, so the parent needs neither hummus_data nor food_on.
+        if food_on is None and not use_parallel:
             food_on = rdf_util.PreProcessedFoodOn(hummus_data)
 
-        for _ in tqdm(range(size), desc='Generating Question-Answers'):
-            # 1. Generate Restrictions
-            persona = persona_generator.generate_persona_preferences(persona_config, nutrition_config, hummus_data,
-                                                                     food_on=food_on)
-            if question_type == QuestionType.MEAL_PLAN:
-                meal_plan = persona_generator.get_random_meal_plan_nutrients(persona_config)
-            else:
-                meal_plan = None
+        if use_parallel:
+            # Parallel: each worker loads the light hummus subset once and
+            # generates personas independently (CPU-bound answer querying).
+            from concurrent.futures import ProcessPoolExecutor
 
-            # 2. Generate a question based on the persona, meal_plan_restriction, and question type
-            question = _generate_question(persona, meal_plan, question_type)
+            with ProcessPoolExecutor(
+                max_workers=workers,
+                initializer=_init_qa_worker,
+                initargs=(data_path, persona_config, nutrition_config, question_type.value),
+            ) as executor:
+                for qa in tqdm(executor.map(_gen_qa_item, range(size)), total=size,
+                               desc=f'Generating Question-Answers ({workers} workers)'):
+                    question_answer_set.append(qa)
+                    if path and len(question_answer_set) % storage_frequency == 0:
+                        _save(path, file_name, stage, question_answer_set, question_type)
+        else:
+            for _ in tqdm(range(size), desc='Generating Question-Answers'):
+                # 1. Generate Restrictions
+                persona = persona_generator.generate_persona_preferences(persona_config, nutrition_config, hummus_data,
+                                                                         food_on=food_on)
+                if question_type == QuestionType.MEAL_PLAN:
+                    meal_plan = persona_generator.get_random_meal_plan_nutrients(persona_config)
+                else:
+                    meal_plan = None
 
-            # 3. Generate a valid answer (assuming you have a method `generate_valid_answer_for_persona`)
-            if question_type == QuestionType.RECIPE:
-                answer = _get_valid_recipes_for_persona(food_on, persona_config, persona, hummus_data['recipes_df'])
-            elif question_type == QuestionType.MEAL_PLAN:
-                answer = _generate_valid_meal_plans_for_persona(food_on, persona_config, persona, meal_plan,
-                                                                hummus_data['recipes_df'])
-            else:
-                raise ValueError(f"Invalid question type: {question_type}")
+                # 2. Generate a question based on the persona, meal_plan_restriction, and question type
+                question = _generate_question(persona, meal_plan, question_type)
 
-            # 4. Add the question-answer pair
-            question_answer_set.append({'question': question,
-                                        'llm_questions': [],
-                                        'answer': answer,
-                                        'persona': persona,
-                                        'meal_plan': meal_plan if question_type == QuestionType.MEAL_PLAN else None})
+                # 3. Generate a valid answer (assuming you have a method `generate_valid_answer_for_persona`)
+                if question_type == QuestionType.RECIPE:
+                    answer = _get_valid_recipes_for_persona(food_on, persona_config, persona, hummus_data['recipes_df'])
+                elif question_type == QuestionType.MEAL_PLAN:
+                    answer = _generate_valid_meal_plans_for_persona(food_on, persona_config, persona, meal_plan,
+                                                                    hummus_data['recipes_df'])
+                else:
+                    raise ValueError(f"Invalid question type: {question_type}")
 
-            if len(question_answer_set) % storage_frequency == 0:
-                if path:
-                    _save(path, file_name, stage, question_answer_set, question_type)
+                # 4. Add the question-answer pair
+                question_answer_set.append({'question': question,
+                                            'llm_questions': [],
+                                            'answer': answer,
+                                            'persona': persona,
+                                            'meal_plan': meal_plan if question_type == QuestionType.MEAL_PLAN else None})
+
+                if len(question_answer_set) % storage_frequency == 0:
+                    if path:
+                        _save(path, file_name, stage, question_answer_set, question_type)
 
         stage = 'llm_qa'
         if path:
@@ -397,13 +489,16 @@ async def reformulate_questions(question_answer_set, llm, path, file_name, quest
                 }
 
                 # Perform the async call to the language model
-                response = await acompletion(  # Await the async function properly
-                    model=llm.model,
-                    messages=[system_msg, {'role': 'user', 'content': query}],
-                    api_base=llm.additional_kwargs['api_base'],
-                    api_key=llm.additional_kwargs['api_key'],
-                    timeout=90,  # fail fast instead of hanging on LiteLLM's 600s default
-                    num_retries=3,
+                response = await asyncio.wait_for(
+                    acompletion(  # Await the async function properly
+                        model=llm.model,
+                        messages=[system_msg, {'role': 'user', 'content': query}],
+                        api_base=llm.additional_kwargs['api_base'],
+                        api_key=llm.additional_kwargs['api_key'],
+                        timeout=90,  # litellm's own timeout (can fail to fire on stuck sockets)
+                        num_retries=3,
+                    ),
+                    timeout=150,  # hard asyncio ceiling: one stuck call can't freeze the whole batch
                 )
 
                 # Extract and deserialize the response content
@@ -494,13 +589,16 @@ async def rate_reformulated_questions(question_answer_set, llm, path, file_name,
                         }
 
                         # Perform the async call to the language model
-                        response = await acompletion(
-                            model=llm.model,
-                            messages=[system_msg, {'role': 'user', 'content': query}],
-                            api_base=llm.additional_kwargs['api_base'],
-                            api_key=llm.additional_kwargs['api_key'],
-                            timeout=90,  # fail fast instead of hanging on LiteLLM's 600s default
-                            num_retries=3,
+                        response = await asyncio.wait_for(
+                            acompletion(
+                                model=llm.model,
+                                messages=[system_msg, {'role': 'user', 'content': query}],
+                                api_base=llm.additional_kwargs['api_base'],
+                                api_key=llm.additional_kwargs['api_key'],
+                                timeout=90,  # litellm's own timeout (can fail to fire on stuck sockets)
+                                num_retries=3,
+                            ),
+                            timeout=150,  # hard asyncio ceiling: one stuck call can't freeze the whole batch
                         )
 
                         # Extract and deserialize the response content (rating for each reformulated question)
