@@ -50,6 +50,7 @@ dependencies = [
     "ipython-ngql==0.14.3",
     # evaluation
     "ragas==0.2.1",
+    "rapidfuzz>=3,<4",  # pFoodReq baseline: vendored build_all_data.py (§5.8)
     # config / io / robustness (used by the refactor)
     "ruamel.yaml==0.18.6",
     "pyyaml==6.0.2",
@@ -99,11 +100,15 @@ packages = ["src/foodrag"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# Make the repo-root packages (`ui`, `app`) importable in tests alongside the
+# installed `foodrag` package.
+pythonpath = ["."]
 markers = [
     "unit: fast tests, no external data or services (default in CI)",
     "data: requires the local HUMMUS/FoodKG data on disk",
     "integration: requires Docker stores (postgres/neo4j/nebula)",
     "llm: requires provider API keys (DeepInfra/OpenRouter), opt-in",
+    "gui: Streamlit GUI tests (AppTest / ui package); no external services",
 ]
 
 [tool.ruff]
