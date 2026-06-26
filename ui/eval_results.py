@@ -62,6 +62,11 @@ def is_sample() -> bool:
     return bool(manifest().get("sample", True))
 
 
+def real_experiments() -> list[str]:
+    """Experiment ids whose rows are real (not synthetic placeholders)."""
+    return list(manifest().get("real_experiments", []))
+
+
 def available() -> bool:
     return load_aggregate() is not None
 

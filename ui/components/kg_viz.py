@@ -1,57 +1,114 @@
-"""Knowledge-graph path visualisation (spec §4.4 "KG path visualization").
+"""KG-path explanation viz (Evaluation Protocol §8.1, spec §4.4).
 
-Renders the user → condition/skill → constraint/category → recipe BFS path as
-inline SVG. A textual node/edge list is also emitted as a text alternative
-(WCAG 1.1.1 / spec §8.2). Ported from the mockup's KGPath component.
+Renders the grounded path(s) connecting a recommended recipe to each stated
+persona requirement (e.g. ``recipe → has → sugars = 4g → satisfies → sugar ≤ 10``,
+``recipe → excludes → Gluten``). Paths are real (built from the recipe's
+attributes/ingredients/tags via ``services.path_finding``), so this replaces the
+old hardcoded graph. Path Coverage / Path Validity are shown, and a text
+alternative is provided (WCAG 1.1.1 / spec §8.2).
 """
 
 from __future__ import annotations
 
-from ..mock_data import KG_EDGES, KG_NODES
+from typing import Callable, Optional
+
+import streamlit as st
+
+from ..services import path_finding
 from ..theme import C, F, html
 
 _NODE_COLORS = {
-    "user": C["primary"], "condition": C["accent"], "skill": C["nutB"],
-    "constraint": C["nutD"], "category": C["nutC"], "recipe": C["primary"],
+    "recipe": C["primary"], "attribute": C["primaryLight"], "constraint": C["nutD"],
+    "allergen": C["accent"], "tag": C["nutC"], "ingredient": C["nutB"], "class": C["sub"],
 }
 
 
-def render_kg_path() -> None:
-    nodes = {n["id"]: n for n in KG_NODES}
+def _chip(label: str, ntype: str) -> str:
+    col = _NODE_COLORS.get(ntype, C["textMuted"])
+    return (f"<span style=\"display:inline-block;background:{col}1f;color:{col};border:1px solid {col};"
+            f"border-radius:12px;padding:2px 9px;font-family:{F};font-size:10px;font-weight:600;"
+            f"white-space:nowrap\">{label}</span>")
 
-    edges_svg = ""
-    for e in KG_EDGES:
-        f, t = nodes[e["from"]], nodes[e["to"]]
-        mx, my = (f["x"] + t["x"]) / 2, (f["y"] + t["y"]) / 2
-        edges_svg += (
-            f'<line x1="{f["x"]}" y1="{f["y"]}" x2="{t["x"]}" y2="{t["y"]}" '
-            f'stroke="{C["primary"]}" stroke-width="2" stroke-opacity="0.2" />'
-            f'<text x="{mx}" y="{my - 5}" text-anchor="middle" fill="{C["textMuted"]}" '
-            f'font-size="7" font-family="{F}">{e["label"]}</text>'
-        )
 
-    nodes_svg = ""
-    for n in KG_NODES:
-        col = _NODE_COLORS[n["type"]]
-        nodes_svg += (
-            f'<circle cx="{n["x"]}" cy="{n["y"]}" r="20" fill="{col}" fill-opacity="0.12" '
-            f'stroke="{col}" stroke-width="2" />'
-            f'<text x="{n["x"]}" y="{n["y"] + 1}" text-anchor="middle" dominant-baseline="middle" '
-            f'fill="{col}" font-size="8" font-weight="700" font-family="{F}">{n["label"]}</text>'
-            f'<text x="{n["x"]}" y="{n["y"] + 32}" text-anchor="middle" fill="{C["textMuted"]}" '
-            f'font-size="6" font-style="italic" font-family="{F}">{n["type"]}</text>'
-        )
+def _edge(label: str, ok: bool) -> str:
+    col = C["primaryLight"] if ok else C["accent"]
+    return (f"<span style=\"font-family:{F};font-size:8px;color:{col};padding:0 4px;white-space:nowrap\">"
+            f"—{label}→</span>")
 
+
+def _path_row(path: dict) -> str:
+    parts = []
+    nodes, edges = path["nodes"], path["edges"]
+    for i, (label, ntype) in enumerate(nodes):
+        parts.append(_chip(label, ntype))
+        if i < len(edges):
+            parts.append(_edge(edges[i], path["satisfied"]))
+    mark = "✓" if path["satisfied"] else "✗"
+    mark_col = C["nutA"] if path["satisfied"] else C["accent"]
+    chain = "".join(parts)
+    return (f"<div style=\"display:flex;align-items:center;gap:4px;flex-wrap:wrap;padding:5px 0;"
+            f"border-top:1px solid {C['border']}\">"
+            f"<span style=\"color:{mark_col};font-weight:700;width:12px\">{mark}</span>{chain}</div>")
+
+
+def render_recipe_paths(card: dict, persona: dict,
+                        expand: Optional[Callable] = None) -> dict:
+    """Render grounded requirement-paths for one recipe card. Returns the report."""
+    report = path_finding.build_paths(card, persona, expand)
+
+    if report["n"] == 0:
+        html(f"<div style=\"font-family:{F};font-size:11px;color:{C['textMuted']}\">"
+             f"No explicit dietary requirements for this persona — nothing to ground.</div>")
+        return report
+
+    cov, val = report["coverage"], report["validity"]
+    cov_col = C["nutA"] if cov >= 0.999 else (C["nutC"] if cov >= 0.5 else C["accent"])
     html(
-        f"<div style=\"font-size:9px;color:{C['textMuted']};margin-bottom:4px;font-family:{F}\">"
-        f"HUMMUS KG path (BFS, max 3 hops). Skill node: Bölz et al. (2025).</div>"
-        f"<div style=\"background:#fafaf7;border-radius:6px;border:1px solid {C['border']}\">"
-        f"<svg width=\"100%\" height=\"240\" viewBox=\"0 0 460 240\">{edges_svg}{nodes_svg}</svg></div>"
+        f"<div style=\"font-family:{F};font-size:9px;color:{C['textMuted']};margin-bottom:4px\">"
+        f"Grounded KG paths from <b>{report['recipe']}</b> to each requirement "
+        f"(constraint-first; every edge is real, protocol §8.1).</div>"
+        f"<div style=\"display:flex;gap:14px;font-family:{F};font-size:10px;margin-bottom:2px\">"
+        f"<span>Path coverage: <b style=\"color:{cov_col}\">{cov:.0%}</b></span>"
+        f"<span>Path validity: <b style=\"color:{C['nutA']}\">{val:.0%}</b></span></div>"
     )
+    html("".join(_path_row(p) for p in report["paths"]))
 
-    # Text alternative for screen readers / non-visual contexts
-    import streamlit as st
+    _render_text_alternative(report)
+    return report
 
-    with st.expander("Path as text (accessible)"):
-        for e in KG_EDGES:
-            st.write(f"**{nodes[e['from']]['label']}** —{e['label']}→ **{nodes[e['to']]['label']}**")
+
+def render_kg_ingredient_paths(recipe_name: str, rows: list[dict]) -> None:
+    """Render real recipe→ingredient→FoodOn-class paths from Neo4j (eval §8.1).
+
+    ``rows`` = ``[{ingredient, food_class, ancestors}]`` from
+    ``backend.recipe_ingredient_class_paths``."""
+    if not rows:
+        html(f"<div style=\"font-family:{F};font-size:10px;color:{C['textMuted']}\">"
+             f"No FoodOn-linked ingredients found in the knowledge graph for this recipe.</div>")
+        return
+    html(f"<div style=\"font-family:{F};font-size:9px;color:{C['textMuted']};margin:6px 0 4px\">"
+         f"Ingredient → FoodOn class chains for <b>{recipe_name}</b>, traversed live over Neo4j "
+         f"(bounded depth, protocol §5.5).</div>")
+    for row in rows:
+        nodes = [(recipe_name, "recipe"), (row["ingredient"], "ingredient"), (row["food_class"], "class")]
+        nodes += [(a, "class") for a in row.get("ancestors", [])]
+        edges = ["contains", "is a"] + ["is a"] * len(row.get("ancestors", []))
+        parts = []
+        for i, (label, ntype) in enumerate(nodes):
+            parts.append(_chip(label, ntype))
+            if i < len(edges):
+                parts.append(_edge(edges[i], ok=True))
+        html(f"<div style=\"display:flex;align-items:center;gap:4px;flex-wrap:wrap;padding:5px 0;"
+             f"border-top:1px solid {C['border']}\">{''.join(parts)}</div>")
+
+
+def _render_text_alternative(report: dict) -> None:
+    # Text alternative (accessible)
+    with st.expander("Paths as text (accessible)"):
+        for p in report["paths"]:
+            chain = " → ".join(
+                lbl + (f" —{p['edges'][i]}→" if i < len(p["edges"]) else "")
+                for i, (lbl, _t) in enumerate(p["nodes"])
+            ).replace(" —", " —").rstrip("→ ").strip()
+            st.write(("✓" if p["satisfied"] else "✗") + " " + chain)
+    return report

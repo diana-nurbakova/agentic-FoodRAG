@@ -14,7 +14,7 @@ import streamlit as st
 
 from ..admin_config import pipeline_defaults
 from ..components.correction_log import render_correction_log
-from ..components.kg_viz import render_kg_path
+from ..components.kg_viz import render_recipe_paths
 from ..components.pipeline_strip import render_pipeline_strip
 from ..components.query_inspector import render_query_inspector
 from ..components.recipe_card import render_recipe_card
@@ -108,6 +108,19 @@ def _open_detail(recipe: dict) -> None:
 
 
 # ── pipeline results panel (one per side) ──────────────────────────────────
+def _live_expander():
+    """FoodOn descendant-expander from the live engine for ontology-grounded
+    allergen paths; None (substring) if the backend isn't built."""
+    try:
+        from ..services import backend, eval_metrics
+
+        if backend._ENGINE is None:  # don't trigger the heavy load just for paths
+            return None
+        return eval_metrics.foodon_expander(backend.get_engine().hummus_data)
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def _render_safety_panel(safety: dict | None, side: str) -> None:
     """Deterministic safety summary for the live plan (protocol §4.3)."""
     if not safety or not safety.get("n"):
@@ -239,7 +252,8 @@ def _render_real_results(side: str, arena_mode: bool) -> None:
              f"color:{C['text']};margin-bottom:6px\">🔄 Correction Agent Log</div>{rows}</div>")
 
     recipes = result["recipes"]
-    tab_labels = ["🍽 Recipes"] + (["💡 Explanation"] if result.get("explanation") else [])
+    persona = st.session_state["persona"]
+    tab_labels = ["🍽 Recipes"] + (["💡 Explanation"] if result.get("explanation") else []) + ["🔗 KG paths"]
     tabs = st.tabs(tab_labels)
     with tabs[0]:
         if not recipes:
@@ -249,10 +263,29 @@ def _render_real_results(side: str, arena_mode: bool) -> None:
                  f"text-transform:uppercase;letter-spacing:1px;margin:6px 0 3px\">{r['meal']}</div>")
             _render_recipe_safety_badge(r.get("safety"))
             render_recipe_card(r, key=f"real_{side}_{i}", on_expand=_open_detail, compact=arena_mode)
+    idx = 1
     if result.get("explanation"):
-        with tabs[1]:
+        with tabs[idx]:
             html(f"<p style=\"font-family:{F};font-size:11px;line-height:1.7;color:{C['text']};margin:0\">"
                  f"{result['explanation']}</p>")
+        idx += 1
+    with tabs[idx]:
+        if recipes:
+            choice = st.selectbox("Explain which meal?", range(len(recipes)),
+                                  format_func=lambda i: f"{recipes[i]['meal']}: {recipes[i]['name']}",
+                                  key=f"kgreal_{side}")
+            chosen = recipes[choice]
+            render_recipe_paths(chosen, persona, expand=_live_expander())
+            # Richer paths: real recipe→ingredient→FoodOn-class chains from Neo4j
+            if chosen.get("recipe_id") is not None:
+                from ..components.kg_viz import render_kg_ingredient_paths
+                from ..services import backend
+
+                st.divider()
+                rows = backend.recipe_ingredient_class_paths(chosen["recipe_id"])
+                render_kg_ingredient_paths(chosen["name"], rows)
+        else:
+            st.info("No recipes to ground.")
 
 
 def render_pipeline_results(side: str, arena_mode: bool) -> None:
@@ -355,7 +388,12 @@ def render_pipeline_results(side: str, arena_mode: bool) -> None:
         idx += 1
 
     with tabs[idx]:
-        render_kg_path()
+        persona = st.session_state["persona"]
+        meal_recipes = [recipes[0]] if single else recipes
+        choice = st.selectbox("Explain which meal?", range(len(meal_recipes)),
+                              format_func=lambda i: f"{('' if single else MEALS[i] + ': ')}{meal_recipes[i]['name']}",
+                              key=f"kg_meal_{side}")
+        render_recipe_paths(meal_recipes[choice], persona)
 
     # Arena vote
     if arena_mode:

@@ -53,7 +53,8 @@ def render() -> None:
 
         ok, reason = _backend.is_available()
         (st.success if ok else st.warning)(f"Backend availability: {reason}")
-        st.caption("Currently wired retriever: **Text→Pandas** (others fall back to mock).")
+        st.caption("Live retrievers: Dense, Sparse (BM25), Hybrid, Text→Pandas, and Fusion "
+                   "(RRF over dense+sparse+KG). Fusion includes the Neo4j KG retriever when it constructs.")
 
     st.divider()
     if st.button("Apply defaults to a fresh Flow A config now"):

@@ -15,6 +15,7 @@ import uuid
 import streamlit as st
 
 from .admin_config import default_admin_config
+from .services.config_service import effective_config
 
 # Flow A screens (spec §4) and Flow B screens (spec §5)
 FLOW_A_SCREENS = ["consent", "hexad", "persona", "main"]
@@ -33,8 +34,13 @@ def init_state() -> None:
     ss.setdefault("flow", None)                 # "exploration" | "evaluation"
     ss.setdefault("consent_given", False)
 
-    # Admin (spec §6): config + auth flags
-    ss.setdefault("admin_config", default_admin_config())
+    # Admin (spec §6): config persisted to the dataset repo (§6.3), deep-merged
+    # over defaults so older saved configs still get new keys.
+    if "admin_config" not in ss:
+        try:
+            ss["admin_config"] = effective_config()
+        except Exception:  # noqa: BLE001 — never block startup on config load
+            ss["admin_config"] = default_admin_config()
     ss.setdefault("admin_authenticated", False)
     ss.setdefault("is_admin", False)
 

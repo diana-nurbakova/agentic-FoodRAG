@@ -54,37 +54,53 @@ def nutri_to_unit(value) -> float:
         return 0.0
 
 
+# An ``expand`` maps the blacklist terms to their FoodOn-descendant leaf
+# ingredient names (so a class like ``gluten`` yields ``wheat flour`` …), per the
+# real ``PreProcessedFoodOn.translate_ingredients`` API (protocol §4.3). It takes
+# the whole blacklist and returns the expanded name set — the same contract as
+# ``foodrag.baselines.constraints.IngredientExpander``.
+Expander = Callable[[Iterable[str]], set[str]]
+
+
 # ── §4.3 Safety metrics (deterministic) ───────────────────────────────────
-def recipe_allergens(recipe: dict, expand: Optional[Callable[[str], set[str]]] = None) -> set[str]:
-    """Ingredient tokens for a recipe, optionally expanded with FoodOn ancestors
-    (so ``wheat flour`` also yields ``wheat``/``gluten``). ``expand`` maps one
-    ingredient token to its FoodOn-derived set (incl. itself)."""
-    base = _tokens(recipe.get("ingredients")) | _tokens(recipe.get("ingredient_names"))
-    if expand is None:
-        return base
-    out: set[str] = set()
-    for tok in base:
-        out |= (expand(tok) or {tok})
-    return out
+def recipe_ingredient_tokens(recipe: dict) -> set[str]:
+    """Lower-cased ingredient-name tokens present in a recipe."""
+    return _tokens(recipe.get("ingredients")) | _tokens(recipe.get("ingredient_names"))
+
+
+def recipe_violated_allergens(recipe: dict, blacklist: Iterable[str],
+                              expand: Optional[Expander] = None) -> list[str]:
+    """Recipe ingredients that match the blacklist (for messaging).
+
+    With ``expand`` (FoodOn) the blacklist is resolved to its descendant leaf
+    ingredient names and matched exactly; a substring net against the original
+    terms is always applied as a fallback (favouring recall for safety)."""
+    bl = [b.strip().lower() for b in blacklist if b and b.strip()]
+    if not bl:
+        return []
+    present = recipe_ingredient_tokens(recipe)
+    targets = set(bl)
+    if expand is not None:
+        try:
+            targets |= {str(t).strip().lower() for t in (expand(bl) or []) if str(t).strip()}
+        except Exception:  # noqa: BLE001 — fall back to substring matching
+            pass
+    hits = set()
+    for ing in present:
+        if ing in targets or any(b in ing or ing in b for b in bl):
+            hits.add(ing)
+    return sorted(hits)
 
 
 def recipe_violates_allergen(recipe: dict, blacklist: Iterable[str],
-                             expand: Optional[Callable[[str], set[str]]] = None) -> bool:
-    """True if the recipe contains a blacklisted ingredient OR (with ``expand``)
-    a FoodOn descendant of a blacklisted class (protocol §4.3)."""
-    bl = {b.strip().lower() for b in blacklist if b and b.strip()}
-    if not bl:
-        return False
-    present = recipe_allergens(recipe, expand)
-    # substring match catches "wheat flour" vs "wheat" without an ontology
-    for allergen in bl:
-        if allergen in present or any(allergen in p or p in allergen for p in present):
-            return True
-    return False
+                             expand: Optional[Expander] = None) -> bool:
+    """True if the recipe contains a blacklisted ingredient OR a FoodOn descendant
+    of a blacklisted class (protocol §4.3)."""
+    return bool(recipe_violated_allergens(recipe, blacklist, expand))
 
 
 def allergen_violation_rate(recipes: list[dict], blacklist: Iterable[str],
-                            expand: Optional[Callable[[str], set[str]]] = None) -> float:
+                            expand: Optional[Expander] = None) -> float:
     """Fraction of recipes violating the allergen blacklist. Target 0.0."""
     if not recipes:
         return 0.0
@@ -102,20 +118,6 @@ _OPS = {
 def recipe_violates_constraint(recipe: dict, constraints: list[tuple]) -> bool:
     """True if the recipe breaks any hard nutrient bound (protocol §4.3)."""
     return bool(recipe_violated_constraints(recipe, constraints))
-
-
-def recipe_violated_allergens(recipe: dict, blacklist: Iterable[str],
-                              expand: Optional[Callable[[str], set[str]]] = None) -> list[str]:
-    """The blacklisted allergens actually present in the recipe (for messaging)."""
-    bl = {b.strip().lower() for b in blacklist if b and b.strip()}
-    if not bl:
-        return []
-    present = recipe_allergens(recipe, expand)
-    hits = []
-    for allergen in bl:
-        if allergen in present or any(allergen in p or p in allergen for p in present):
-            hits.append(allergen)
-    return hits
 
 
 def recipe_violated_constraints(recipe: dict, constraints: list[tuple]) -> list[tuple]:
@@ -260,7 +262,7 @@ def constraint_label(constraint: tuple) -> str:
 
 
 def safety_report(recipes: list[dict], blacklist: Iterable[str], constraints: list[tuple],
-                  expand: Optional[Callable[[str], set[str]]] = None) -> dict:
+                  expand: Optional[Expander] = None) -> dict:
     """Per-recipe + aggregate deterministic safety report (protocol §4.3).
 
     Returns ``{allergen_rate, hard_rate, satisfaction_rate, any_violation, n,
@@ -297,21 +299,32 @@ def safety_report(recipes: list[dict], blacklist: Iterable[str], constraints: li
     }
 
 
-def foodon_expander(hummus_data: dict) -> Optional[Callable[[str], set[str]]]:
-    """Build an ingredient→ancestors expander from ``hummus_data['food_on']`` for
-    ontology-aware allergen detection. Returns None if unavailable; callers then
-    fall back to substring matching."""
+def foodon_expander(hummus_data: dict) -> Optional[Expander]:
+    """Build a blacklist→FoodOn-descendants expander from ``hummus_data['food_on']``.
+
+    Uses the real ``PreProcessedFoodOn.translate_ingredients`` API
+    (``include_food_on=True`` → resolve a FoodOn class to its descendant Food.com
+    leaf ingredient names), which is the project's ontology bridge and what the
+    protocol-blessed ``baselines.constraints.foodon_expander`` uses (protocol §4.3,
+    §5.7). Results are cached per blacklist. Returns None (→ substring fallback)
+    when no FoodOn object / ``translate_ingredients`` is available."""
     food_on = (hummus_data or {}).get("food_on")
-    if food_on is None:
+    if food_on is None or not callable(getattr(food_on, "translate_ingredients", None)):
         return None
-    for attr in ("get_ancestors", "ancestors", "get_hypernyms"):
-        fn = getattr(food_on, attr, None)
-        if callable(fn):
-            def expand(token: str, _fn=fn) -> set[str]:
-                try:
-                    anc = _fn(token)
-                    return {token} | {str(a).lower() for a in (anc or [])}
-                except Exception:  # noqa: BLE001
-                    return {token}
-            return expand
-    return None
+
+    cache: dict[frozenset, set[str]] = {}
+
+    def expand(terms: Iterable[str]) -> set[str]:
+        key = frozenset(str(t).strip().lower() for t in terms if str(t).strip())
+        if key in cache:
+            return cache[key]
+        try:
+            names = food_on.translate_ingredients(
+                list(key), include_food_on=True, include_food_com=True) or []
+            out = {str(n).strip().lower() for n in names if str(n).strip()} | set(key)
+        except Exception:  # noqa: BLE001
+            out = set(key)
+        cache[key] = out
+        return out
+
+    return expand

@@ -43,6 +43,7 @@ class Engine:
     query_engines: dict = field(default_factory=dict)
     kg_attempted: bool = False
     kg_retriever: Any = None
+    neo4j: Any = None                               # lazy Neo4jManager (path traversal)
 
 
 def is_available() -> tuple[bool, str]:
@@ -149,8 +150,14 @@ def _build_kg_retriever(engine: Engine, top_k: int = 10):
                                       url=cfg["uri"], database=cfg["database"])
         schema = transform_kg.Neo4JTransformer.load(
             data_path=str(repo_root() / "data"), mode=transform_kg.MODE_ALL).get_schema()
+        # KGQueryEngine maps graph results back via 'recipe_url', which the cleaned
+        # engine df drops — re-attach it from the original df.
+        kg_df = engine.recipes_df
+        if "recipe_url" not in kg_df.columns:
+            orig = engine.hummus_data["recipes_df"][["recipe_id", "recipe_url"]]
+            kg_df = engine.recipes_df.merge(orig, on="recipe_id", how="left")
         engine.kg_retriever = KGQueryEngine(
-            recipes_df=engine.recipes_df, similarity_top_k=top_k, llm=engine.llm,
+            recipes_df=kg_df, similarity_top_k=top_k, llm=engine.llm,
             storage_context=StorageContext.from_defaults(graph_store=graph_store),
             verbose=False, **schema,
         )
@@ -248,3 +255,52 @@ def run_pipeline(question: str, retriever: str = "text-to-pandas", timeout: floa
     if isinstance(state, (list, tuple)):
         return state[0] if state else {}
     return state or {}
+
+
+# ── bounded KG path traversal (eval protocol §5.5/§8.1, richer paths) ──────
+def ingredient_class_cypher(recipe_id: int, max_ingredients: int = 8, depth: int = 2) -> str:
+    """Bounded Cypher: recipe → HAS_INGREDIENT → ingredient → IS_EQUIVALENT_TO →
+    Food_on → SUB_CLASS_OF*1..depth → Food_on. Depth/ingredient caps keep the
+    traversal bounded (single already-recommended recipe → no hub fan-out, §5.5).
+    Pure (string only) so it is unit-testable without a live database."""
+    rid = int(recipe_id)
+    n = max(1, min(int(max_ingredients), 25))
+    d = max(1, min(int(depth), 4))
+    return (
+        f"MATCH (r:Recipe {{recipe_id: {rid}}})-[:HAS_INGREDIENT]->(i:Ingredient)"
+        f"-[:IS_EQUIVALENT_TO]->(f:Food_on)\n"
+        f"OPTIONAL MATCH (f)-[:SUB_CLASS_OF*1..{d}]->(a:Food_on)\n"
+        f"WITH i.name AS ingredient, f.label AS food_class, collect(DISTINCT a.label) AS ancestors\n"
+        f"WHERE food_class IS NOT NULL\n"
+        f"RETURN ingredient, food_class, ancestors\n"
+        f"LIMIT {n}"
+    )
+
+
+def _neo4j(engine: Engine):
+    if engine.neo4j is None:
+        from foodrag.config.stores import neo4j_config
+        from foodrag.food_rag.utils.neo4J_helper import Neo4jManager
+
+        cfg = neo4j_config()
+        engine.neo4j = Neo4jManager(cfg["uri"], cfg["user"], cfg["password"], cfg["database"])
+    return engine.neo4j
+
+
+def recipe_ingredient_class_paths(recipe_id, max_ingredients: int = 8, depth: int = 2) -> list[dict]:
+    """Live recipe→ingredient→FoodOn-class paths. Returns
+    ``[{ingredient, food_class, ancestors}]``; [] on any failure (best-effort)."""
+    if recipe_id is None:
+        return []
+    try:
+        rows = _neo4j(get_engine()).query(ingredient_class_cypher(recipe_id, max_ingredients, depth))
+    except Exception:  # noqa: BLE001
+        return []
+    out = []
+    for r in rows or []:
+        fc = r.get("food_class")
+        if not fc:
+            continue
+        ancestors = [a for a in (r.get("ancestors") or []) if a and a != fc][:depth]
+        out.append({"ingredient": r.get("ingredient") or "?", "food_class": fc, "ancestors": ancestors})
+    return out

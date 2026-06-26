@@ -29,6 +29,7 @@ _CONFIG_LABEL = {
     "dense": "Dense", "sparse": "Sparse (BM25)", "hybrid": "Hybrid",
     "text-to-pandas": "Text→Pandas", "fusion": "Fusion (3-way)",
     "rag": "Plain RAG", "heuristic_1": "Heuristic 1 (full agentic)", "heuristic_2": "Heuristic 2 (recommend only)",
+    "kg_text_to_cypher": "KG (Text→Cypher)",
 }
 
 
@@ -192,8 +193,13 @@ def render() -> None:
         return
 
     if eval_results.is_sample():
-        st.warning("⚠ Showing **bundled sample results (synthetic placeholders)** so the panels are explorable. "
-                   "Replace `eval_results/*.csv` with real evaluation outputs to see real numbers.")
+        real = eval_results.real_experiments()
+        msg = ("⚠ Most panels show **bundled sample results (synthetic placeholders)** so they're explorable. "
+               "Replace `eval_results/*.csv` with real evaluation outputs to see real numbers.")
+        if real:
+            note = eval_results.manifest().get("exp5_note", "")
+            msg += f"\n\n✅ **Real results:** {', '.join(real)}" + (f" — {note}" if note else "")
+        st.warning(msg)
 
     agg = eval_results.load_aggregate()
     pw = eval_results.load_pairwise()

@@ -90,6 +90,7 @@ def recipe_to_card(recipe: dict, meal_type: str = "") -> dict:
     ingredients = _split_csv(recipe.get("ingredient_quantities")) or _split_csv(recipe.get("ingredients"))
     return {
         "name": str(recipe.get("title", "Untitled recipe")),
+        "recipe_id": recipe.get("recipe_id"),
         "time": f"{int(duration)}min" if duration else "—",
         "nutriscore": nutri_letter(recipe.get("nutri_score", 0.5)),
         "who": _who_10(_num(recipe, "who_score", default=0.5)),

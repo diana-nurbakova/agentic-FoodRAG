@@ -10,7 +10,8 @@ from __future__ import annotations
 
 import streamlit as st
 
-from ...admin_config import BLOCK_CATALOG, get_admin_config
+from ...admin_config import BLOCK_CATALOG, default_admin_config, get_admin_config
+from ...services import config_service
 from ...theme import C, F, html
 
 _FLOW_OPTS = ["both", "exploration", "evaluation"]
@@ -26,8 +27,34 @@ def _move(blocks: list[dict], pos: int, delta: int) -> None:
         st.rerun()
 
 
+def _persistence_controls(cfg: dict) -> None:
+    st.subheader("Configuration persistence")
+    status = config_service.status()
+    dest = (f"HF repo `{status['repo_id']}` + local" if status["remote_enabled"]
+            else "local file only (set `FOODRAG_DATASET_REPO` + `HF_TOKEN` for the dataset repo)")
+    st.caption(f"Persists to {dest}. Changes apply to new sessions without redeployment (spec §6.3).")
+    c1, c2, c3 = st.columns([1, 1, 2])
+    if c1.button("💾 Save configuration", type="primary"):
+        ok, msg = config_service.save_config(cfg)
+        (st.success if ok else st.error)(msg)
+    if c2.button("↻ Reload from store"):
+        persisted = config_service.load_persisted()
+        if persisted is None:
+            st.info("No persisted config found; keeping current settings.")
+        else:
+            st.session_state["admin_config"] = config_service.deep_merge(
+                default_admin_config(), persisted)
+            st.success("Reloaded persisted configuration.")
+            st.rerun()
+    c3.caption(f"Local: `{status['local_path']}` "
+               f"({'exists' if status['local_exists'] else 'not saved yet'})")
+    st.divider()
+
+
 def render() -> None:
     cfg = get_admin_config()
+
+    _persistence_controls(cfg)
 
     st.subheader("Study settings")
     c1, c2, c3 = st.columns(3)

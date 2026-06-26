@@ -1,5 +1,9 @@
 {
   "sample": true,
   "note": "SYNTHETIC placeholder results for the Report tab. Replace with real evaluation outputs (Evaluation Protocol \u00a713).",
-  "generated": "demo"
+  "generated": "demo",
+  "real_experiments": [
+    "EXP-5"
+  ],
+  "exp5_note": "EXP-5 KG retrieval: real run, tight stratum only, n=12 (small_1). Broad-stratum KG retrieval is infeasible without precomputation (protocol \u00a75.5)."
 }
