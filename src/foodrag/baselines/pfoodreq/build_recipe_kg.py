@@ -62,7 +62,8 @@ def _dish_entity(row) -> tuple[str, dict]:
     dish_uri = _slug("recipe", str(row[ID_COL]))
 
     contains = [
-        {_slug("ingredient", name): {"name": [name], "type": ["ingredient"]}}
+        {_slug("ingredient", name):
+            {"name": [name], "alias": [], "type": ["ingredient"], "uri": _slug("ingredient", name)}}
         for name in (row.get("ingredient_names") or [])
     ]
 
