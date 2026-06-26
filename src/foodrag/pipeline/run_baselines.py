@@ -11,6 +11,12 @@ tab currently ships with. These rungs need no LLM and no vector store.
 
 The LLM rungs (2 ``LLMOnly``, 3 ``NaiveRAG``) need a built LLM/retriever and are
 driven from the eval notebook via ``foodrag.baselines.run_baseline``.
+
+The external KBQA rungs (``tog``, ``rog``, ``tfs_kbqa`` — §5.8) additionally need a
+Neo4j graph; pass ``--neo4j`` to build them from env (with the main LLM as the
+generator), or drive them from the notebook via
+``foodrag.baselines.kbqa.build_baseline``. Use ``--experiment-id EXP-1`` for the
+retrieval (Use 1) pass and the default ``EXP-7`` for full-pipeline (Use 2).
 """
 from __future__ import annotations
 
@@ -39,12 +45,20 @@ def run(
     recipes_df: Any = None,
     food_on: Any = None,
     persona_config_path: str = "config/persona_config.yml",
+    neo4j: bool = False,
+    llm: Any = None,
+    rog_checkpoint: Optional[str] = None,
+    tfs_checkpoint: Optional[str] = None,
 ) -> dict:
-    """Run the requested deterministic rungs; return a per-rung summary dict.
+    """Run the requested rungs; return a per-rung summary dict.
 
     Pass ``food_on`` (+ persona config) to enable FoodOn-hierarchy allergen
     expansion (§4.3); without it, ingredient matching is verbatim Food.com names,
     which matches the shipped QA set's generation config.
+
+    Pass ``neo4j=True`` (and optionally a built ``llm`` + checkpoints) to enable the
+    external KBQA rungs ``tog`` / ``rog`` / ``tfs_kbqa`` (§5.8); they build a graph
+    client from env and the main LLM as the generator unless one is supplied.
     """
     from foodrag.baselines import (PopularityHealthAware, PopularityRaw,
                                    aggregate, run_baseline, write_results)
@@ -67,10 +81,24 @@ def run(
         "0b": lambda: PopularityHealthAware(recipes_df, expand),
     }
 
+    # External KBQA rungs (§5.8) are gated on a Neo4j graph being available.
+    if neo4j or any(r in {"tog", "rog", "tfs_kbqa"} for r in rungs):
+        from foodrag.baselines.kbqa import KBQA_NAMES, build_baseline, build_kg
+
+        kg = build_kg()
+        if llm is None:
+            from foodrag.config.settings import build_llm
+            llm = build_llm()
+        rung_no = "1" if experiment_id == "EXP-1" else "4"
+        for name in KBQA_NAMES:
+            builders[name] = lambda name=name: build_baseline(
+                name, kg, rung=rung_no, llm=llm,
+                rog_checkpoint=rog_checkpoint, tfs_checkpoint=tfs_checkpoint)
+
     summary: dict[str, Any] = {}
     for rung in rungs:
         if rung not in builders:
-            raise ValueError(f"Unknown/non-deterministic rung {rung!r}; choose from {list(builders)}")
+            raise ValueError(f"Unknown rung {rung!r}; choose from {list(builders)}")
         baseline = builders[rung]()
         records = run_baseline(baseline, qa_set, recipes_df, k=k,
                                experiment_id=experiment_id, expand=expand)
@@ -83,20 +111,27 @@ def run(
 
 
 def build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(description="Run deterministic baseline rungs (0a, 0b).")
+    p = argparse.ArgumentParser(description="Run baseline rungs (0a/0b; KBQA with --neo4j).")
     p.add_argument("--qa", default=DEFAULT_QA, help="path to a QA set pickle")
     p.add_argument("--recipes", default=DEFAULT_RECIPES, help="path to recipes_df.csv")
     p.add_argument("--out", default="eval_results", help="output directory")
     p.add_argument("--k", type=int, default=10)
-    p.add_argument("--rungs", default="0a,0b", help="comma-separated subset of 0a,0b")
-    p.add_argument("--experiment-id", default="EXP-7")
+    p.add_argument("--rungs", default="0a,0b",
+                   help="comma-separated rungs: 0a,0b and (with --neo4j) tog,rog,tfs_kbqa")
+    p.add_argument("--experiment-id", default="EXP-7",
+                   help="EXP-1 for retrieval (Use 1), EXP-7 for full-pipeline (Use 2)")
+    p.add_argument("--neo4j", action="store_true", help="enable external KBQA rungs (needs Neo4j)")
+    p.add_argument("--rog-checkpoint", default=None, help="fine-tuned RoG planner checkpoint dir")
+    p.add_argument("--tfs-checkpoint", default=None, help="fine-tuned TFS parser checkpoint dir")
     return p
 
 
 def main(argv: Optional[list[str]] = None) -> int:
     args = build_parser().parse_args(argv)
     summary = run(qa_path=args.qa, recipes_path=args.recipes, out_dir=args.out,
-                  k=args.k, rungs=args.rungs.split(","), experiment_id=args.experiment_id)
+                  k=args.k, rungs=args.rungs.split(","), experiment_id=args.experiment_id,
+                  neo4j=args.neo4j, rog_checkpoint=args.rog_checkpoint,
+                  tfs_checkpoint=args.tfs_checkpoint)
     for config_id, info in summary.items():
         print(f"[{config_id}] {info['n_questions']} questions -> {info['files']['aggregate']}")
         for metric, value in info["aggregate"].items():
