@@ -42,3 +42,44 @@ def test_skips_reserved_tokens(tmp_path):
                                skip_tokens={"PAD", "UNK"})
     assert stats["n_words"] == 1
     assert out.read_text(encoding="utf-8").split()[0] == "rice"
+
+
+def test_resume_only_embeds_remaining(tmp_path):
+    out = tmp_path / "emb.txt"
+    calls = []
+
+    def counting_embedder(batch):
+        calls.extend(batch)
+        return [[1.0, 2.0, 3.0, 4.0] for _ in batch]
+
+    # first run: 2 of 4 words (simulate an interrupted session)
+    write_glove_format(["a", "b"], counting_embedder, out)
+    assert calls == ["a", "b"]
+
+    # resume with the full vocab: only the 2 new words are embedded
+    calls.clear()
+    stats = write_glove_format(["a", "b", "c", "d"], counting_embedder, out, resume=True)
+    assert calls == ["c", "d"]
+    assert stats == {**stats, "n_new": 2, "n_resumed": 2, "n_words": 4}
+    words = [ln.split()[0] for ln in out.read_text(encoding="utf-8").splitlines()]
+    assert words == ["a", "b", "c", "d"]
+
+
+def test_resume_repairs_truncated_tail(tmp_path):
+    out = tmp_path / "emb.txt"
+    # a complete line + a truncated final line (interrupted mid-write, no newline)
+    out.write_text("rice 1.0 2.0 3.0 4.0\nspinach 0.5 0.6", encoding="utf-8")
+    stats = write_glove_format(["rice", "spinach"], _fake_embedder(), out, resume=True)
+    # 'spinach' was truncated -> dropped and re-embedded; 'rice' kept
+    assert stats["n_resumed"] == 1 and stats["n_new"] == 1
+    lines = out.read_text(encoding="utf-8").splitlines()
+    assert [ln.split()[0] for ln in lines] == ["rice", "spinach"]
+    assert all(len(ln.split()) == 1 + 4 for ln in lines)  # no corrupt vector survived
+
+
+def test_resume_false_overwrites(tmp_path):
+    out = tmp_path / "emb.txt"
+    write_glove_format(["a", "b"], _fake_embedder(), out)
+    stats = write_glove_format(["c"], _fake_embedder(), out, resume=False)
+    assert stats["n_words"] == 1
+    assert [ln.split()[0] for ln in out.read_text(encoding="utf-8").splitlines()] == ["c"]

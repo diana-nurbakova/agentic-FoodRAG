@@ -32,14 +32,40 @@ def vocab_from_vocab2id(path: str | Path) -> list[str]:
         return list(json.load(fh).keys())
 
 
+def _read_done_words(out_path: Path) -> tuple[set[str], list[str]]:
+    """Words already embedded in ``out_path``, plus its intact (newline-terminated)
+    lines. A truncated final line (interrupted mid-write) is dropped, so resuming
+    never inherits a half-written vector that would break the float parse."""
+    done: set[str] = set()
+    intact: list[str] = []
+    with open(out_path, "r", encoding="utf-8") as fh:
+        for line in fh:
+            if not line.endswith("\n"):
+                break  # truncated tail from an interrupted run — discard it
+            word = line.split(" ", 1)[0]
+            if word:
+                done.add(word)
+                intact.append(line)
+    return done, intact
+
+
 def write_glove_format(vocab: Iterable[str], embed_fn: EmbedFn, out_path: str | Path,
-                       *, batch_size: int = 256, skip_tokens: Optional[set[str]] = None) -> dict:
+                       *, batch_size: int = 256, skip_tokens: Optional[set[str]] = None,
+                       resume: bool = True) -> dict:
     """Embed each vocab word and write a GloVe-format file consumable by pFoodReq.
+
+    Resumable: writes are flushed per batch, and on re-run (``resume=True``) words
+    already present in ``out_path`` are skipped so only the remaining vocab is
+    embedded — handy for an interrupted Colab session over a large vocab. Any
+    truncated final line from a previous run is repaired before appending.
 
     :param embed_fn: maps a batch of words → a batch of equal-length float vectors.
     :param skip_tokens: reserved tokens to omit (e.g. ``PAD``/``UNK``); pFoodReq
         initialises those randomly anyway.
-    :returns: ``{n_words, dim, out_path}``.
+    :param resume: skip words already written and append the rest (default True);
+        ``False`` overwrites from scratch.
+    :returns: ``{n_words, n_new, n_resumed, dim, out_path}`` (``n_words`` = total
+        lines in the file).
     """
     out_path = Path(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -48,20 +74,35 @@ def write_glove_format(vocab: Iterable[str], embed_fn: EmbedFn, out_path: str | 
     # be represented (and would be OOV in real GloVe too — left to random init).
     words = [w for w in vocab if w and w not in skip_tokens and not any(c.isspace() for c in w)]
 
+    done: set[str] = set()
+    if resume and out_path.exists():
+        done, intact = _read_done_words(out_path)
+        # Rewrite only the intact lines, dropping any truncated tail, then append.
+        with open(out_path, "w", encoding="utf-8") as fh:
+            fh.writelines(intact)
+
+    todo = [w for w in words if w not in done]
     dim: Optional[int] = None
-    n_written = 0
-    with open(out_path, "w", encoding="utf-8") as fh:
-        for start in range(0, len(words), batch_size):
-            batch = words[start:start + batch_size]
+    n_new = 0
+    with open(out_path, "a" if (resume and done) else "w", encoding="utf-8") as fh:
+        for start in range(0, len(todo), batch_size):
+            batch = todo[start:start + batch_size]
             vectors = embed_fn(batch)
             for word, vec in zip(batch, vectors):
                 if dim is None:
                     dim = len(vec)
                 # GloVe text format: word then space-separated floats, one per line.
                 fh.write(word + " " + " ".join(f"{x:.6f}" for x in vec) + "\n")
-                n_written += 1
+                n_new += 1
+            fh.flush()  # checkpoint: completed batches survive an interruption
 
-    return {"n_words": n_written, "dim": dim or 0, "out_path": str(out_path)}
+    if dim is None and done:  # nothing new this run — recover dim from the file
+        with open(out_path, "r", encoding="utf-8") as fh:
+            first = fh.readline().split()
+            dim = len(first) - 1 if len(first) > 1 else 0
+
+    return {"n_words": len(done) + n_new, "n_new": n_new, "n_resumed": len(done),
+            "dim": dim or 0, "out_path": str(out_path)}
 
 
 def project_embedder(model: Optional[object] = None) -> EmbedFn:

@@ -35,11 +35,22 @@ def _bamnet_src() -> Path:
     return repo_root() / "third_party" / "pfoodreq" / "BAMnet" / "src"
 
 
+def _vec_done(vec_dir: Path) -> bool:
+    return all((vec_dir / f).exists() for f in ("vocab2id.json", "train_vec.json", "valid_vec.json"))
+
+
 def build_all_data(kbqa_dir: str | Path, kb_path: str | Path, vec_dir: str | Path,
-                   *, no_query_expansion: bool = False, no_kg_augmentation: bool = False) -> Path:
-    """Run the vendored ``build_all_data.py`` (vectorise KBQA → vec_dir)."""
+                   *, no_query_expansion: bool = False, no_kg_augmentation: bool = False,
+                   resume: bool = True) -> Path:
+    """Run the vendored ``build_all_data.py`` (vectorise KBQA → vec_dir).
+
+    Re-entrant: with ``resume=True`` the (slow) vectorisation is skipped when its
+    outputs already exist, so a re-run after an interruption doesn't redo it.
+    """
     vec_dir = Path(vec_dir)
     vec_dir.mkdir(parents=True, exist_ok=True)
+    if resume and _vec_done(vec_dir):
+        return vec_dir
     args = [sys.executable, "build_all_data.py", "-data_dir", str(Path(kbqa_dir).resolve()),
             "-kb_path", str(Path(kb_path).resolve()), "-out_dir", str(vec_dir.resolve())]
     if no_query_expansion:
@@ -87,20 +98,32 @@ def run(recipes_df: pd.DataFrame, work_dir: str | Path, *,
         recipe_filter: Optional[set[str]] = None, max_dishes_per_tag: Optional[int] = 500,
         num_epochs: int = 50, glove_path: Optional[str | Path] = None,
         embed_fn: Optional[Callable] = None, eval_split: str = "valid",
-        no_cuda: bool = True) -> dict:
+        no_cuda: bool = True, resume: bool = True) -> dict:
     """Run the full Path-A pipeline; return KBQA counts, train stats and metrics.
 
     Set ``no_cuda=False`` to train/eval on a GPU (e.g. on Colab) — BAMnet still
     falls back to CPU if CUDA is unavailable.
+
+    ``resume=True`` (default) makes the pipeline re-entrant: KBQA generation and
+    vectorisation are skipped when their outputs exist, and the modern-embedding
+    file is appended word-by-word — so a re-run after an interrupted Colab session
+    only does the remaining work.
     """
     work_dir = Path(work_dir)
     kbqa_dir = work_dir / "kbqa"
     vec_dir = work_dir / "vec"
     model_file = work_dir / "model" / "bamnet.model"
 
-    gen = generate_kbqa(recipes_df, kbqa_dir, recipe_filter=recipe_filter,
-                        max_dishes_per_tag=max_dishes_per_tag)
-    build_all_data(kbqa_dir, gen["kb_path"], vec_dir)
+    kb_path = kbqa_dir / "recipe_kg.json"
+    qa_files = [kbqa_dir / f"{s}_qas.json" for s in ("train", "valid", "test")]
+    if resume and kb_path.exists() and all(f.exists() for f in qa_files):
+        gen = {"kb_path": str(kb_path),
+               "qa_counts": {s: sum(1 for _ in open(kbqa_dir / f"{s}_qas.json", encoding="utf-8"))
+                             for s in ("train", "valid", "test")}}
+    else:
+        gen = generate_kbqa(recipes_df, kbqa_dir, recipe_filter=recipe_filter,
+                            max_dishes_per_tag=max_dishes_per_tag)
+    build_all_data(kbqa_dir, gen["kb_path"], vec_dir, resume=resume)
 
     pre_word2vec, overrides = "", {}
     if glove_path is not None or embed_fn is not None:

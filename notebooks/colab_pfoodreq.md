@@ -84,9 +84,13 @@ shutil.copy('/content/drive/MyDrive/foodrag/recipes_df.csv',
             '/content/foodrag/data/hummus/recipes_df.csv')
 # optional: a QA pickle to derive the tight-stratum recipe filter
 QA_PKL = '/content/drive/MyDrive/foodrag/recipe_question_answer_set.pkl'
+# WORK on Drive so checkpoints (KBQA, vectors, partial embeddings) survive a
+# disconnect — re-running a cell then only does the remaining work.
+WORK = '/content/drive/MyDrive/foodrag/work'
+os.makedirs(WORK, exist_ok=True)
 print("recipes staged:",
       os.path.getsize('/content/foodrag/data/hummus/recipes_df.csv') // 2**20, "MB",
-      "| QA pkl present:", os.path.exists(QA_PKL))
+      "| QA pkl present:", os.path.exists(QA_PKL), "| WORK:", WORK)
 ```
 
 ## Cell 5 — load recipes + choose the recipe subset (bound the fan-out)
@@ -204,6 +208,15 @@ print("saved models + metrics.json to Drive:", out)
   scales with KBQA size — bound it with `recipe_filter`/`max_dishes_per_tag`).
   Training then runs on the GPU. Start with the tight stratum; widen only if time
   allows. The free Colab session caps ~12 h and disconnects when idle.
+- **Resumable (re-run-safe):** `run_pfoodreq.run(..., resume=True)` (the default)
+  is re-entrant — if the session drops, just re-run the same cell against the same
+  `work_dir`. Completed stages are skipped: KBQA generation and vectorisation are
+  reused when their outputs exist, and the modern-embedding file is built
+  word-by-word and flushed per batch, so a re-run **only embeds the remaining
+  vocab** rather than starting over. (To force a clean rebuild, delete `work_dir`
+  or pass `resume=False`.) Keep `work_dir` on Drive — e.g.
+  `/content/drive/MyDrive/foodrag/work/pfoodreq` — so checkpoints survive a
+  disconnect.
 - **Determinism / faithfulness:** the vendored BAMnet is unchanged except three
   documented torch-2.x / PyYAML / rapidfuzz compat patches (see
   `third_party/pfoodreq/NOTICE.md`). The embedding difference (GloVe vs modern) is
@@ -215,4 +228,3 @@ print("saved models + metrics.json to Drive:", out)
 - **Ablation embedder:** any model works as `embed_fn` as long as it returns one
   fixed-length vector per word; `BAAI/bge-m3` (1024-d) matches FoodRAG's own
   embedding family, making the contrast against GloVe most meaningful.
-```
