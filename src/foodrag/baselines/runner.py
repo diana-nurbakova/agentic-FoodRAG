@@ -47,21 +47,48 @@ def load_recipes_df(path: str | Path) -> pd.DataFrame:
 def run_baseline(baseline: Baseline, qa_set: Iterable[dict], recipes_df: pd.DataFrame,
                  *, k: int = DEFAULT_K, experiment_id: str = "EXP-7", run: int = 1,
                  expand: constraints.IngredientExpander = constraints.identity_expand,
-                 id_prefix: str = "q") -> list[dict]:
-    """Score ``baseline`` on every QA item; return §13.1 per-question records."""
+                 id_prefix: str = "q", max_workers: int = 1) -> list[dict]:
+    """Score ``baseline`` on every QA item; return §13.1 per-question records.
+
+    ``max_workers > 1`` runs the per-question ``baseline.recommend`` calls (the
+    slow LLM step for rungs 2/ToG) concurrently in a thread pool, preserving
+    order; metric computation stays sequential and deterministic. ``=1`` is the
+    original sequential behaviour.
+    """
     indexed = recipes_df.set_index(ID_COL, drop=False)
     needed = [c for c in indexed.columns if c not in ("tags_str",)]
-    records: list[dict] = []
+    qa_list = list(qa_set)
 
-    for i, qa_item in enumerate(qa_set):
+    # Phase 1 — recommendations (parallelisable I/O-bound LLM calls). Each call is
+    # wall-clock timed so per-question latency (§4.6) is reported alongside the
+    # quality metrics. Under threading the timing is the call's own duration.
+    import time as _time
+
+    def _timed_recommend(qa):
+        _t0 = _time.perf_counter()
+        rec = baseline.recommend(qa, k)
+        return rec, _time.perf_counter() - _t0
+
+    if max_workers and max_workers > 1:
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=max_workers) as pool:
+            paired = list(pool.map(_timed_recommend, qa_list))
+    else:
+        paired = [_timed_recommend(qa) for qa in qa_list]
+    recs = [r for r, _ in paired]
+    latencies = [lat for _, lat in paired]
+
+    # Phase 2 — metrics + records (fast, ordered, deterministic).
+    records: list[dict] = []
+    for i, (qa_item, retrieved_ids) in enumerate(zip(qa_list, recs)):
         gold = set(qa_item.get("answer") or [])
         persona = qa_item["persona"]
 
-        retrieved_ids = baseline.recommend(qa_item, k)
         rows = _resolve_rows(retrieved_ids, indexed, needed)
 
         metric_block = metrics.deterministic_metrics(
             retrieved_ids, rows, gold, persona, k, expand)
+        metric_block["latency_s"] = latencies[i]  # §4.6 per-question execution time
         if not gold:  # retrieval metrics are undefined without a gold set
             for m in (f"hit_at_{k}", f"mrr_at_{k}", f"ndcg_at_{k}"):
                 metric_block[m] = float("nan")
