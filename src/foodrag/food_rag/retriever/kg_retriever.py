@@ -164,7 +164,20 @@ class KGQueryEngine(KnowledgeGraphQueryEngine, BaseRetriever, DataFrameRetriever
         except (KeyError, IndexError, TypeError):
             return self.recipes_df.iloc[0:0]
 
-        ordered_urls = [u for u in self._flatten_and_deduplicate(graph_response) if isinstance(u, str)]
+        # The generated Cypher may RETURN recipe_urls (str) or recipe_ids (int/str,
+        # e.g. ``RETURN r.recipe_id``); resolve either form to a recipe_url.
+        flat = self._flatten_and_deduplicate(graph_response)
+        url_set = set(self.recipes_df['recipe_url'])
+        id_to_url = dict(zip(self.recipes_df['recipe_id'].astype(str),
+                             self.recipes_df['recipe_url']))
+        ordered_urls = []
+        for v in flat:
+            if v in url_set:
+                ordered_urls.append(v)
+            else:
+                u = id_to_url.get(str(v))
+                if u is not None:
+                    ordered_urls.append(u)
         if not ordered_urls:
             return self.recipes_df.iloc[0:0]
 
