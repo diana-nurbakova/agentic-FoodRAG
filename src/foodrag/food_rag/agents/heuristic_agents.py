@@ -67,7 +67,7 @@ General rules:
 
         if formatter is None:
             formatter = ReActChatFormatter.from_defaults(
-                context=system_prompt, observation_role=MessageRole.TOOL
+                context=system_prompt, observation_role=MessageRole.USER
             )
 
         if tools is None:
@@ -145,7 +145,7 @@ class RecommendationAgent(ReActAgent):
 
         if formatter is None:
             formatter = ReActChatFormatter.from_defaults(
-                context=system_prompt, observation_role=MessageRole.TOOL
+                context=system_prompt, observation_role=MessageRole.USER
             )
 
         if tools is None:
@@ -209,7 +209,7 @@ class ValidationAgent(ReActAgent):
             )
         if formatter is None:
             formatter = ReActChatFormatter.from_defaults(
-                context=system_prompt, observation_role=MessageRole.TOOL
+                context=system_prompt, observation_role=MessageRole.USER
             )
         if tools is None:
             # Provide any default validation tools
@@ -267,7 +267,7 @@ class SubstitutionAgent(ReActAgent):
             )
         if formatter is None:
             formatter = ReActChatFormatter.from_defaults(
-                context=system_prompt, observation_role=MessageRole.TOOL
+                context=system_prompt, observation_role=MessageRole.USER
             )
         if tools is None:
             # Provide any default substitution/improvement tools
@@ -324,7 +324,7 @@ class ExplanationAgent(ReActAgent):
             )
         if formatter is None:
             formatter = ReActChatFormatter.from_defaults(
-                context=system_prompt, observation_role=MessageRole.TOOL
+                context=system_prompt, observation_role=MessageRole.USER
             )
         if tools is None:
             # Provide any default explanation tools
@@ -379,7 +379,7 @@ class FinalizationAgent(ReActAgent):
             )
         if formatter is None:
             formatter = ReActChatFormatter.from_defaults(
-                context=system_prompt, observation_role=MessageRole.TOOL
+                context=system_prompt, observation_role=MessageRole.USER
             )
         if tools is None:
             # Provide any default explanation tools
