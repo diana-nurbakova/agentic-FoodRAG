@@ -1,0 +1,146 @@
+{
+  "$schema_version": "1.0",
+  "title": "FoodRAG Persona-Relative Guideline Reference Tables",
+  "description": "Reference nutrient bands for the Guideline Adherence metric (Evaluation Protocol Sec. 4.5.1). Persona-class based, NOT individualized, because GDPR-minimal personas lack the exact age/weight/sex/activity needed for individualized EFSA computation. Each class fixes reference anthropometrics + activity as stated modeling assumptions.",
+  "date": "2026-06",
+  "status": "Researcher-constructed from authoritative public guidelines (EFSA DRV, WHO). NOT clinically validated by a nutrition specialist — see limitations. Used as a documented modeling assumption for evaluating recommendation quality, not as clinical advice.",
+  "primary_source": "EFSA Dietary Reference Values (DRV), NDA Panel 2010-2019",
+  "sugar_source": "WHO Guideline: Sugars intake for adults and children (2015)",
+  "unit_period": "per day (single-day snapshot; see limitations)",
+
+  "modeling_assumptions": {
+    "why_class_based": "EFSA energy references depend on body weight, sex, age and physical activity level (PAL). Personas carry only age RANGE + condition + allergies + tags (GDPR minimization). Individualized targets would manufacture false precision. Each persona is therefore mapped to ONE reference class with fixed assumptions.",
+    "reference_body_weight_kg": 70,
+    "reference_body_weight_note": "Used for weight-scaled nutrients (protein at 0.83 g/kg). 70 kg is a conventional adult reference; documented assumption, not a claim about any persona.",
+    "reference_energy_kcal_default": 2000,
+    "reference_energy_note": "EFSA derives energy from REE x PAL. 2000 kcal is the conventional adult reference intake used for %-energy conversions; overridden per class where activity differs.",
+    "pal_levels": {"sedentary": 1.4, "moderately_active": 1.6, "active": 1.8, "very_active": 2.0},
+    "energy_percent_conversion": {
+      "carbohydrate_kcal_per_g": 4,
+      "protein_kcal_per_g": 4,
+      "fat_kcal_per_g": 9,
+      "note": "E% bands are converted to gram bands using the class reference energy. Example: 45-60 E% carb at 2000 kcal = 225-300 g/day."
+    }
+  },
+
+  "band_semantics": {
+    "within_band": "Plan aggregate daily total falls inside [low, high] inclusive -> nutrient scored 1.",
+    "outside_band": "Plan aggregate total below low OR above high -> nutrient scored 0. Record direction (under/over).",
+    "hard_ceiling": "Where a Tolerable Upper Level (UL) or safety ceiling exists, exceeding it is flagged as a SAFETY violation (feeds Hard-Constraint Violation, Sec 4.3), not merely out-of-band.",
+    "as_low_as_possible": "For nutrients EFSA says minimize (saturated fat, trans fat), no lower bound; a policy upper threshold is applied and documented as a non-EFSA modeling choice."
+  },
+
+  "reference_classes": {
+    "general_adult": {
+      "label": "General healthy adult, moderately active",
+      "applies_to": "Personas with no health condition affecting nutrition; default class",
+      "reference_energy_kcal": 2000,
+      "pal": 1.6,
+      "nutrients": {
+        "energy_kcal":        {"low": 1800, "high": 2200, "source": "EFSA energy DRV; +/-10% band around class reference", "band_type": "range"},
+        "protein_g":          {"low": 58,   "high": 116,  "source": "EFSA PRI 0.83 g/kg x 70 kg = 58 g (lower); upper ~2x as generous practical ceiling", "band_type": "range", "note": "Lower bound is the EFSA PRI; upper bound is a practical modeling ceiling, not an EFSA UL (none set)."},
+        "carbohydrate_g":     {"low": 225,  "high": 300,  "source": "EFSA 45-60 E% at 2000 kcal", "band_type": "range"},
+        "total_fat_g":        {"low": 44,   "high": 78,   "source": "EFSA 20-35 E% at 2000 kcal", "band_type": "range"},
+        "saturated_fat_g":    {"low": 0,    "high": 22,   "source": "EFSA: 'as low as possible', no UL. High = ~10 E% policy threshold (WHO/FBDG common), documented non-EFSA choice", "band_type": "upper_only"},
+        "fibre_g":            {"low": 25,   "high": 40,   "source": "EFSA AI 25 g/day (lower); upper = practical high-intake benchmark", "band_type": "range", "note": "EFSA sets 25 g as adequate; higher is beneficial, so upper bound is generous."},
+        "sodium_g":           {"low": 0.575,"high": 3.5,  "source": "EFSA 2019 acceptable range 0.575-3.5 g/day adults", "band_type": "range", "hard_ceiling": 3.5},
+        "sugars_g":           {"low": 0,    "high": 50,   "source": "WHO <10 E% of 2000 kcal = 50 g/day (added/free sugars). EFSA sets no UL", "band_type": "upper_only", "note": "WHO conditional <5 E% (25 g) is a stricter optional variant."}
+      }
+    },
+
+    "diabetic_adult": {
+      "label": "Adult with type 2 / type 1 diabetes",
+      "applies_to": "Personas with diabetes condition",
+      "reference_energy_kcal": 2000,
+      "pal": 1.6,
+      "overrides_general": true,
+      "nutrients": {
+        "energy_kcal":        {"low": 1800, "high": 2200, "source": "Same as general; energy not the primary lever", "band_type": "range"},
+        "protein_g":          {"low": 58,   "high": 116,  "source": "EFSA PRI; no diabetes-specific change for non-nephropathy", "band_type": "range"},
+        "carbohydrate_g":     {"low": 200,  "high": 250,  "source": "Tighter band ~40-50 E% at 2000 kcal per T1D glycemic-control evidence (PMC12440888); cf. general 45-60%", "band_type": "range", "note": "CONDITION-SPECIFIC OVERRIDE. Mirrors pFoodReq's ADA-guideline precedent."},
+        "total_fat_g":        {"low": 44,   "high": 78,   "source": "EFSA 20-35 E%", "band_type": "range"},
+        "saturated_fat_g":    {"low": 0,    "high": 22,   "source": "As low as possible; 10 E% policy ceiling", "band_type": "upper_only"},
+        "fibre_g":            {"low": 25,   "high": 45,   "source": "EFSA AI 25 g; higher fibre beneficial for glycemic control, generous upper", "band_type": "range"},
+        "sodium_g":           {"low": 0.575,"high": 3.5,  "source": "EFSA acceptable range; tighter if comorbid hypertension (see hypertension class)", "band_type": "range", "hard_ceiling": 3.5},
+        "sugars_g":           {"low": 0,    "high": 25,   "source": "Stricter WHO conditional <5 E% = 25 g, appropriate for diabetes", "band_type": "upper_only", "note": "CONDITION-SPECIFIC OVERRIDE (stricter than general 50 g)."}
+      }
+    },
+
+    "hypertension_adult": {
+      "label": "Adult requiring reduced sodium (hypertension / cardiovascular risk)",
+      "applies_to": "Personas with hypertension or explicit low-sodium requirement",
+      "reference_energy_kcal": 2000,
+      "pal": 1.6,
+      "overrides_general": true,
+      "nutrients": {
+        "energy_kcal":        {"low": 1800, "high": 2200, "source": "Same as general", "band_type": "range"},
+        "protein_g":          {"low": 58,   "high": 116,  "source": "EFSA PRI", "band_type": "range"},
+        "carbohydrate_g":     {"low": 225,  "high": 300,  "source": "EFSA 45-60 E%", "band_type": "range"},
+        "total_fat_g":        {"low": 44,   "high": 78,   "source": "EFSA 20-35 E%", "band_type": "range"},
+        "saturated_fat_g":    {"low": 0,    "high": 22,   "source": "As low as possible; 10 E% ceiling", "band_type": "upper_only"},
+        "fibre_g":            {"low": 25,   "high": 40,   "source": "EFSA AI 25 g", "band_type": "range"},
+        "sodium_g":           {"low": 0.575,"high": 2.0,  "source": "WHO <2 g/day sodium for hypertension/CVD; tighter than EFSA upper 3.5", "band_type": "range", "hard_ceiling": 2.0, "note": "CONDITION-SPECIFIC OVERRIDE (stricter sodium ceiling)."},
+        "sugars_g":           {"low": 0,    "high": 50,   "source": "WHO <10 E%", "band_type": "upper_only"}
+      }
+    },
+
+    "weight_management_adult": {
+      "label": "Adult with weight-loss / calorie-reduction goal",
+      "applies_to": "Personas with weight-loss objective",
+      "reference_energy_kcal": 1600,
+      "pal": 1.4,
+      "overrides_general": true,
+      "nutrients": {
+        "energy_kcal":        {"low": 1400, "high": 1800, "source": "Reduced-energy reference for weight loss; ~-20% vs general", "band_type": "range", "note": "CONDITION-SPECIFIC OVERRIDE (reduced energy). Gram bands below recomputed at 1600 kcal."},
+        "protein_g":          {"low": 70,   "high": 116,  "source": "Higher lower bound (satiety/lean-mass preservation); EFSA PRI floor still met", "band_type": "range"},
+        "carbohydrate_g":     {"low": 180,  "high": 240,  "source": "EFSA 45-60 E% at 1600 kcal", "band_type": "range"},
+        "total_fat_g":        {"low": 36,   "high": 62,   "source": "EFSA 20-35 E% at 1600 kcal", "band_type": "range"},
+        "saturated_fat_g":    {"low": 0,    "high": 18,   "source": "10 E% at 1600 kcal", "band_type": "upper_only"},
+        "fibre_g":            {"low": 25,   "high": 40,   "source": "EFSA AI 25 g (not energy-scaled down; fibre benefits satiety)", "band_type": "range"},
+        "sodium_g":           {"low": 0.575,"high": 3.5,  "source": "EFSA acceptable range", "band_type": "range", "hard_ceiling": 3.5},
+        "sugars_g":           {"low": 0,    "high": 40,   "source": "WHO <10 E% at 1600 kcal = 40 g", "band_type": "upper_only"}
+      }
+    }
+  },
+
+  "persona_to_class_mapping": {
+    "description": "Rules mapping a persona's condition field to a reference class. Applied in priority order (first match wins). Comorbidities: see conflict_resolution.",
+    "rules": [
+      {"if_condition_contains": ["diabetes", "diabetic", "type 1", "type 2", "T1D", "T2D"], "class": "diabetic_adult"},
+      {"if_condition_contains": ["hypertension", "high blood pressure", "cardiovascular", "low sodium", "low-sodium"], "class": "hypertension_adult"},
+      {"if_condition_contains": ["weight loss", "weight-loss", "slimming", "calorie reduction", "overweight", "obesity"], "class": "weight_management_adult"},
+      {"default": "general_adult"}
+    ],
+    "conflict_resolution": {
+      "description": "If a persona matches multiple conditions (e.g., diabetic AND hypertensive), take the STRICTER band per nutrient across matched classes (min of upper bounds, max of lower bounds). Document the composite as a derived class in the run manifest.",
+      "example": "diabetic + hypertension -> carbohydrate from diabetic_adult (200-250), sodium from hypertension_adult (<=2.0), sugars from diabetic_adult (<=25)."
+    }
+  },
+
+  "metric_computation": {
+    "guideline_adherence_per_nutrient": "For each tracked nutrient n: 1 if plan aggregate daily total(n) within [low, high], else 0. Record direction (under/over) when 0.",
+    "guideline_adherence_overall": "Mean over tracked nutrients of the per-nutrient 0/1 (fraction within band). Report per-nutrient breakdown ALWAYS; overall is a summary only.",
+    "hard_ceiling_interaction": "If total(n) > hard_ceiling(n), additionally flag a safety violation feeding Hard-Constraint Violation Rate (Sec 4.3). A nutrient can be out-of-band without being a safety violation (e.g., low fibre) but exceeding a hard_ceiling is always a safety flag.",
+    "tracked_nutrients": ["energy_kcal", "protein_g", "carbohydrate_g", "total_fat_g", "saturated_fat_g", "fibre_g", "sodium_g", "sugars_g"]
+  },
+
+  "limitations": [
+    "SINGLE-DAY SNAPSHOT: dietary guidelines are framed over longer periods; a one-day plan is an approximation. State explicitly in the paper.",
+    "CLASS-BASED not individualized: reference anthropometrics (70 kg, 2000 kcal) are documented assumptions, not persona-specific measurements. Frame results as 'relative to EFSA DRV reference intakes for [class]', NOT 'meets dietary guidelines'.",
+    "SATURATED-FAT and SUGAR upper thresholds are policy choices (WHO / 10 E% convention), not EFSA ULs (EFSA sets none). Documented as non-EFSA modeling decisions.",
+    "PRACTICAL UPPER BOUNDS on protein/fibre are generous modeling ceilings where EFSA sets only a lower reference; flagged per-nutrient.",
+    "NOT CLINICALLY VALIDATED: the reference bands were constructed by the research team directly from authoritative public guidelines (EFSA DRV, WHO), without review by a nutrition specialist. This is a documented assumption and a limitation of the metric. The condition-specific override bands and the practical upper ceilings on protein/fibre (where EFSA sets only a lower reference) are the least-certain values and should be read as reasonable modeling choices, not clinical recommendations.",
+    "NOT a clinical endorsement: this is a nutrition-informational metric for evaluating recommendation quality, not medical advice."
+  ],
+
+  "citations": {
+    "efsa_carbohydrate_fibre_2010": "EFSA NDA Panel (2010). Scientific Opinion on DRVs for carbohydrates and dietary fibre. EFSA Journal 8(3):1462. (carb 45-60 E%; fibre 25 g/day)",
+    "efsa_fats_2010": "EFSA NDA Panel (2010). Scientific Opinion on DRVs for fats. EFSA Journal 8(3):1461. (total fat 20-35 E%; SFA as low as possible)",
+    "efsa_protein_2012": "EFSA NDA Panel (2012). Scientific Opinion on DRVs for protein. EFSA Journal 10(2):2557. (PRI 0.83 g/kg bw/day adults)",
+    "efsa_sodium_2019": "EFSA NDA Panel (2019). Dietary reference values for sodium. EFSA Journal 17(9):5778. (acceptable range 0.575-3.5 g/day adults)",
+    "efsa_summary_2017": "EFSA (2017). Dietary Reference Values for nutrients - Summary report. EFSA Supporting Publication e15121. (PAL values 1.4-2.0)",
+    "who_sugars_2015": "WHO (2015). Guideline: Sugars intake for adults and children. (<10 E% strong; <5 E% conditional)",
+    "who_sodium_2012": "WHO (2012). Guideline: Sodium intake for adults and children. (<2 g/day sodium)",
+    "diabetes_carb_evidence": "Assoc. between daily carbohydrate intake and TIR in T1D adults, PMC12440888. (40-50 E% carb for glycemic control)"
+  }
+}

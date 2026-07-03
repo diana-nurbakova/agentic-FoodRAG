@@ -30,7 +30,7 @@ from typing import Any, Iterable, Optional, Sequence
 
 import pandas as pd
 
-from foodrag.baselines import constraints, meal_plan_metrics, metrics
+from foodrag.baselines import constraints, guideline_adherence, meal_plan_metrics, metrics
 from foodrag.baselines import judge as judge_mod
 from foodrag.baselines.base import answer_set_stratum, requirement_count, requirement_types
 from foodrag.baselines.runner import _resolve_rows
@@ -49,6 +49,13 @@ class AssembledPlan:
     recipe_urls: list[str] = field(default_factory=list)
     contexts: list[str] = field(default_factory=list)  # retrieved recipes (for faithfulness)
     has_explanation: bool = False
+    # The raw NL explanation string (§8.2 claim-grounding input; the text
+    # ``has_explanation`` is derived from). "" when the config emits no explanation.
+    explanation_text: str = ""
+    # Any structured "why this recipe" evidence the assembly layer carries. The current
+    # pipeline emits pure NL, so this holds at most the per-slot validation verdicts
+    # ({meal_type: verdict_str}); no KG paths are produced. {} when none.
+    explanation_structured: dict = field(default_factory=dict)
     llm_usage: float = float("nan")
     llm_seq_usage: float = float("nan")
     llm_parsing: float = float("nan")
@@ -95,6 +102,16 @@ def run_full_pipeline(assembler: MealPlanAssembler, qa_set: Iterable[dict],
         block.update(meal_plan_metrics.plan_quality_metrics(
             assembled.plan, has_explanation=assembled.has_explanation,
             require_explanation=assembler.require_explanation))
+        # §4.5.1 plan-level guideline adherence + hard-ceiling → hard_constraint_violation.
+        guide = guideline_adherence.guideline_adherence(assembled.plan, persona)
+        block["guideline_adherence_overall"] = guide["guideline_adherence_overall"]
+        block["guideline_adherence_per_nutrient"] = guide["guideline_adherence_per_nutrient"]
+        block["guideline_class"] = guide["guideline_class"]
+        # A plan exceeding a nutrient hard_ceiling (UL) is a safety flag (§4.3): raise
+        # hard_constraint_violation to 1.0 for the plan (max with the rec-list value).
+        if guide["guideline_hard_ceiling_breach"]:
+            block["hard_constraint_violation"] = max(
+                block.get("hard_constraint_violation", 0.0) or 0.0, 1.0)
         block.update(judge_mod.judge_plan(
             judges, question=assembled.question, answer=assembled.answer_text,
             contexts=assembled.contexts, gold=_gold_titles(gold, indexed),
@@ -117,9 +134,19 @@ def run_full_pipeline(assembler: MealPlanAssembler, qa_set: Iterable[dict],
             "k": k,
             "metrics": block,
             "retrieved_ids": assembled.recipe_urls,
+            # Persist the assembled plan (per-slot recipe_url) so plan-level metrics are
+            # reproducible/backfillable offline, plus the explanation inputs for the §8 task.
+            "plan": _plan_urls(assembled.plan),
+            "explanation_text": assembled.explanation_text,
+            "explanation_structured": assembled.explanation_structured,
         })
 
     return records
+
+
+def _plan_urls(plan: dict) -> dict:
+    """``{meal_type: recipe_url | None}`` — the persisted, backfillable form of a plan."""
+    return {str(mt): (r.get("recipe_url") if r else None) for mt, r in (plan or {}).items()}
 
 
 def _gold_titles(gold: set[str], indexed: pd.DataFrame) -> list[str]:
@@ -223,12 +250,28 @@ class RagMealPlanAssembler(MealPlanAssembler):
 # RecipeState keys (mirrored so this module stays free of the heavy agent imports).
 _PLAN_KEY = "meal_plan_recommendation"
 _EXPLANATION_KEY = "meal_plan_explanation"
+_VALIDATION_KEY = "meal_plan_validation"
 _FINAL_KEY = "final_recommendation"
 _LLM_USAGE_KEY = "llm_usage_counter"
 _LLM_SEQ_KEY = "llm_sequential_usage_counter"
 _LLM_PARSING_KEY = "llm_parsing_usage_counter"
 _EXPLANATION_DEFAULTS = {"", "not written yet."}
 _FINAL_DEFAULTS = {"", "final recommendation required."}
+
+
+def _validation_evidence(state: dict) -> dict:
+    """The only semi-structured "why this recipe" evidence the pipeline carries: the
+    per-slot validation verdicts (``{meal_type: verdict_str}``). Pure NL otherwise — no
+    KG paths. Returns ``{}`` when absent. Persisted for the future §8 explainability task.
+    """
+    val = state.get(_VALIDATION_KEY)
+    if val is None:
+        return {}
+    try:
+        return {str(mt): str(v) for mt, v in (val.to_dict().items() if hasattr(val, "to_dict")
+                                              else dict(val).items())}
+    except Exception:
+        return {}
 
 
 class WorkflowMealPlanAssembler(MealPlanAssembler):
@@ -271,9 +314,11 @@ class WorkflowMealPlanAssembler(MealPlanAssembler):
         has_explanation = explanation.strip().lower() not in _EXPLANATION_DEFAULTS
         urls = _dedupe([r.get("recipe_url") for r in plan.values() if r and r.get("recipe_url")])
         contexts = [str(r.get("title")) for r in plan.values() if r and r.get("title")]
+        explanation_text = explanation if has_explanation else ""
         return AssembledPlan(
             question=question, answer_text=_answer_text(state, plan, explanation, has_explanation),
             plan=plan, recipe_urls=urls, contexts=contexts, has_explanation=has_explanation,
+            explanation_text=explanation_text, explanation_structured=_validation_evidence(state),
             llm_usage=state.get(_LLM_USAGE_KEY, float("nan")),
             llm_seq_usage=state.get(_LLM_SEQ_KEY, float("nan")),
             llm_parsing=state.get(_LLM_PARSING_KEY, float("nan")), latency_s=latency)

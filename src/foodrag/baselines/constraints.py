@@ -136,6 +136,74 @@ def satisfies_all(row, persona: dict, expand: IngredientExpander = identity_expa
     )
 
 
+# ── §4.3 hard/soft constraint decomposition ──────────────────────────────────
+# The safety metrics decompose a persona into INDIVIDUAL constraints so a
+# recommendation can be scored per-constraint (fraction satisfied) as well as
+# all-or-nothing. This mirrors the single ``satisfies_all`` predicate but exposes
+# each atomic requirement separately (Evaluation Protocol §4.3).
+#
+# HARD (objective safety/nutrition bounds — one per stated bound):
+#   * each ``relative_nutrients`` bound (per nutrient): lower <= value <= upper
+#   * each ``nutrition_scores`` minimum (per score): value >= min
+#   * each ``total_nutrients`` maximum (per nutrient): whole-serving total <= max
+#   * allergen-free (exactly ONE constraint): recipe contains none of
+#     ``ingredients.dislikes`` (only added when the persona lists disliked ingredients)
+# SOFT (softer preferences — each added only when the persona states it):
+#   * liked-tag-present   (only if ``tags.likes`` nonempty)
+#   * no-disliked-tag     (only if ``tags.dislikes`` nonempty)
+#   * liked-ingredient-present (only if ``ingredients.likes`` nonempty)
+
+
+def hard_constraints(persona: dict, expand: IngredientExpander = identity_expand):
+    """Return a list of atomic HARD constraint predicates ``row -> bool`` (True = satisfied).
+
+    One predicate per stated relative-nutrient bound, nutrition-score minimum and
+    total-nutrient maximum, plus a single allergen-free predicate when the persona
+    lists disliked ingredients. An empty list means the persona has no hard
+    constraints (metric is then undefined → NaN, see :mod:`metrics`).
+    """
+    preds = []
+
+    for nutrient, limits in persona.get("relative_nutrients", {}).items():
+        lower = limits["limits"]["lower"]
+        upper = limits["limits"]["upper"]
+        preds.append(lambda row, n=nutrient, lo=lower, hi=upper: lo <= row[n] <= hi)
+
+    for score_name, score_min in persona.get("nutrition_scores", {}).items():
+        preds.append(lambda row, s=score_name, mn=score_min: row[s] >= mn)
+
+    for nutrient, total_max in persona.get("total_nutrients", {}).items():
+        preds.append(lambda row, n=nutrient, mx=total_max: _total(row, n) <= mx)
+
+    disliked = expand(persona.get("ingredients", {}).get("dislikes", []))
+    if disliked:
+        preds.append(lambda row, dis=disliked: not any(ingr in dis for ingr in row["ingredient_names"]))
+
+    return preds
+
+
+def soft_constraints(persona: dict, expand: IngredientExpander = identity_expand):
+    """Return a list of atomic SOFT constraint predicates ``row -> bool`` (True = satisfied).
+
+    Each preference contributes exactly one predicate, and only when the persona
+    actually states it (empty ``likes``/``dislikes`` add nothing). An empty list
+    means the persona has no soft constraints (metric undefined → NaN).
+    """
+    preds = []
+    liked_tags = persona.get("tags", {}).get("likes", [])
+    disliked_tags = persona.get("tags", {}).get("dislikes", [])
+    liked_ingr = expand(persona.get("ingredients", {}).get("likes", []))
+
+    if liked_tags:
+        preds.append(lambda row, lt=liked_tags: any(t in lt for t in row["tags"]))
+    if disliked_tags:
+        preds.append(lambda row, dt=disliked_tags: not any(t in dt for t in row["tags"]))
+    if liked_ingr:
+        preds.append(lambda row, li=liked_ingr: any(ingr in li for ingr in row["ingredient_names"]))
+
+    return preds
+
+
 # ── vectorised filter (build the valid candidate set) ────────────────────────
 
 def filter_valid(persona: dict, recipes_df: pd.DataFrame,

@@ -29,6 +29,16 @@ STANDARD_SLOTS = tuple(CALORIE_TARGETS)
 CALORIE_COL = "calories [kcal]"
 SERVING_COL = "servingSize [g]"
 
+# §4.5 slot-appropriateness synonym map: which HUMMUS ``meal_types`` labels count
+# as "suitable" for each plan slot. A recipe suits a slot if its meal_types overlap
+# the slot's synonym set (or its meal_types are unknown/empty → not penalised).
+SLOT_SYNONYMS = {
+    "breakfast": {"breakfast", "brunch"},
+    "lunch": {"lunch", "main-dish", "main course", "dinner-party"},
+    "dinner": {"dinner", "main-dish", "main course", "dinner-party"},
+    "snack": {"snack", "snacks", "appetizer", "appetizers", "dessert", "side-dish"},
+}
+
 Plan = Mapping[str, Optional[dict]]
 
 
@@ -83,6 +93,25 @@ def calorie_distribution_adherence(plan: Plan) -> float:
     return max(0.0, 1.0 - sum(deviations) / len(deviations))
 
 
+def slot_appropriateness(plan: Plan) -> float:
+    """Fraction of FILLED slots whose recipe suits the slot's meal type (§4.5).
+
+    A recipe suits its slot when its HUMMUS ``meal_types`` overlap the slot's
+    :data:`SLOT_SYNONYMS`; a recipe with unknown/empty ``meal_types`` is *not*
+    penalised (counts as appropriate). Denominator is the filled slots; NaN if the
+    plan has no filled slot.
+    """
+    filled = [(s, plan[s]) for s in STANDARD_SLOTS if _filled(plan.get(s))]
+    if not filled:
+        return float("nan")
+    appropriate = 0
+    for slot, recipe in filled:
+        mtypes = _meal_types(recipe)
+        if not mtypes or (SLOT_SYNONYMS.get(slot, set()) & mtypes):
+            appropriate += 1
+    return appropriate / len(filled)
+
+
 def plan_quality_metrics(plan: Plan, *, has_explanation: bool = True,
                          require_explanation: bool = False) -> dict:
     """The full deterministic §4.4/§4.5 block for a §13.1 record."""
@@ -92,6 +121,7 @@ def plan_quality_metrics(plan: Plan, *, has_explanation: bool = True,
         "meal_slot_completeness": meal_slot_completeness(plan),
         "intra_plan_diversity": intra_plan_diversity(plan),
         "calorie_adherence": calorie_distribution_adherence(plan),
+        "slot_appropriateness": slot_appropriateness(plan),
     }
 
 
@@ -99,6 +129,34 @@ def plan_quality_metrics(plan: Plan, *, has_explanation: bool = True,
 
 def _filled(recipe: Optional[dict]) -> bool:
     return bool(recipe)
+
+
+def _meal_types(recipe: Optional[dict]) -> set:
+    """Normalise a recipe's ``meal_types`` to a lower-cased set.
+
+    HUMMUS stores ``meal_types`` as a real list, but the CSV-loaded frame keeps it as a
+    string repr of a list (``"['lunch', 'dinner']"``); accept both, plus a bare list.
+    """
+    if not recipe:
+        return set()
+    raw = recipe.get("meal_types")
+    if raw is None:
+        return set()
+    if isinstance(raw, (list, tuple, set)):
+        items = raw
+    elif isinstance(raw, str):
+        s = raw.strip()
+        if not s:
+            return set()
+        try:
+            import ast
+            parsed = ast.literal_eval(s)
+            items = parsed if isinstance(parsed, (list, tuple, set)) else [parsed]
+        except (ValueError, SyntaxError):
+            items = [p.strip() for p in s.split(",")]
+    else:
+        return set()
+    return {str(m).strip().lower() for m in items if str(m).strip()}
 
 
 def _features(recipe: Optional[dict]) -> set:

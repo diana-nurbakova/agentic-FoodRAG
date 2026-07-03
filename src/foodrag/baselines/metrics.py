@@ -91,6 +91,69 @@ def hallucination_rate(rows: Sequence[Row], k: int) -> float:
     return sum(1 for r in top if r is None) / len(top)
 
 
+# ── §4.3 hard/soft per-constraint satisfaction ───────────────────────────────
+
+def hard_constraint_sat_perconstraint(rows: Sequence[Row], persona: dict,
+                                      expand: constraints.IngredientExpander, k: int) -> float:
+    """Mean over the top-k recs of (satisfied hard constraints / total hard constraints).
+
+    An unresolved (``None``) rec satisfies zero constraints. Undefined (NaN) when the
+    persona states no hard constraints — consistent with :func:`avg_score_at_k`.
+    """
+    preds = constraints.hard_constraints(persona, expand)
+    if not preds:
+        return float("nan")
+    top = rows[:k]
+    if not top:
+        return float("nan")
+    fracs = []
+    for r in top:
+        if r is None:
+            fracs.append(0.0)
+        else:
+            fracs.append(sum(1 for p in preds if p(r)) / len(preds))
+    return sum(fracs) / len(fracs)
+
+
+def hard_constraint_sat_allornothing(rows: Sequence[Row], persona: dict,
+                                     expand: constraints.IngredientExpander, k: int) -> float:
+    """Fraction of the top-k recs satisfying ALL hard constraints.
+
+    An unresolved (``None``) rec fails. Undefined (NaN) when the persona states no
+    hard constraints.
+    """
+    preds = constraints.hard_constraints(persona, expand)
+    if not preds:
+        return float("nan")
+    top = rows[:k]
+    if not top:
+        return float("nan")
+    ok = sum(1 for r in top if r is not None and all(p(r) for p in preds))
+    return ok / len(top)
+
+
+def soft_constraint_sat(rows: Sequence[Row], persona: dict,
+                        expand: constraints.IngredientExpander, k: int) -> float:
+    """Mean over the top-k recs of (satisfied soft constraints / total soft constraints).
+
+    An unresolved (``None``) rec satisfies zero. Undefined (NaN) when the persona
+    states no soft constraints.
+    """
+    preds = constraints.soft_constraints(persona, expand)
+    if not preds:
+        return float("nan")
+    top = rows[:k]
+    if not top:
+        return float("nan")
+    fracs = []
+    for r in top:
+        if r is None:
+            fracs.append(0.0)
+        else:
+            fracs.append(sum(1 for p in preds if p(r)) / len(preds))
+    return sum(fracs) / len(fracs)
+
+
 # ── one-shot block for a §13.1 record ────────────────────────────────────────
 
 def deterministic_metrics(retrieved_ids: Sequence[str], rows: Sequence[Row],
@@ -107,10 +170,16 @@ def deterministic_metrics(retrieved_ids: Sequence[str], rows: Sequence[Row],
         f"ndcg_at_{k}": ndcg_at_k(retrieved_ids, gold, k),
         f"avg_nutri_at_{k}": avg_score_at_k(rows, "nutri_score", k),
         f"avg_fsa_at_{k}": avg_score_at_k(rows, "fsa_score", k),
+        # §9.4 relevance axis for the Health-vs-Relevance Pareto frontier (NaN if none resolve).
+        f"avg_rating_at_{k}": avg_score_at_k(rows, "average_rating", k),
         "allergen_violation": violation_rate(
             rows, lambda r: constraints.violates_allergen(r, persona, expand), k),
         "hard_constraint_violation": violation_rate(
             rows, lambda r: constraints.violates_hard_nutrient(r, persona), k),
         "constraint_satisfaction": satisfaction_rate(rows, persona, expand, k),
         "hallucination_rate": hallucination_rate(rows, k),
+        # §4.3 hard/soft split (per-constraint & all-or-nothing; NaN if no such constraints)
+        "hard_constraint_sat_perconstraint": hard_constraint_sat_perconstraint(rows, persona, expand, k),
+        "hard_constraint_sat_allornothing": hard_constraint_sat_allornothing(rows, persona, expand, k),
+        "soft_constraint_sat": soft_constraint_sat(rows, persona, expand, k),
     }
