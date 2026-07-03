@@ -1,7 +1,7 @@
 import pandas as pd
 from llama_index.core import Settings
 from llama_index.core.agent import ReActChatFormatter
-from llama_index.core.agent.workflow import ReActAgent
+from llama_index.core.agent.workflow import FunctionAgent, ReActAgent
 from llama_index.core.base.embeddings.base import BaseEmbedding
 from llama_index.core.base.llms.types import ChatMessage, MessageRole
 from llama_index.core.llms import LLM
@@ -107,12 +107,20 @@ General rules:
         )
 
 
-class RecommendationAgent(ReActAgent):
-    """Agent class that recommends meal plans and/or recipes."""
+class RecommendationAgent(FunctionAgent):
+    """Agent class that recommends meal plans and/or recipes.
+
+    Uses native function calling (:class:`FunctionAgent`) rather than text-based
+    ReAct: Llama-3.3-70B on DeepInfra does not reliably emit the ReAct
+    "Thought/Action/Action Input" format, so tool calls and handoffs were being
+    dropped. Native ``tool_calls`` (incl. the handoff tool) are far more reliable.
+    """
 
     SYSTEM_PROMPT: ClassVar[str] = (
         "You are the RecommendationAgent that can recommend meal plans. "
-        "Once your meal plan recommendation is satisfied, you should hand off control "
+        "You MUST call the meal-plan recommendation tool to produce a plan; do not "
+        "answer from your own knowledge. "
+        "Once your meal plan recommendation is satisfied, hand off control "
         "to the ValidationAgent to evaluate the meal plan. "
         "You should have at least some recommendations before handing off control "
         "to the ValidationAgent."
@@ -128,25 +136,12 @@ class RecommendationAgent(ReActAgent):
             name: str = NAME,
             description: str = DESCRIPTION,
             system_prompt: str = SYSTEM_PROMPT,
-            formatter: ReActChatFormatter = None,
             llm: Optional[LLM] = None,
             tools: Optional[List] = None,
             can_handoff_to: Optional[List[str]] = None,
-            memory: BaseMemory = None,
-            memory_cls: Type[BaseMemory] = ChatMemoryBuffer,
-            chat_history: Optional[List[ChatMessage]] = None,
             **kwargs
     ):
         llm = llm or Settings.llm
-        if memory is None:
-            memory = memory_cls.from_defaults(
-                chat_history=chat_history or [], llm=llm
-            )
-
-        if formatter is None:
-            formatter = ReActChatFormatter.from_defaults(
-                context=system_prompt, observation_role=MessageRole.USER
-            )
 
         if tools is None:
             # Provide any default tools needed for meal-plan or recipe recommendations
@@ -163,23 +158,22 @@ class RecommendationAgent(ReActAgent):
             name=name,
             description=description,
             system_prompt=system_prompt,
-            formatter=formatter,
             llm=llm,
             tools=tools,
             can_handoff_to=can_handoff_to,
-            memory=memory,
             **kwargs
         )
 
 
-class ValidationAgent(ReActAgent):
-    """Agent class that validates meal plans."""
+class ValidationAgent(FunctionAgent):
+    """Agent class that validates meal plans (native function calling)."""
 
     SYSTEM_PROMPT: ClassVar[str] = (
         "You are the ValidationAgent that validates meal plans. "
-        "Once the validation is done, if it is INVALID go back to the RecommendationAgent to restart. "
-        "If the validation is VALID go to the ExplanationAgent, else you should hand off control to the "
-        "SubstitutionAgent."
+        "You MUST call the recipe correction tool to validate and, if needed, correct "
+        "the current meal plan before handing off. "
+        "After the tool runs, hand off control: if the plan is still INVALID hand off "
+        "to the SubstitutionAgent; otherwise hand off to the ExplanationAgent."
     )
 
     NAME: ClassVar[str] = "ValidationAgent"
@@ -193,24 +187,12 @@ class ValidationAgent(ReActAgent):
             name: str = NAME,
             description: str = DESCRIPTION,
             system_prompt: str = SYSTEM_PROMPT,
-            formatter: ReActChatFormatter = None,
             llm: Optional[LLM] = None,
             tools: Optional[List] = None,
             can_handoff_to: Optional[List[str]] = None,
-            memory: BaseMemory = None,
-            memory_cls: Type[BaseMemory] = ChatMemoryBuffer,
-            chat_history: Optional[List[ChatMessage]] = None,
             **kwargs
     ):
         llm = llm or Settings.llm
-        if memory is None:
-            memory = memory_cls.from_defaults(
-                chat_history=chat_history or [], llm=llm
-            )
-        if formatter is None:
-            formatter = ReActChatFormatter.from_defaults(
-                context=system_prompt, observation_role=MessageRole.USER
-            )
         if tools is None:
             # Provide any default validation tools
             tools = [
@@ -224,22 +206,20 @@ class ValidationAgent(ReActAgent):
             name=name,
             description=description,
             system_prompt=system_prompt,
-            formatter=formatter,
             llm=llm,
             tools=tools,
             can_handoff_to=can_handoff_to,
-            memory=memory,
             **kwargs
         )
 
 
-class SubstitutionAgent(ReActAgent):
-    """Agent class that enhances or improves meal plans."""
+class SubstitutionAgent(FunctionAgent):
+    """Agent class that enhances or improves meal plans (native function calling)."""
 
     SYSTEM_PROMPT: ClassVar[str] = (
         "You are the SubstitutionAgent that enhances or improves meal plans. "
-        "Once the meal plan is satisfied, you should hand off control to the ExplanationAgent "
-        "to explain the meal plan."
+        "Call the substitution tool to improve the current meal plan, then hand off "
+        "control to the ExplanationAgent to explain the meal plan."
     )
 
     NAME: ClassVar[str] = "SubstitutionAgent"
@@ -251,24 +231,12 @@ class SubstitutionAgent(ReActAgent):
             name: str = NAME,
             description: str = DESCRIPTION,
             system_prompt: str = SYSTEM_PROMPT,
-            formatter: ReActChatFormatter = None,
             llm: Optional[LLM] = None,
             tools: Optional[List] = None,
             can_handoff_to: Optional[List[str]] = None,
-            memory: BaseMemory = None,
-            memory_cls: Type[BaseMemory] = ChatMemoryBuffer,
-            chat_history: Optional[List[ChatMessage]] = None,
             **kwargs
     ):
         llm = llm or Settings.llm
-        if memory is None:
-            memory = memory_cls.from_defaults(
-                chat_history=chat_history or [], llm=llm
-            )
-        if formatter is None:
-            formatter = ReActChatFormatter.from_defaults(
-                context=system_prompt, observation_role=MessageRole.USER
-            )
         if tools is None:
             # Provide any default substitution/improvement tools
             tools = [
@@ -281,21 +249,21 @@ class SubstitutionAgent(ReActAgent):
             name=name,
             description=description,
             system_prompt=system_prompt,
-            formatter=formatter,
             llm=llm,
             tools=tools,
             can_handoff_to=can_handoff_to,
-            memory=memory,
             **kwargs
         )
 
 
-class ExplanationAgent(ReActAgent):
-    """Agent class that explains recommended meal plans."""
+class ExplanationAgent(FunctionAgent):
+    """Agent class that explains recommended meal plans (native function calling)."""
 
     SYSTEM_PROMPT: ClassVar[str] = (
         "You are the ExplanationAgent that explains recommended meal plans. "
-        "You should explain why the recommended meal plan fits the user's question/requirements."
+        "You MUST call the explanation tool to generate the explanation of why the "
+        "recommended meal plan fits the user's question/requirements, then hand off "
+        "control to the FinalizationAgent."
     )
 
     NAME: ClassVar[str] = "ExplanationAgent"
@@ -308,24 +276,12 @@ class ExplanationAgent(ReActAgent):
             name: str = NAME,
             description: str = DESCRIPTION,
             system_prompt: str = SYSTEM_PROMPT,
-            formatter: ReActChatFormatter = None,
             llm: Optional[LLM] = None,
             tools: Optional[List] = None,
             can_handoff_to: Optional[List[str]] = None,
-            memory: BaseChatStoreMemory = None,
-            memory_cls: Type[BaseMemory] = ChatMemoryBuffer,
-            chat_history: Optional[List[ChatMessage]] = None,
             **kwargs
     ):
         llm = llm or Settings.llm
-        if memory is None:
-            memory = memory_cls.from_defaults(
-                chat_history=chat_history or [], llm=llm
-            )
-        if formatter is None:
-            formatter = ReActChatFormatter.from_defaults(
-                context=system_prompt, observation_role=MessageRole.USER
-            )
         if tools is None:
             # Provide any default explanation tools
             tools = [
@@ -339,19 +295,19 @@ class ExplanationAgent(ReActAgent):
             name=name,
             description=description,
             system_prompt=system_prompt,
-            formatter=formatter,
             llm=llm,
             tools=tools,
             can_handoff_to=can_handoff_to,
-            memory=memory,
             **kwargs
         )
 
-class FinalizationAgent(ReActAgent):
-    """Agent class that finalizes recommended meal plans."""
+class FinalizationAgent(FunctionAgent):
+    """Agent class that finalizes recommended meal plans (native function calling)."""
 
     SYSTEM_PROMPT: ClassVar[str] = (
-        "You are the FinalizationAgent that explains recommended meal plans. "
+        "You are the FinalizationAgent. You MUST call the finalize meal-plan "
+        "recommendation tool exactly once to assemble the final recommendation "
+        "(meal plan + explanation), then stop."
     )
 
     NAME: ClassVar[str] = "FinalizationAgent"
@@ -363,24 +319,12 @@ class FinalizationAgent(ReActAgent):
             name: str = NAME,
             description: str = DESCRIPTION,
             system_prompt: str = SYSTEM_PROMPT,
-            formatter: ReActChatFormatter = None,
             llm: Optional[LLM] = None,
             tools: Optional[List] = None,
             can_handoff_to: Optional[List[str]] = None,
-            memory: BaseChatStoreMemory = None,
-            memory_cls: Type[BaseMemory] = ChatMemoryBuffer,
-            chat_history: Optional[List[ChatMessage]] = None,
             **kwargs
     ):
         llm = llm or Settings.llm
-        if memory is None:
-            memory = memory_cls.from_defaults(
-                chat_history=chat_history or [], llm=llm
-            )
-        if formatter is None:
-            formatter = ReActChatFormatter.from_defaults(
-                context=system_prompt, observation_role=MessageRole.USER
-            )
         if tools is None:
             # Provide any default explanation tools
             tools = [
@@ -394,10 +338,8 @@ class FinalizationAgent(ReActAgent):
             name=name,
             description=description,
             system_prompt=system_prompt,
-            formatter=formatter,
             llm=llm,
             tools=tools,
             can_handoff_to=can_handoff_to,
-            memory=memory,
             **kwargs
         )

@@ -54,6 +54,20 @@ class RecipeState:
         }
 
     @staticmethod
+    def _unwrap_state(raw: Any) -> Dict[str, Any]:
+        """Accept both the current AgentWorkflow state format (a bare dict) and the
+        legacy ``[dict]`` wrapping some older code paths used, returning the dict.
+
+        The ``AgentWorkflow`` (``FunctionAgent``/multi-agent) stores ``initial_state``
+        directly, so ``ctx.get("state")`` is a plain dict; older ReAct-era code wrapped
+        it in a single-element list. Being tolerant of both avoids the ``KeyError: 0``
+        that silently emptied every tool's state read.
+        """
+        if isinstance(raw, (list, tuple)):
+            return raw[0]
+        return raw
+
+    @staticmethod
     def from_context(ctx: Context) -> 'RecipeState':
         """
         Load the state from the context.
@@ -62,20 +76,27 @@ class RecipeState:
         :return: The loaded state.
         """
         state = RecipeState(ctx)
-        state._data = asyncio.run(ctx.get("state"))[0]
+        state._data = RecipeState._unwrap_state(asyncio.run(ctx.get("state")))
         return state
 
     def reload_from_context(self) -> None:
         """
         Reload the state from the context.
         """
-        self._data = asyncio.run(self._ctx.get("state"))[0]
+        self._data = RecipeState._unwrap_state(asyncio.run(self._ctx.get("state")))
 
     def save_to_context(self) -> None:
         """
-        Save the state to the context.
+        Save the state back to the context, preserving whatever wrapping the context
+        already uses (bare dict for AgentWorkflow, ``[dict]`` for the legacy format), so
+        the workflow and the tools agree on the shape across reads/writes.
         """
-        asyncio.run(self._ctx.set("state", [self._data]))
+        try:
+            existing = asyncio.run(self._ctx.get("state"))
+        except Exception:
+            existing = None
+        value = [self._data] if isinstance(existing, (list, tuple)) else self._data
+        asyncio.run(self._ctx.set("state", value))
 
     # --- Generic dict-like methods ---
     def __getitem__(self, key: str) -> Any:
