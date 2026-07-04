@@ -139,15 +139,20 @@ class RecommendationAgent(FunctionAgent):
             llm: Optional[LLM] = None,
             tools: Optional[List] = None,
             can_handoff_to: Optional[List[str]] = None,
+            time: Optional[str] = "now",
+            date: Optional[str] = "today",
             **kwargs
     ):
+        """``time``/``date`` are forwarded to the meal-plan recommendation tool so the
+        live H1 workflow can pin (or default to "now"/"today") the recommendation time.
+        Whatever is resolved is captured into RecipeState and persisted per record."""
         llm = llm or Settings.llm
 
         if tools is None:
             # Provide any default tools needed for meal-plan or recipe recommendations
             tools = [
                 meal_plan_tools.MealPlanRecommendationTool(
-                    llm=llm, recipe_query_engine=query_engine, retrieve_only=True, time="morning", date="13.04.2025"
+                    llm=llm, recipe_query_engine=query_engine, retrieve_only=True, time=time, date=date
                 ).to_tool(),
             ]
 

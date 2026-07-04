@@ -22,13 +22,19 @@ from __future__ import annotations
 from typing import Any, Callable
 
 
-def build_heuristic_workflow_builder(*, llm: Any, hummus_data: Any, recipes_df: Any) -> Callable:
+def build_heuristic_workflow_builder(*, llm: Any, hummus_data: Any, recipes_df: Any,
+                                     time: Any = "now", date: Any = "today") -> Callable:
     """Return a ``workflow_builder(query_engine, retriever) -> AgentWorkflow`` that
     assembles the standard Heuristic-1 five-agent chain.
 
     ``llm`` / ``hummus_data`` / ``recipes_df`` are captured in the closure; the
     per-system ``query_engine`` (wrapping the bound KBQA retriever) is supplied by
     the factory at build time, so the whole chain retrieves through that system.
+
+    ``time`` / ``date`` are forwarded to the RecommendationAgent's meal-plan tool so
+    the live H1 workflow's recommendation time is configurable (default "now"/"today").
+    The resolved value is captured into RecipeState and persisted per record, so runs
+    stay reproducible (pin ``time`` to a fixed value, e.g. "00:01", for full determinism).
     """
 
     def _builder(query_engine, retriever):
@@ -39,7 +45,8 @@ def build_heuristic_workflow_builder(*, llm: Any, hummus_data: Any, recipes_df: 
                                                               ValidationAgent)
         from foodrag.food_rag.utils.recipe_context import RecipeState
 
-        recommendation_agent = RecommendationAgent(query_engine=query_engine, llm=llm)
+        recommendation_agent = RecommendationAgent(query_engine=query_engine, llm=llm,
+                                                   time=time, date=date)
         validation_agent = ValidationAgent(llm=llm, query_engine=query_engine, recipe_df=recipes_df)
         substitution_agent = SubstitutionAgent(llm=llm)
         explanation_agent = ExplanationAgent(llm=llm, hummus_data=hummus_data)

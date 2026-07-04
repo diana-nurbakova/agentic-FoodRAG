@@ -56,6 +56,14 @@ class AssembledPlan:
     # pipeline emits pure NL, so this holds at most the per-slot validation verdicts
     # ({meal_type: verdict_str}); no KG paths are produced. {} when none.
     explanation_structured: dict = field(default_factory=dict)
+    # The resolved "{date} {time}" the meal-plan tool used to reformulate the query
+    # (from RecipeState.RECOMMENDATION_TIME_KEY). "" when the state carried none. This
+    # makes each record reproducible: given the same time, the same meal types are
+    # requested.
+    recommendation_time: str = ""
+    # The meal types actually requested (the keys of MEAL_PLAN_QUESTIONS_KEY), e.g.
+    # ["breakfast", "lunch"]. [] when the state carried none.
+    requested_meal_types: list = field(default_factory=list)
     llm_usage: float = float("nan")
     llm_seq_usage: float = float("nan")
     llm_parsing: float = float("nan")
@@ -145,6 +153,9 @@ def run_full_pipeline(assembler: MealPlanAssembler, qa_set: Iterable[dict],
             "plan": _plan_urls(assembled.plan),
             "explanation_text": assembled.explanation_text,
             "explanation_structured": assembled.explanation_structured,
+            # Resolved time + requested meal types → reproducible record (§time-pin).
+            "recommendation_time": assembled.recommendation_time,
+            "requested_meal_types": assembled.requested_meal_types,
         })
 
     return records
@@ -223,10 +234,25 @@ class RagMealPlanAssembler(MealPlanAssembler):
         plan = self._normalise_plan(meal_plan)
         urls = _dedupe([r.get("recipe_url") for r in plan.values() if r and r.get("recipe_url")])
         usage = self._usage(RecipeState, ctx)
+        # Read the resolved recommendation time + requested meal types the tool captured
+        # into the final state, so the record is reproducible (same time → same meals).
+        rec_time, meal_types = self._time_and_meals(RecipeState, ctx)
         return AssembledPlan(
             question=question, answer_text=meal_plan.get_recommendation_str(), plan=plan,
             recipe_urls=urls, contexts=self._contexts(question), has_explanation=self.require_explanation,
+            recommendation_time=rec_time, requested_meal_types=meal_types,
             latency_s=latency, **usage)
+
+    @staticmethod
+    def _time_and_meals(recipe_state_cls, ctx) -> tuple:
+        """``(recommendation_time, requested_meal_types)`` from the final RecipeState;
+        ``("", [])`` when the state lacks them (e.g. a legitimately empty plan)."""
+        try:
+            state = recipe_state_cls.from_context(ctx)
+            return (str(state.get_recommendation_time() or ""),
+                    _requested_meal_types(state.get_meal_plan_questions()))
+        except Exception:
+            return "", []
 
     @staticmethod
     def _normalise_plan(meal_plan) -> dict:
@@ -255,6 +281,8 @@ class RagMealPlanAssembler(MealPlanAssembler):
 
 # RecipeState keys (mirrored so this module stays free of the heavy agent imports).
 _PLAN_KEY = "meal_plan_recommendation"
+_MEAL_QUESTIONS_KEY = "meal_plan_questions"       # keys = requested meal types
+_RECOMMENDATION_TIME_KEY = "recommendation_time"  # resolved "{date} {time}"
 _EXPLANATION_KEY = "meal_plan_explanation"
 _VALIDATION_KEY = "meal_plan_validation"
 _FINAL_KEY = "final_recommendation"
@@ -321,10 +349,13 @@ class WorkflowMealPlanAssembler(MealPlanAssembler):
         urls = _dedupe([r.get("recipe_url") for r in plan.values() if r and r.get("recipe_url")])
         contexts = [str(r.get("title")) for r in plan.values() if r and r.get("title")]
         explanation_text = explanation if has_explanation else ""
+        rec_time = str(state.get(_RECOMMENDATION_TIME_KEY, "") or "")
+        meal_types = _requested_meal_types(state.get(_MEAL_QUESTIONS_KEY))
         return AssembledPlan(
             question=question, answer_text=_answer_text(state, plan, explanation, has_explanation),
             plan=plan, recipe_urls=urls, contexts=contexts, has_explanation=has_explanation,
             explanation_text=explanation_text, explanation_structured=_validation_evidence(state),
+            recommendation_time=rec_time, requested_meal_types=meal_types,
             llm_usage=state.get(_LLM_USAGE_KEY, float("nan")),
             llm_seq_usage=state.get(_LLM_SEQ_KEY, float("nan")),
             llm_parsing=state.get(_LLM_PARSING_KEY, float("nan")), latency_s=latency)
@@ -379,6 +410,22 @@ def _default_workflow_run(agent_workflow, question: str, memory):
     start = _time.perf_counter()
     data = asyncio.run(_go())
     return data, _time.perf_counter() - start
+
+
+def _requested_meal_types(meal_questions) -> list:
+    """The requested meal types = keys of the MEAL_PLAN_QUESTIONS_KEY object (a
+    ``MealPlanQuestions`` or plain dict). ``[]`` when absent/empty."""
+    if meal_questions is None:
+        return []
+    try:
+        keys = (meal_questions.to_dict().keys() if hasattr(meal_questions, "to_dict")
+                else dict(meal_questions).keys())
+    except Exception:
+        try:
+            keys = meal_questions.keys()
+        except Exception:
+            return []
+    return [str(k) for k in keys]
 
 
 def _dedupe(values: Iterable) -> list:

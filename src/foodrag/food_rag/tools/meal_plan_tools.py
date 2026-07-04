@@ -202,6 +202,11 @@ class MealPlanRecommendationTool(RecipeToolBase):
             # fetch the systems date
             date = datetime.now().strftime('%Y-%m-%d')
 
+        # Persist the RESOLVED date+time (whether pinned or from datetime.now()) into the
+        # state so full-pipeline runs can record + reproduce which time — and therefore
+        # which meal types — were requested. Saved by the caller via save_to_context().
+        current_state.set_recommendation_time(f"{date} {time}")
+
         # Use the LLM to generate a meal plan
         augmentation_prompt = query_augmentation_template.format(question=question, time=str(time), date=str(date))
 

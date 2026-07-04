@@ -20,6 +20,11 @@ class RecipeState:
     MEAL_PLAN_VALIDATION_KEY = "meal_plan_validation"
     SUBSTITUTED_MEAL_PLAN_RECOMMENDATION_KEY = "substituted_meal_plan_recommendation"
     HISTORY_KEY = "history"
+    # The resolved date+time actually used to reformulate the meal plan (stored as
+    # "{date} {time}"). Captured whether the time was pinned via the tool or resolved
+    # from datetime.now(), so full-pipeline runs can record + reproduce which time (and
+    # therefore which meal types) were requested. See MealPlanRecommendationTool.
+    RECOMMENDATION_TIME_KEY = "recommendation_time"
     MEAL_PLAN_EXPLANATION_KEY = "meal_plan_explanation"
     FINAL_RECOMMENDATION_KEY = "final_recommendation"
     LLM_PARSING_USAGE_COUNTER_KEY = "llm_parsing_usage_counter"
@@ -45,6 +50,7 @@ class RecipeState:
             RecipeState.MEAL_PLAN_VALIDATION_KEY: MealPlanValidation(),  # a dict meal_type -> validation str
             RecipeState.SUBSTITUTED_MEAL_PLAN_RECOMMENDATION_KEY: MealPlanSubstitution(),  # a dict meal_type -> subs. m.p. str
             RecipeState.HISTORY_KEY: [],
+            RecipeState.RECOMMENDATION_TIME_KEY: "",  # resolved "{date} {time}" used to reformulate
             RecipeState.MEAL_PLAN_EXPLANATION_KEY: "Not written yet.",
             RecipeState.FINAL_RECOMMENDATION_KEY: "Final recommendation required.",
             RecipeState.LLM_PARSING_USAGE_COUNTER_KEY: 0,  # Counter for LLM parsing only usage
@@ -156,6 +162,9 @@ class RecipeState:
     def get_history(self) -> List[Any]:
         return self._data[self.HISTORY_KEY]
 
+    def get_recommendation_time(self) -> str:
+        return self._data.get(self.RECOMMENDATION_TIME_KEY, "")
+
     def get_meal_plan_explanation(self) -> str:
         return self._data[self.MEAL_PLAN_EXPLANATION_KEY]
 
@@ -195,6 +204,9 @@ class RecipeState:
 
     def set_history(self, history: List[Any]):
         self._data[self.HISTORY_KEY] = history
+
+    def set_recommendation_time(self, recommendation_time: str):
+        self._data[self.RECOMMENDATION_TIME_KEY] = recommendation_time
 
     def set_meal_plan_explanation(self, explanation: str):
         self._data[self.MEAL_PLAN_EXPLANATION_KEY] = explanation
