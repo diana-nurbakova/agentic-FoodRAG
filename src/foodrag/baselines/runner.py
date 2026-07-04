@@ -185,11 +185,28 @@ def _strata(records: Sequence[dict]) -> list[str]:
     return sorted(present, key=lambda s: order.get(s, 99))
 
 
+def _asfloat(v) -> float:
+    """Coerce a metric value to float; non-numeric (dict/str/None) → NaN.
+
+    Some §13.1 metric fields are non-scalar (e.g. ``guideline_adherence_per_nutrient``
+    is a dict, ``guideline_class`` a string). Those are kept in the per-question
+    record for fidelity but cannot be averaged — coercing them to NaN makes
+    :func:`aggregate` skip them instead of raising, while their flattened scalar
+    counterparts (``guideline_adherence_<nutrient>``) aggregate normally.
+    """
+    if isinstance(v, bool):
+        return float(v)
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return float("nan")
+
+
 def _per_question_means(records: Sequence[dict], metric: str) -> dict[str, float]:
     """For each question, the mean of ``metric`` across its runs (NaN-aware)."""
     by_q: dict[str, list[float]] = {}
     for r in records:
-        by_q.setdefault(r["question_id"], []).append(r["metrics"].get(metric, float("nan")))
+        by_q.setdefault(r["question_id"], []).append(_asfloat(r["metrics"].get(metric, float("nan"))))
     return {q: float(np.nanmean(v)) if not _all_nan(v) else float("nan") for q, v in by_q.items()}
 
 
@@ -197,7 +214,7 @@ def _run_variance(records: Sequence[dict], metric: str) -> float:
     """Mean over questions of the across-run variance of ``metric`` (§4.6)."""
     by_q: dict[str, list[float]] = {}
     for r in records:
-        by_q.setdefault(r["question_id"], []).append(r["metrics"].get(metric, float("nan")))
+        by_q.setdefault(r["question_id"], []).append(_asfloat(r["metrics"].get(metric, float("nan"))))
     variances = [float(np.nanvar(v)) for v in by_q.values() if not _all_nan(v)]
     return float(np.mean(variances)) if variances else 0.0
 
