@@ -30,3 +30,4 @@ ragas
 scikit-learn
 gensim
 streamlit
+plotly

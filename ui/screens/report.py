@@ -12,6 +12,7 @@ import pandas as pd
 import streamlit as st
 
 from .. import eval_results
+from ..components.pareto_chart import render_pareto
 from ..state import goto
 from ..theme import C, F, FP, html
 
@@ -154,23 +155,131 @@ def _agentic(agg: pd.DataFrame, pw: pd.DataFrame | None) -> None:
                        f"(corrected {r['p_value_corrected']}) — {mark}")
 
 
-def _cost_quality(agg: pd.DataFrame) -> None:
-    exp3 = agg[(agg["experiment_id"] == "EXP-3") & (agg["stratum"] == "aggregate")]
-    needed = {"llm_usage", "latency_s", "correctness"}
-    if exp3.empty or not needed <= set(exp3["metric"]):
-        st.info("Cost/quality metrics not available.")
-        return
-    x_axis = st.radio("Cost axis", ["llm_usage", "latency_s"], horizontal=True,
-                      format_func=lambda m: _METRIC_LABEL[m], key="rep_cq_x")
-    wide = exp3.pivot_table(index="config_id", columns="metric", values="mean")
-    df = pd.DataFrame({
-        "config": [_label(_CONFIG_LABEL, c) for c in wide.index],
-        _METRIC_LABEL[x_axis]: wide[x_axis].values,
-        "Correctness": wide["correctness"].values,
-    })
-    st.scatter_chart(df, x=_METRIC_LABEL[x_axis], y="Correctness", color="config")
-    st.caption("Upper-left = better (more correct, cheaper). The agentic pipeline trades LLM cost for correctness "
-               "and safety (EXP-3/§4).")
+def _pareto_df(result, x_axis: str, y_axis: str) -> pd.DataFrame | None:
+    """Plot-ready frame from a ``foodrag.analysis.pareto.ParetoResult``.
+
+    One row per compared config with the two axis columns, a display ``config``
+    label, and a boolean ``frontier`` flag (the module's domination relation is
+    reused verbatim — the UI never recomputes it)."""
+    recs = result.as_records()
+    if not recs:
+        return None
+    rows = []
+    for r in recs:
+        rows.append({
+            "config_id": r["config_id"],
+            "config": _label(_CONFIG_LABEL, r["config_id"]),
+            x_axis: r.get(x_axis),
+            y_axis: r.get(y_axis),
+            "frontier": bool(r["frontier"]),
+        })
+    return pd.DataFrame(rows)
+
+
+def _domination_captions(result) -> None:
+    """Surface the explicit domination relationships (§9.4: 'config X dominates
+    baseline Y') and any NaN-excluded configs."""
+    lines = []
+    for cfg in result.frontier:
+        beaten = result.dominates.get(cfg, [])
+        if beaten:
+            lines.append(f"**{_label(_CONFIG_LABEL, cfg)}** dominates "
+                         + ", ".join(_label(_CONFIG_LABEL, b) for b in beaten))
+    if lines:
+        st.caption("Domination (§9.4): " + "; ".join(lines) + ".")
+    if result.excluded:
+        st.caption("Excluded (missing metric): "
+                   + ", ".join(f"{_label(_CONFIG_LABEL, c)} ({why})"
+                               for c, why in result.excluded.items()) + ".")
+
+
+def _pareto(agg: pd.DataFrame) -> None:
+    from foodrag.analysis import pareto as pmod
+
+    st.caption("Pareto-optimal (non-dominated) configurations are highlighted and connected by the frontier; "
+               "dominated configs are greyed. This is an **analysis lens** over feasible outputs (§9.4) — it "
+               "does not change how Flow A recommends (weighted-sum ranking). Safety is **never** a Pareto axis: "
+               "hard constraints gate the feasible set, they are not a traded objective.")
+
+    # ── Panel 1 — Pareto: Health vs Relevance ─────────────────────────────
+    st.markdown("**Pareto: Health vs Relevance**")
+    exps_hr = sorted({e for e in ("EXP-1", "EXP-10k", "EXP-7")
+                      if e in set(agg["experiment_id"])})
+    if not exps_hr:
+        st.info("No experiment with health/relevance metrics available.")
+    else:
+        c1, c2 = st.columns(2)
+        exp_hr = c1.selectbox("Experiment", exps_hr, key="rep_par_hr_exp",
+                              help="EXP-1 = retrievers; EXP-10k = popularity baselines.")
+        health = c2.radio("Health axis", ["avg_nutri_at_10", "avg_fsa_at_10"], horizontal=True,
+                          format_func=lambda m: _METRIC_LABEL.get(m, m), key="rep_par_hr_health")
+        res = pmod.health_vs_relevance(agg, experiment_id=exp_hr, health_metric=health)
+        df = _pareto_df(res, "relevance", "health")
+        if df is None:
+            st.info("Health/relevance metrics not available for this experiment.")
+        else:
+            rel_lbl = _METRIC_LABEL.get(res.axis_labels.get("relevance", ""),
+                                        res.axis_labels.get("relevance", "relevance"))
+            hlt_lbl = _METRIC_LABEL.get(health, health)
+            render_pareto(df, "relevance", "health", f"{rel_lbl} (relevance)", f"{hlt_lbl} (health)",
+                          x_dir="max", y_dir="max", flag_col="frontier",
+                          ideal="Ideal: top-right — relevant *and* healthy. The popularity/rating-sorted "
+                                "baseline sits high-relevance / low-health; health-aware configs trace toward "
+                                "high health (§9.4 popularity-bias story).")
+            _domination_captions(res)
+
+    st.divider()
+    # ── Panel 2 — Pareto: Quality vs Cost ─────────────────────────────────
+    st.markdown("**Pareto: Quality vs Cost**")
+    exps_qc = sorted({e for e in ("EXP-3", "EXP-7") if e in set(agg["experiment_id"])})
+    if not exps_qc:
+        st.info("No experiment with quality/cost metrics available.")
+    else:
+        c1, c2 = st.columns(2)
+        exp_qc = c1.selectbox("Experiment", exps_qc, key="rep_par_qc_exp",
+                              help="EXP-3 = meal-plan generators (rag / heuristic 1 / 2).")
+        cost = c2.radio("Cost axis", ["llm_usage", "latency_s"], horizontal=True,
+                        format_func=lambda m: _METRIC_LABEL[m], key="rep_par_qc_cost")
+        res = pmod.quality_vs_cost(agg, experiment_id=exp_qc, cost_metric=cost)
+        df = _pareto_df(res, "cost", "quality")
+        if df is None:
+            st.info("Quality/cost metrics not available for this experiment.")
+        else:
+            render_pareto(df, "cost", "quality", f"{_METRIC_LABEL[cost]} (cost ↓)", "Correctness (quality)",
+                          x_dir="min", y_dir="max", flag_col="frontier",
+                          ideal="Ideal: top-left — high quality at low cost. If agentic Heuristic 1 is on the "
+                                "frontier it is **Pareto-justified**; if a cheaper config is equally correct it "
+                                "is not (§9.4 — an honest either-way finding).")
+            _domination_captions(res)
+
+    st.divider()
+    # ── Panel 3 — Pareto: Safety vs Coverage ──────────────────────────────
+    st.markdown("**Pareto: Safety vs Coverage**")
+    exps_sc = sorted({e for e in ("EXP-10k", "EXP-3", "EXP-7", "EXP-1")
+                      if e in set(agg["experiment_id"])})
+    if not exps_sc:
+        st.info("No experiment with a coverage proxy available.")
+    else:
+        exp_sc = st.selectbox("Experiment", exps_sc, key="rep_par_sc_exp")
+        res = pmod.safety_vs_coverage(agg, experiment_id=exp_sc)
+        df = _pareto_df(res, "strictness", "coverage")
+        if df is None or df.empty:
+            st.info("Coverage proxy not available across strata for this experiment.")
+        else:
+            df = df.copy()
+            df["config"] = df["config_id"]  # points are strata (tight/medium/broad), not configs
+            cov_lbl = _METRIC_LABEL.get(res.axis_labels.get("coverage", ""),
+                                        res.axis_labels.get("coverage", "coverage"))
+            render_pareto(df, "strictness", "coverage", "Strictness (answer-set stratum, proxy)",
+                          f"Coverage — {cov_lbl}", x_dir="max", y_dir="max", flag_col="frontier",
+                          ideal="Axes: relaxation level (strictness) vs fraction of personas with a full "
+                                "feasible plan (§9.4). Strictness uses the answer-set-size stratum as a "
+                                "documented PROXY (tight = 1–50 valid answers → high strictness; broad → low). "
+                                "Never-relaxing safety (tight) typically costs coverage.")
+            st.caption("⚠ This is a **documented proxy**: the current results have no explicit per-config "
+                       "relaxation-level axis, so answer-set-size strata stand in for strictness (§9.1). "
+                       "Safety itself is never an axis — hard constraints gate feasibility upstream (§9.4).")
+            _domination_captions(res)
 
 
 # ── entry ────────────────────────────────────────────────────────────────
@@ -204,7 +313,7 @@ def render() -> None:
     agg = eval_results.load_aggregate()
     pw = eval_results.load_pairwise()
 
-    tabs = st.tabs(["Overview", "Retriever comparison", "Stratified", "Safety", "Agentic", "Cost vs quality"])
+    tabs = st.tabs(["Overview", "Retriever comparison", "Stratified", "Safety", "Agentic", "⚖ Pareto"])
     with tabs[0]:
         _overview(agg)
     with tabs[1]:
@@ -216,4 +325,4 @@ def render() -> None:
     with tabs[4]:
         _agentic(agg, pw)
     with tabs[5]:
-        _cost_quality(agg)
+        _pareto(agg)

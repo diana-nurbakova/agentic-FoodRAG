@@ -65,6 +65,7 @@ dependencies = [
     "ipywidgets==8.1.5",
     # GUI (Streamlit demo app — Flow A/B + admin, HF Spaces Docker target)
     "streamlit>=1.58,<2",
+    "plotly>=5.20,<6",  # Report tab Pareto scatters (Eval Protocol §11.3/§11.4)
 ]
 
 [project.optional-dependencies]
