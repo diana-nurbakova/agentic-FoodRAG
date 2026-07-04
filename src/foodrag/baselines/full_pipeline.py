@@ -30,7 +30,7 @@ from typing import Any, Iterable, Optional, Sequence
 
 import pandas as pd
 
-from foodrag.baselines import constraints, guideline_adherence, meal_plan_metrics, metrics
+from foodrag.baselines import constraints, explainability, guideline_adherence, meal_plan_metrics, metrics
 from foodrag.baselines import judge as judge_mod
 from foodrag.baselines.base import answer_set_stratum, requirement_count, requirement_types
 from foodrag.baselines.runner import _resolve_rows
@@ -112,6 +112,12 @@ def run_full_pipeline(assembler: MealPlanAssembler, qa_set: Iterable[dict],
         if guide["guideline_hard_ceiling_breach"]:
             block["hard_constraint_violation"] = max(
                 block.get("hard_constraint_violation", 0.0) or 0.0, 1.0)
+        # §8 explainability: graph-path coverage/validity (always) + NL-claim grounding
+        # (only when this config emits an explanation_text). Uses the recommended
+        # recipe rows — the plan's resolved slots.
+        block.update(explainability.explainability_metrics(
+            persona, list(assembled.plan.values()),
+            explanation_text=assembled.explanation_text, expand=expand))
         block.update(judge_mod.judge_plan(
             judges, question=assembled.question, answer=assembled.answer_text,
             contexts=assembled.contexts, gold=_gold_titles(gold, indexed),

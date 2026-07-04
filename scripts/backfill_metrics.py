@@ -28,7 +28,7 @@ from pathlib import Path
 
 os.chdir(Path(__file__).resolve().parents[1])
 
-from foodrag.baselines import constraints, guideline_adherence, meal_plan_metrics, metrics
+from foodrag.baselines import constraints, explainability, guideline_adherence, meal_plan_metrics, metrics
 from foodrag.baselines.runner import aggregate, load_recipes_df, write_results
 
 K = 10
@@ -111,6 +111,13 @@ def backfill_record(rec: dict, qa, indexed) -> dict:
     if g.get("guideline_hard_ceiling_breach"):
         m["hard_constraint_violation"] = max(m.get("hard_constraint_violation", 0.0) or 0.0, 1.0)
 
+    # §8.1 graph-path coverage/validity — from the reconstructed recipes (no explanation
+    # text needed, so populated on EVERY full-pipeline config). §8.2 claim grounding needs
+    # record["explanation_text"] → only present on new-code runs (foodrag_h1_t2p); NaN otherwise.
+    m.update(explainability.explainability_metrics(
+        persona, rows, explanation_text=rec.get("explanation_text", ""),
+        expand=constraints.identity_expand))
+
     # non-scalar §13.1 fields live at top level (kept for fidelity; aggregate skips them)
     rec["guideline_adherence_per_nutrient"] = g["guideline_adherence_per_nutrient"]
     rec["guideline_class"] = g["guideline_class"]
@@ -163,7 +170,9 @@ def main(argv):
             av = agg[agg.stratum == "aggregate"].set_index("metric")["mean"]
             show = {k: round(float(av[k]), 3) for k in
                     ("guideline_adherence_overall", "hard_constraint_sat_perconstraint",
-                     "slot_appropriateness", "avg_rating_at_10") if k in av.index}
+                     "slot_appropriateness", "avg_rating_at_10",
+                     "path_coverage", "path_validity",
+                     "claim_grounding_rate", "unsupported_claim_rate") if k in av.index}
             print(f"[{cfg}] AGGREGATED {len(complete)}/{len(files)} runs -> {show}")
         else:
             print(f"[{cfg}] {len(complete)}/{len(files)} runs complete — jsonl backfilled, "
