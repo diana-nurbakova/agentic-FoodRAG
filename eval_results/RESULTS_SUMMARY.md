@@ -65,7 +65,7 @@ H1 = agentic (Recommend + Correct + Enhance); H2 = Recommend-only. dense vs text
 | meal-slot completeness † | 0.568 | 0.535 | 0.525 | 0.481 |
 | path coverage (§8.1) | 0.655 | 0.868 | 0.651 | 0.883 |
 | path validity (§8.1) | 1.000 | 1.000 | 1.000 | 1.000 |
-| **claim grounding (§8.2)** | — | — | — | **0.650** |
+| **claim grounding (§8.2)** | — | — | 0.551 | **0.650** |
 
 **Findings.**
 - **H1-t2p — the full agentic pipeline on the strong retriever — is the best config overall**:
@@ -80,7 +80,8 @@ H1 = agentic (Recommend + Correct + Enhance); H2 = Recommend-only. dense vs text
   retriever supplies valid candidates to correct/enhance.
 - **Safety is excellent across all configs** (allergen ≤ 0.003; exactly 0 for H1-t2p).
 - **§8 grounding contrast**: intrinsic KG-path explanations are 100% valid (read from HUMMUS),
-  while the NL explanation layer is 65% grounded (35% unsupported claims) — the intrinsic
+  while the NL explanation layer is 65% grounded on H1-t2p and 55% on H1-dense (the stronger
+  retriever yields better-grounded explanations) — the intrinsic
   layer is the more reliable explanation channel.
 
 ---
