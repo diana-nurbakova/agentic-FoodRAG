@@ -232,6 +232,9 @@ class RagMealPlanAssembler(MealPlanAssembler):
         latency = time.perf_counter() - start
 
         plan = self._normalise_plan(meal_plan)
+        # Hard allergen/blacklist post-filter: guarantee the FINAL plan is allergen-safe
+        # even if the LLM validation let a disliked ingredient through (drops unsafe slots).
+        plan = constraints.enforce_allergen_safety(plan, qa_item["persona"])
         urls = _dedupe([r.get("recipe_url") for r in plan.values() if r and r.get("recipe_url")])
         usage = self._usage(RecipeState, ctx)
         # Read the resolved recommendation time + requested meal types the tool captured
@@ -340,10 +343,13 @@ class WorkflowMealPlanAssembler(MealPlanAssembler):
             self.retriever.bind(qa_item)
         question = qa_item.get(self.query_field) or qa_item.get("question", "")
         state, latency = self._run_workflow(self.agent_workflow, question, self.memory)
-        return self._from_state(state or {}, question, latency)
+        return self._from_state(state or {}, question, latency, qa_item.get("persona", {}) or {})
 
-    def _from_state(self, state: dict, question: str, latency: float) -> AssembledPlan:
+    def _from_state(self, state: dict, question: str, latency: float,
+                    persona: dict | None = None) -> AssembledPlan:
         plan = _normalise_any_plan(state.get(_PLAN_KEY))
+        # Hard allergen/blacklist post-filter on the FINAL plan (drops unsafe slots).
+        plan = constraints.enforce_allergen_safety(plan, persona or {})
         explanation = str(state.get(_EXPLANATION_KEY, "") or "")
         has_explanation = explanation.strip().lower() not in _EXPLANATION_DEFAULTS
         urls = _dedupe([r.get("recipe_url") for r in plan.values() if r and r.get("recipe_url")])

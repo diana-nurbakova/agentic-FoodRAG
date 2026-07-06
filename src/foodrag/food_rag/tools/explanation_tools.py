@@ -18,6 +18,10 @@ class ExplanationTool(RecipeToolBase):
 
     TOOL_NAME = "explanation_tool"
 
+    # Fixed, safe message used when there is no meal plan to explain, so the Enhance
+    # agent never narrates recipes that were never selected (empty-plan hallucination).
+    EMPTY_PLAN_MESSAGE = "No meal plan could be recommended that satisfies the given requirements."
+
     EXPLANATION_TEMPLATE = PromptTemplate(
         f"Write a clear and persuasive explanation of the recommended meal plan:\n"
         "- Focus on why this plan matches the user's original question.\n"
@@ -71,6 +75,28 @@ class ExplanationTool(RecipeToolBase):
         """
         self.chat_memory = chat_memory
 
+    @staticmethod
+    def _is_empty_recommendation(recommendation) -> bool:
+        """True if there is nothing to explain.
+
+        Handles both recommendation types chosen in :meth:`explain`:
+
+        * ``MealPlanSubstitution`` — empty per its own ``.is_empty()``.
+        * ``MealPlan`` — empty when no meal type maps to a non-empty recipe dict
+          (every recipe value is falsy / ``{}`` / ``None``).
+        """
+        if recommendation is None:
+            return True
+        if isinstance(recommendation, MealPlanSubstitution):
+            return recommendation.is_empty()
+        if isinstance(recommendation, MealPlan):
+            return not any(recipe for recipe in recommendation.values())
+        # Unknown type: fall back to a best-effort truthiness/length check.
+        try:
+            return not any(recommendation.values())
+        except Exception:
+            return not bool(recommendation)
+
     def explain(self, ctx: Context) -> str:
         """ Generates a concise explanation for the final recommended meal plan. """
         current_state = RecipeState.from_context(ctx)
@@ -119,6 +145,17 @@ class ExplanationTool(RecipeToolBase):
             recommendation = substituted_meal_plan
         else:
             recommendation = meal_plan
+
+        # Gate on a non-empty plan: if there is nothing to explain, do NOT call the LLM
+        # (it would hallucinate recipes that were never selected). Emit a fixed safe
+        # message instead and persist it exactly like a normal explanation.
+        if self._is_empty_recommendation(recommendation):
+            if self.verbose:
+                print("Empty recommendation — skipping LLM explanation, using fixed message.")
+            current_state.set_meal_plan_explanation(self.EMPTY_PLAN_MESSAGE)
+            current_state.update_history_item(self.EMPTY_PLAN_MESSAGE)
+            current_state.save_to_context()
+            return self.EMPTY_PLAN_MESSAGE
 
         # Use LLM to generate the explanation
         explanation_prompt = self.explanation_template.format(

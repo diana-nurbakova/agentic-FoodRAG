@@ -103,6 +103,29 @@ def violates_allergen(row, persona: dict, expand: IngredientExpander = identity_
     return any(ingr in disliked for ingr in row["ingredient_names"])
 
 
+def enforce_allergen_safety(plan: dict, persona: dict,
+                            expand: IngredientExpander = identity_expand) -> dict:
+    """Deterministically drop any plan slot whose recipe violates the allergen/blacklist.
+
+    ``plan`` is ``{meal_type: recipe_row_dict}`` where a slot may hold an empty dict
+    (``{}``) for an unfilled slot. For every non-empty recipe, if
+    :func:`violates_allergen` is True the slot is DROPPED from the returned plan;
+    safe recipes and empty slots are kept as-is. Recipes missing ``ingredient_names``
+    are treated as safe (kept). Returns a NEW dict — the input is not mutated.
+
+    This is the hard guarantee behind the LLM's soft blacklist validation: a
+    blacklist-violating recipe can never be a gold answer (gold satisfies every
+    constraint), so this filter never removes a hit — it only strips unsafe
+    non-gold recipes that slipped past the LLM.
+    """
+    safe = {}
+    for meal_type, recipe in (plan or {}).items():
+        if recipe and "ingredient_names" in recipe and violates_allergen(recipe, persona, expand):
+            continue  # unsafe non-empty recipe → drop this slot
+        safe[meal_type] = recipe
+    return safe
+
+
 def _tags_ok(row, persona: dict) -> bool:
     liked = persona.get("tags", {}).get("likes", [])
     disliked = persona.get("tags", {}).get("dislikes", [])
