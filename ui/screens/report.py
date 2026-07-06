@@ -203,8 +203,10 @@ def _pareto(agg: pd.DataFrame) -> None:
 
     # ── Panel 1 — Pareto: Health vs Relevance ─────────────────────────────
     st.markdown("**Pareto: Health vs Relevance**")
-    exps_hr = sorted({e for e in ("EXP-1", "EXP-10k", "EXP-7")
-                      if e in set(agg["experiment_id"])})
+    # Preserve the priority order (don't alphabetise) so the default lands on an
+    # experiment that has the required metrics.
+    avail = set(agg["experiment_id"])
+    exps_hr = [e for e in ("EXP-1", "EXP-10k", "EXP-7") if e in avail]
     if not exps_hr:
         st.info("No experiment with health/relevance metrics available.")
     else:
@@ -231,7 +233,7 @@ def _pareto(agg: pd.DataFrame) -> None:
     st.divider()
     # ── Panel 2 — Pareto: Quality vs Cost ─────────────────────────────────
     st.markdown("**Pareto: Quality vs Cost**")
-    exps_qc = sorted({e for e in ("EXP-3", "EXP-7") if e in set(agg["experiment_id"])})
+    exps_qc = [e for e in ("EXP-3", "EXP-7") if e in set(agg["experiment_id"])]
     if not exps_qc:
         st.info("No experiment with quality/cost metrics available.")
     else:
@@ -255,8 +257,10 @@ def _pareto(agg: pd.DataFrame) -> None:
     st.divider()
     # ── Panel 3 — Pareto: Safety vs Coverage ──────────────────────────────
     st.markdown("**Pareto: Safety vs Coverage**")
-    exps_sc = sorted({e for e in ("EXP-10k", "EXP-3", "EXP-7", "EXP-1")
-                      if e in set(agg["experiment_id"])})
+    # EXP-10k (has a constraint-satisfaction coverage proxy) leads so the default
+    # panel is non-empty; EXP-1 (no coverage metric) is last.
+    exps_sc = [e for e in ("EXP-10k", "EXP-3", "EXP-7", "EXP-1")
+               if e in set(agg["experiment_id"])]
     if not exps_sc:
         st.info("No experiment with a coverage proxy available.")
     else:
