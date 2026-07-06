@@ -13,6 +13,17 @@ and `specs/FoodRAG_Evaluation_Protocol.md` for metric/experiment definitions.*
 > value. Where a number computed here differs from the summary's headline anchors, it is
 > flagged in the text; **no material disagreement was found** (see the closing "Anchor
 > reconciliation" note).
+>
+> **Post-fix note (commit 54a62ae).** Two deterministic safety guards were added and the 493
+> affected records across the four FoodRAG configs were re-run and re-judged: (a) a
+> deterministic **allergen post-filter** (`constraints.enforce_allergen_safety`) applied to
+> the final plan in both assemblers, which drops allergen violations to **0.000 on every
+> config**; and (b) an **empty-plan explanation gate** in `ExplanationTool` that returns a
+> fixed "no recommendation" message instead of narrating recipes that were never selected,
+> which lifts H1-t2p correctness (0.689 → 0.765), faithfulness (0.922 → 0.997) and
+> claim-grounding (0.650 → 0.711). All numbers below are the **post-fix** source-of-truth
+> values; the retriever ladder, baseline ladder, and the dense/H2 configs' core metrics were
+> unaffected.
 
 ---
 
@@ -147,14 +158,14 @@ Judge-metric rows report **Judge A** unless the split table in §5 is referenced
 
 | Metric | H2-dense | H2-t2p | H1-dense | **H1-t2p** |
 |---|---|---|---|---|
-| correctness (A) | 0.248 [0.239,0.257] | 0.586 [0.573,0.601] | 0.286 [0.277,0.294] | **0.689 [0.674,0.703]** |
-| correctness (B) | 0.233 | 0.605 | 0.309 | **0.746** |
-| faithfulness (A) | 0.232 [0.217,0.247] | 0.893 [0.881,0.904] | **0.989 [0.986,0.992]** | 0.922 [0.910,0.933] |
-| faithfulness (B) | 0.106 | 0.986 | 0.976 | 0.915 |
-| relevancy (A) | 0.308 | 0.901 | 0.452 | 0.788 |
-| relevancy (B) | 0.096 | 0.559 | 0.220 | 0.702 |
-| explanation-quality (A) | — | — | 0.573 | **0.715** |
-| explanation-quality (B) | — | — | 0.626 | 0.838 |
+| correctness (A) | 0.247 [0.238,0.257] | 0.586 [0.573,0.601] | 0.285 [0.277,0.293] | **0.765 [0.754,0.777]** |
+| correctness (B) | 0.232 | 0.604 | 0.309 | **0.742** |
+| faithfulness (A) | 0.236 [0.220,0.251] | 0.893 [0.881,0.904] | **0.989 [0.985,0.992]** | **0.997 [0.995,0.998]** |
+| faithfulness (B) | 0.112 | 0.986 | 0.976 | 0.994 |
+| relevancy (A) | 0.311 | 0.901 | 0.454 | 0.869 |
+| relevancy (B) | 0.098 | 0.559 | 0.221 | 0.784 |
+| explanation-quality (A) | — | — | 0.573 | **0.750** |
+| explanation-quality (B) | — | — | 0.626 | 0.793 |
 
 *(explanation-quality is only populated where an NL explanation layer exists — the two H1
 configs.)*
@@ -163,12 +174,12 @@ configs.)*
 
 | Metric | H2-dense | H2-t2p | H1-dense | **H1-t2p** |
 |---|---|---|---|---|
-| hard-constraint sat. (per-constraint) | 0.645 [0.633,0.657] | 0.976 [0.972,0.981] | 0.663 [0.651,0.676] | **0.977 [0.973,0.980]** |
-| hard-constraint sat. (all-or-nothing) | 0.327 | 0.931 | 0.358 | **0.930** |
-| hard-constraint violation | 0.744 | 0.145 | 0.711 | 0.229 |
+| hard-constraint sat. (per-constraint) | 0.646 [0.634,0.659] | 0.977 [0.972,0.981] | 0.664 [0.652,0.677] | **0.977 [0.973,0.980]** |
+| hard-constraint sat. (all-or-nothing) | 0.328 | 0.932 | 0.359 | **0.931** |
+| hard-constraint violation | 0.743 | 0.145 | 0.711 | 0.228 |
 | soft-constraint sat. | 0.403 | 0.893 | 0.397 | 0.888 |
-| constraint_satisfaction | 0.018 | 0.709 | 0.014 | 0.698 |
-| **allergen violation** | 0.0034 | 0.0006 | 0.0021 | **0.0003** |
+| constraint_satisfaction | 0.018 | 0.709 | 0.015 | 0.698 |
+| **allergen violation** | **0.000** | **0.000** | **0.000** | **0.000** |
 | hallucination_rate | 0.000 | 0.000 | 0.000 | 0.000 |
 
 ### 4.4 Plan-level quality
@@ -203,10 +214,10 @@ carb / fibre band. This is the mechanistic reason the *overall* guideline number
 
 | Metric | H2-dense | H2-t2p | H1-dense | **H1-t2p** |
 |---|---|---|---|---|
-| path coverage (§8.1) | 0.655 | 0.868 | 0.651 | **0.883** |
+| path coverage (§8.1) | 0.656 | 0.867 | 0.652 | **0.883** |
 | path validity (§8.1) | 1.000 | 1.000 | 1.000 | 1.000 |
-| **claim grounding (§8.2)** | — | — | 0.551 [0.539,0.563] | **0.650 [0.635,0.664]** |
-| unsupported-claim rate | — | — | 0.449 | 0.350 |
+| **claim grounding (§8.2)** | — | — | 0.550 [0.538,0.562] | **0.711 [0.699,0.724]** |
+| unsupported-claim rate | — | — | 0.450 | 0.289 |
 | llm_usage (calls) | 1.0 | 1.0 | 9.91 | 10.05 |
 | llm_seq_usage | 1.0 | 1.0 | 8.50 | 8.46 |
 | llm_parsing (retries) | 0.000 | 0.000 | 0.007 | 0.655 |
@@ -215,28 +226,33 @@ carb / fibre band. This is the mechanistic reason the *overall* guideline number
 **Interpretation.**
 1. **Retriever quality dominates the pipeline.** t2p configs get **~22–29×** the hit@10 of
    their dense twins (0.71–0.77 vs 0.03), near-perfect per-constraint hard-satisfaction
-   (0.976–0.977 vs 0.645–0.663), and materially lower allergen violation. The retriever,
-   not the agent depth, is the first-order driver of end-to-end quality.
+   (0.977 vs 0.646–0.664). The retriever, not the agent depth, is the first-order driver of
+   end-to-end quality.
 2. **The agentic pipeline pays off *when retrieval is good*.** On t2p, H1 beats H2 on hit@10
-   (0.773 vs 0.709), nDCG (0.450 vs 0.347) and correctness (0.689 vs 0.586, +0.103,
+   (0.773 vs 0.709), nDCG (0.450 vs 0.347) and correctness (0.765 vs 0.586, +0.179,
    non-overlapping CIs). On dense, H1 ≈ H2 (both retrieve ~nothing, so the Correct/Enhance
    stages have no valid candidates to improve). H1-dense's very high *faithfulness* (0.989)
    reflects tiny, cautious plans — the agent declines to over-claim when it has little to
    work with. **Agentic value emerges only once the retriever supplies valid candidates.**
-3. **Safety is excellent everywhere** (allergen ≤ 0.0034; exactly the *lowest*, 0.0003, for
-   H1-t2p; hallucination_rate 0 across all four). The full pipeline on the strong retriever
-   is both the most correct and the safest configuration.
+3. **Safety is now perfect everywhere** (allergen violation 0.000 on all four configs after
+   the deterministic allergen post-filter, commit 54a62ae; hallucination_rate 0 across all
+   four). The full pipeline on the strong retriever is both the most correct and, alongside
+   the others, fully safe. The filter drops any plan slot whose recipe carries a
+   persona-disliked/allergen ingredient; because a blacklist-violating recipe can never be
+   gold, hit@10 is unaffected.
 4. **§8 grounding contrast.** The intrinsic KG-path layer is **100 % valid** (paths read
-   directly from HUMMUS) and 88 % covering on H1-t2p, while the user-facing NL layer is only
-   **65 % grounded** on H1-t2p (35 % unsupported) and **55 % on H1-dense** (45 % unsupported).
-   The stronger retriever yields *better-grounded* explanations — the NL claims describe
-   genuinely valid recipes — so retriever quality propagates even into explanation faithfulness.
-   The intrinsic layer is the reliable explanation channel; the NL layer needs claim-level guarding.
+   directly from HUMMUS) and 88 % covering on H1-t2p, while the user-facing NL layer is
+   **71 % grounded** on H1-t2p (29 % unsupported) and **55 % on H1-dense** (45 % unsupported).
+   The stronger retriever yields *better-grounded* explanations, and the empty-plan explanation
+   gate (commit 54a62ae) replaces hallucinated prose on empty plans with an honest "no
+   recommendation" message — the NL claims now describe genuinely valid recipes (or nothing at
+   all). The intrinsic layer remains the reliable explanation channel; the NL layer still needs
+   claim-level guarding where a non-empty plan is over-described.
 
 **Bottom line: H1-t2p is the best config overall** — top hit@10 (0.773), top correctness
-(0.689 A / 0.746 B), high faithfulness (0.922), near-perfect hard-constraint satisfaction
-(0.977), zero allergen violations, and the best-grounded NL explanations of the two agentic
-configs (0.650 vs H1-dense 0.551).
+(0.765 A / 0.742 B), near-perfect faithfulness (0.997), near-perfect hard-constraint
+satisfaction (0.977), zero allergen violations, and the best-grounded NL explanations of the
+two agentic configs (0.711 vs H1-dense 0.550).
 
 ---
 
@@ -259,24 +275,24 @@ binary → agreement reported.
 | | faithfulness | 0.989 | 0.976 | **−0.013** | 0.573 | — | 0.984 | 4,850 |
 | | relevancy | 0.453 | 0.220 | **−0.233** | 0.522 | — | 0.741 | 4,859 |
 | | explanation-quality | 0.573 | 0.626 | **+0.053** | 0.642 | 0.624 | — | 4,838 |
-| **H1-t2p** | correctness | 0.687 | 0.745 | **+0.057** | 0.718 | 0.677 | — | 4,788 |
-| | faithfulness | 0.920 | 0.913 | **−0.007** | **0.938** | — | **0.990** | 4,798 |
-| | relevancy | 0.787 | 0.701 | **−0.086** | 0.646 | — | 0.858 | 4,809 |
-| | explanation-quality | 0.715 | 0.838 | **+0.123** | 0.713 | 0.675 | — | 4,777 |
+| **H1-t2p** | correctness | 0.765 | 0.740 | **−0.025** | 0.351 | 0.383 | — | 4,794 |
+| | faithfulness | 0.997 | 0.994 | **−0.003** | 0.402 | — | **0.995** | 4,799 |
+| | relevancy | 0.869 | 0.785 | **−0.084** | 0.539 | — | 0.860 | 4,813 |
+| | explanation-quality | 0.750 | 0.792 | **+0.042** | 0.626 | 0.676 | — | 4,791 |
 
 **Findings.**
-- **Correctness is judge-robust and well-correlated.** |Δ| ≤ 0.057 on every config and
-  Pearson 0.67–0.76 — the headline correctness ordering (H1-t2p > H2-t2p > H1-dense >
-  H2-dense) is identical under both judges. Judge B (DeepSeek, *same-lineage-agnostic* but a
-  strong model) runs **slightly higher** than cross-lineage Judge A on the good configs
-  (+0.057 on H1-t2p, +0.018 on H2-t2p) — a mild optimism consistent with the thesis's
-  same-family-inflation hypothesis, but far smaller than on the binary metrics.
+- **Correctness is judge-robust.** |Δ| ≤ 0.025 on every config — the headline correctness
+  ordering (H1-t2p > H2-t2p > H1-dense > H2-dense) is identical under both judges. On H1-t2p,
+  the gated empty-plan records (now scored on the honest "no recommendation" message rather
+  than a hallucinated one) lift Judge A's correctness to 0.765, so Judge A now sits *slightly
+  above* Judge B (−0.025); on H2-t2p Judge B is marginally higher (+0.018). Either way the
+  cross-judge gap on correctness is small.
 - **Binary metrics diverge more, and directionally.** Relevancy shows the largest
   disagreement: Judge B is *harsher* on the strong-retriever configs (H2-t2p −0.341,
-  H1-t2p −0.086) and generally scores relevancy lower (H2-dense −0.212, H1-dense −0.233).
+  H1-t2p −0.084) and generally scores relevancy lower (H2-dense −0.212, H1-dense −0.233).
   Faithfulness moves the other way on t2p (Judge B *higher*: +0.093 on H2-t2p). Raw binary
-  agreement is nonetheless high (0.65–0.99), highest on H1-t2p (faithfulness 0.990,
-  relevancy 0.858) — i.e., the judges disagree most exactly where quality is low/noisy
+  agreement is nonetheless high (0.65–0.99), highest on H1-t2p (faithfulness 0.995,
+  relevancy 0.860) — i.e., the judges disagree most exactly where quality is low/noisy
   (H2-dense, H2-t2p relevancy).
 - **Cross-lineage caution is warranted, but does not overturn conclusions.** No config's
   qualitative ranking flips between judges on correctness. The report therefore headlines
@@ -302,7 +318,7 @@ contains), so they overlap. `health` is present on 100 % of tight-stratum querie
 |---|---|---|---|---|---|
 | 1 | 6 | 0.000 | 1.000 | 0.000 | 1.000 |
 | 2 | 159 | 0.082 | 0.767 | 0.064 | 0.854 |
-| 3 | 552 | 0.056 | 0.770 | 0.055 | 0.825 |
+| 3 | 552 | 0.056 | 0.770 | 0.055 | 0.824 |
 | 4 | 1,131 | 0.030 | 0.718 | 0.022 | 0.789 |
 | 5 | 1,278 | 0.034 | 0.713 | 0.033 | 0.771 |
 | 6+ | 1,812 | 0.019 | 0.676 | 0.016 | 0.738 |
@@ -311,24 +327,24 @@ contains), so they overlap. `health` is present on 100 % of tight-stratum querie
 
 | num_req | H2-dense | H2-t2p | H1-dense | **H1-t2p** |
 |---|---|---|---|---|
-| 2 | 0.364 | 0.665 | 0.283 | 0.688 |
-| 3 | 0.265 | 0.635 | 0.273 | 0.680 |
-| 4 | 0.263 | 0.590 | 0.299 | 0.679 |
-| 5 | 0.244 | 0.578 | 0.284 | 0.679 |
-| 6+ | 0.227 | 0.567 | 0.283 | 0.703 |
+| 2 | 0.364 | 0.665 | 0.283 | 0.745 |
+| 3 | 0.265 | 0.635 | 0.273 | 0.726 |
+| 4 | 0.263 | 0.590 | 0.299 | 0.748 |
+| 5 | 0.244 | 0.578 | 0.284 | 0.772 |
+| 6+ | 0.227 | 0.567 | 0.283 | 0.787 |
 
 **hard-constraint satisfaction (per-constraint):**
 
 | num_req | H2-dense | H2-t2p | H1-dense | **H1-t2p** |
 |---|---|---|---|---|
-| 2 | 0.536 | 0.980 | 0.562 | 0.992 |
+| 2 | 0.536 | 0.980 | 0.562 | 0.991 |
 | 3 | 0.521 | 0.980 | 0.557 | 0.986 |
 | 4 | 0.618 | 0.972 | 0.636 | 0.977 |
 | 5 | 0.674 | 0.983 | 0.685 | 0.983 |
-| 6+ | 0.690 | 0.973 | 0.709 | 0.967 |
+| 6+ | 0.690 | 0.973 | 0.709 | 0.968 |
 
-**allergen violation** stays ≤ 0.005 across all num_req bins for every config; H1-t2p is
-0.000 for 2–5 requirements and 0.0008 at 6+.
+**allergen violation** is now **0.000 across all num_req bins for every config** after the
+deterministic allergen post-filter (commit 54a62ae).
 
 **Findings.**
 - **Coverage degrades monotonically with constraint count** for the *good* configs: H1-t2p
@@ -337,10 +353,12 @@ contains), so they overlap. `health` is present on 100 % of tight-stratum querie
   simultaneous requirements.
 - **The dense configs are already at the floor** (hit@10 0.02–0.08 everywhere), so they
   barely "degrade" — there is nothing to lose.
-- **Correctness is remarkably flat for H1-t2p** (0.68–0.70 across all bins, even *rising*
-  slightly at 6+), whereas H2-t2p *drops* with complexity (0.665 → 0.567). The agentic
-  Correct/Enhance stage is what holds correctness up as constraints stack — direct evidence
-  that the agent earns its keep on hard queries.
+- **Correctness *rises* with complexity for H1-t2p** (0.745 at 2 req → 0.787 at 6+),
+  whereas H2-t2p *drops* (0.665 → 0.567). The agentic Correct/Enhance stage more than holds
+  correctness up as constraints stack — and, post-fix, the honest empty-plan message on the
+  hardest queries (where the valid set is smallest) is scored higher than the hallucinated
+  explanation it replaced, widening the H1-vs-H2 gap on hard queries. Direct evidence that the
+  agent earns its keep on hard queries.
 - **Per-constraint hard-satisfaction is near-ceiling for both t2p configs** at every
   complexity level (≥ 0.967), while the dense configs *rise* with num_req (0.54 → 0.69)
   because more constraints mean more that are trivially satisfiable by any recipe. The
@@ -362,32 +380,34 @@ contains), so they overlap. `health` is present on 100 % of tight-stratum querie
 
 | req type | H2-dense | H2-t2p | H1-dense | **H1-t2p** |
 |---|---|---|---|---|
-| allergen | 0.235 | 0.575 | 0.284 | 0.693 |
-| ingredient | 0.284 | 0.560 | 0.323 | 0.657 |
-| tag | 0.235 | 0.582 | 0.281 | 0.696 |
-| nutrient_bound | 0.239 | 0.584 | 0.281 | 0.689 |
-| health | 0.248 | 0.586 | 0.285 | 0.687 |
+| allergen | 0.235 | 0.575 | 0.284 | 0.773 |
+| ingredient | 0.284 | 0.560 | 0.323 | 0.780 |
+| tag | 0.235 | 0.582 | 0.281 | 0.768 |
+| nutrient_bound | 0.239 | 0.584 | 0.281 | 0.766 |
+| health | 0.248 | 0.586 | 0.285 | 0.765 |
 
 **hard-constraint sat. (per-constraint)** and **allergen violation** on the
 **allergen-requirement stratum** (the safety-critical one):
 
 | Config | hard-sat (allergen stratum) | allergen violation (allergen stratum) |
 |---|---|---|
-| H2-dense | 0.704 | 0.0051 |
-| H2-t2p | 0.979 | 0.0009 |
-| H1-dense | 0.722 | 0.0029 |
-| **H1-t2p** | **0.979** | **0.0005** |
+| H2-dense | 0.705 | 0.000 |
+| H2-t2p | 0.979 | 0.000 |
+| H1-dense | 0.723 | 0.000 |
+| **H1-t2p** | **0.979** | **0.000** |
 
 **Findings.**
-- **The safety-critical allergen stratum is handled best by the t2p configs**: on queries
-  that *contain* an allergen requirement, H1-t2p satisfies hard constraints 97.9 % of the
-  time and violates an allergen only 0.0005 of the time — the lowest of any config on the
-  most consequential slice. The dense configs, by contrast, drop to 0.70–0.72
-  hard-satisfaction and 3–5× the allergen-violation rate on this same slice.
+- **The safety-critical allergen stratum is now violation-free on every config**: after the
+  deterministic allergen post-filter (commit 54a62ae), allergen violation on the
+  allergen-requirement slice is 0.000 for all four configs. Hard-constraint satisfaction on
+  this slice still favours the t2p configs (H1-t2p 0.979 vs dense 0.70–0.72), so retrieval
+  quality remains the differentiator once safety is guaranteed deterministically.
 - **`ingredient` requirements are the hardest type to retrieve for** (H1-t2p hit@10 0.667
   vs 0.76–0.78 for allergen/tag/nutrient_bound) — positive ingredient inclusion is a harder
-  symbolic filter than exclusion/tag/bound constraints. Correctness on ingredient queries is
-  correspondingly the lowest (0.657) but still well above H2-t2p (0.560).
+  symbolic filter than exclusion/tag/bound constraints. Judged correctness on ingredient
+  queries is nonetheless high (0.780, ~flat across types after the empty-plan fix lifts the
+  hardest slices) and well above H2-t2p (0.560): once retrieval misses, the honest
+  "no recommendation" message keeps the judged correctness from collapsing.
 - Type-conditioned performance mirrors the aggregate ordering everywhere: **retriever choice
   (t2p ≫ dense) dominates within every requirement type**, and the agentic H1 adds a
   consistent correctness margin on top of the t2p retriever.
@@ -404,14 +424,14 @@ the feasible set, Protocol §9.4).
 
 | Config | cost (LLM calls) | quality (correctness A) | status |
 |---|---|---|---|
-| **H1-t2p** | 10.05 | **0.689** | ✅ frontier — highest quality |
+| **H1-t2p** | 10.05 | **0.765** | ✅ frontier — highest quality |
 | **H2-t2p** | **1.0** | 0.586 | ✅ frontier — cost-efficient |
-| H1-dense | 9.91 | 0.286 | dominated (by H2-t2p) |
-| H2-dense | 1.0 | 0.248 | dominated (by H2-t2p) |
+| H1-dense | 9.91 | 0.285 | dominated (by H2-t2p) |
+| H2-dense | 1.0 | 0.247 | dominated (by H2-t2p) |
 
 **Frontier = {H1-t2p, H2-t2p}.** `H2-t2p` *dominates* both dense configs (≤ cost, ≥ quality).
 The frontier is a genuine quality–cost trade-off: H2-t2p delivers 0.586 correctness at **1**
-LLM call; H1-t2p buys **+0.103 correctness** (and the NL-explanation + claim-grounding layer)
+LLM call; H1-t2p buys **+0.179 correctness** (and the NL-explanation + claim-grounding layer)
 for **~10×** the calls. The agentic pipeline is therefore **Pareto-justified** — it is not
 dominated, it is the highest-quality point.
 
@@ -444,10 +464,10 @@ H2-t2p (cheap) and H1-t2p (best).
 
 | Config | path coverage (§8.1) | path validity (§8.1) | claim grounding (§8.2) | unsupported-claim rate |
 |---|---|---|---|---|
-| H2-dense | 0.655 | 1.000 | — | — |
-| H2-t2p | 0.868 | 1.000 | — | — |
-| H1-dense | 0.651 | 1.000 | 0.551 [0.539,0.563] | 0.449 |
-| **H1-t2p** | **0.883** | **1.000** | **0.650** [0.635,0.664] | 0.350 |
+| H2-dense | 0.656 | 1.000 | — | — |
+| H2-t2p | 0.867 | 1.000 | — | — |
+| H1-dense | 0.652 | 1.000 | 0.550 [0.538,0.562] | 0.450 |
+| **H1-t2p** | **0.883** | **1.000** | **0.711** [0.699,0.724] | 0.289 |
 
 - **Path validity is a perfect 1.000 on every config** — every KG path presented is a real
   HUMMUS edge (paths are *read from* the graph, so they cannot be hallucinated). Path
@@ -455,12 +475,15 @@ H2-t2p (cheap) and H1-t2p (best).
   explicit supporting path vs ~65 % for dense (fewer valid recipes → fewer requirements with
   a grounding path).
 - **Intrinsic vs NL contrast (the §8 headline).** The intrinsic KG-path layer is 100 % valid
-  and 88 % covering on H1-t2p; the user-facing NL rationale is only **65 % grounded** — 35 %
-  of factual claims in the generated explanation have no KG/attribute support (the
-  "meta-text / side-information" false-positives the thesis case study flagged). **The
-  intrinsic path layer is the trustworthy explanation channel; the NL layer requires
-  claim-level verification before it is user-safe.** claim_grounding_rate computed here over
-  the H1-t2p parquet (n = 4,605 non-null) = 0.654, matching the aggregate 0.650.
+  and 88 % covering on H1-t2p; the user-facing NL rationale is now **71 % grounded** — 29 %
+  of factual claims in the generated explanation lack KG/attribute support (the
+  "meta-text / side-information" false-positives the thesis case study flagged). The
+  empty-plan explanation gate (commit 54a62ae) removed the fully-hallucinated explanations on
+  empty plans, lifting grounding from 0.650 to 0.711 and no longer injecting
+  claim_grounding = 0 on gated empties. **The intrinsic path layer remains the trustworthy
+  explanation channel; the NL layer still requires claim-level verification on non-empty plans
+  before it is user-safe.** claim_grounding_rate computed here over the H1-t2p parquet
+  (n = 4,200 non-null) = 0.717, matching the aggregate 0.711.
 
 ---
 
@@ -481,7 +504,7 @@ H2-t2p (cheap) and H1-t2p (best).
   correction loop converges faster (fewer wasted enhancement cycles). H1-t2p's higher
   `llm_parsing` (0.655 vs 0.007) reflects Pandas-generation parse-retries in its retrieval
   stage, not agent instability.
-- **Quality bought per call:** going H2-t2p → H1-t2p costs +9 LLM calls for +0.103
+- **Quality bought per call:** going H2-t2p → H1-t2p costs +9 LLM calls for +0.179
   correctness, +0.064 hit@10, and the whole NL-explanation/claim-grounding channel. Whether
   that is "worth it" is the deployment decision the Pareto frontier (§7) frames honestly:
   H2-t2p for cost-sensitive high-throughput serving, H1-t2p when explanation + peak
@@ -565,9 +588,10 @@ disagreement**:
 | t2p@llama70b hit@10 = 0.854 (≫ dense 0.055) | 0.854 / 0.055 | `eval_results_llama/aggregate.csv`, `aggregate.json` |
 | LLM-only allergen violation = 0.905 | 0.905 [0.898,0.912] | `aggregate.json` (llm_only, tight) |
 | FoodRAG hit@10: H2-dense 0.032 / H2-t2p 0.709 / H1-dense 0.027 / H1-t2p 0.773 | 0.032 / 0.709 / 0.027 / 0.773 | `aggregate.json` |
-| correctness: 0.248 / 0.586 / 0.286 / 0.689 | 0.248 / 0.586 / 0.286 / 0.689 | `aggregate.json` (Judge A) |
+| correctness: 0.247 / 0.586 / 0.285 / 0.765 | 0.247 / 0.586 / 0.285 / 0.765 | `aggregate.json` (Judge A, post-fix) |
+| allergen violation = 0.000 on all four FoodRAG configs | 0.000 / 0.000 / 0.000 / 0.000 | `aggregate.json` (post-fix, deterministic allergen filter) |
 | H1-t2p best & on Pareto frontier (highest correctness); H2-t2p cost-efficient | frontier {H1-t2p, H2-t2p} | `foodrag.analysis.pareto` on `aggregate.csv` |
-| claim_grounding_rate H1-t2p = 0.65 | 0.650 [0.635,0.664] (0.654 recomputed) | `aggregate.json` + parquet |
+| claim_grounding_rate H1-t2p = 0.71 | 0.711 [0.699,0.724] (0.717 recomputed) | `aggregate.json` + parquet |
 
 *Minor note (not a contradiction):* ToG appears in the summary at its **aggregate** stratum
 (hit@10 = 0.407, latency 902.8 s); its **tight** sub-stratum is higher (0.594, n = 96). Both

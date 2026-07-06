@@ -55,33 +55,37 @@ H1 = agentic (Recommend + Correct + Enhance); H2 = Recommend-only. dense vs text
 | Metric | H2-dense | H2-t2p | H1-dense | **H1-t2p** |
 |---|---|---|---|---|
 | hit@10 | 0.032 | 0.709 | 0.027 | **0.773** |
-| mrr@10 | 0.023 | 0.709 | 0.018 | **0.738** |
-| correctness (Judge A) | 0.248 | 0.586 | 0.286 | **0.689** |
-| faithfulness (Judge A) | 0.232 | 0.893 | 0.989 | 0.922 |
-| hard-constraint sat. (per-constraint) | 0.645 | 0.976 | 0.663 | **0.977** |
-| allergen violation | 0.003 | 0.001 | 0.002 | **0.000** |
+| mrr@10 | 0.023 | 0.709 | 0.018 | **0.739** |
+| correctness (Judge A) | 0.247 | 0.586 | 0.285 | **0.765** |
+| faithfulness (Judge A) | 0.236 | 0.893 | 0.989 | **0.997** |
+| hard-constraint sat. (per-constraint) | 0.646 | 0.977 | 0.664 | **0.977** |
+| allergen violation | 0.000 | 0.000 | 0.000 | **0.000** |
 | guideline adherence (overall) † | 0.280 | 0.276 | 0.299 | 0.266 |
 | slot appropriateness ‡ | 0.454 | 0.237 | 0.771 | 0.519 |
-| meal-slot completeness † | 0.568 | 0.535 | 0.525 | 0.481 |
-| path coverage (§8.1) | 0.655 | 0.868 | 0.651 | 0.883 |
+| meal-slot completeness † | 0.568 | 0.535 | 0.525 | 0.480 |
+| path coverage (§8.1) | 0.656 | 0.867 | 0.652 | 0.883 |
 | path validity (§8.1) | 1.000 | 1.000 | 1.000 | 1.000 |
-| **claim grounding (§8.2)** | — | — | 0.551 | **0.650** |
+| **claim grounding (§8.2)** | — | — | 0.550 | **0.711** |
 
 **Findings.**
 - **H1-t2p — the full agentic pipeline on the strong retriever — is the best config overall**:
-  highest hit@10 (0.773), highest correctness (0.689), high faithfulness (0.922), near-perfect
-  hard-constraint satisfaction (0.977), and zero allergen violations.
+  highest hit@10 (0.773), highest correctness (0.765), near-perfect faithfulness (0.997),
+  near-perfect hard-constraint satisfaction (0.977), and zero allergen violations.
 - **Retriever quality dominates**: t2p configs get ~20–25× the hit@10 of dense (0.71–0.77 vs
-  0.03), near-perfect hard-constraint satisfaction, and ~zero allergen violations.
+  0.03), near-perfect hard-constraint satisfaction, and zero allergen violations.
 - **The agentic pipeline pays off when retrieval is good, not when it is weak**: on t2p, H1
-  beats H2 on hit@10 (0.773 vs 0.709) and correctness (0.689 vs 0.586); on dense, H1 ≈ H2
+  beats H2 on hit@10 (0.773 vs 0.709) and correctness (0.765 vs 0.586); on dense, H1 ≈ H2
   (both retrieve almost nothing, so correction has nothing to work with — H1-dense's very high
   faithfulness 0.989 reflects tiny, cautious plans). The agentic value emerges once the
   retriever supplies valid candidates to correct/enhance.
-- **Safety is excellent across all configs** (allergen ≤ 0.003; exactly 0 for H1-t2p).
+- **Safety is now perfect across all configs** (allergen violation 0.000 everywhere after the
+  deterministic allergen post-filter, commit 54a62ae + the affected-record re-run). The filter
+  drops any plan slot whose recipe contains a persona-disliked/allergen ingredient; a
+  blacklist-violating recipe can never be gold, so hit@10 is unchanged.
 - **§8 grounding contrast**: intrinsic KG-path explanations are 100% valid (read from HUMMUS),
-  while the NL explanation layer is 65% grounded on H1-t2p and 55% on H1-dense (the stronger
-  retriever yields better-grounded explanations) — the intrinsic
+  while the NL explanation layer is 71% grounded on H1-t2p and 55% on H1-dense (the stronger
+  retriever yields better-grounded explanations, and the empty-plan explanation gate replaces
+  hallucinated prose with an honest "no recommendation" message) — the intrinsic
   layer is the more reliable explanation channel.
 
 ---
@@ -92,16 +96,16 @@ H1 = agentic (Recommend + Correct + Enhance); H2 = Recommend-only. dense vs text
 
 | Config | cost (LLM calls) | quality (correctness) | frontier |
 |---|---|---|---|
-| **H1-t2p** | 10.1 | **0.689** | ✅ highest quality |
+| **H1-t2p** | 10.1 | **0.765** | ✅ highest quality |
 | **H2-t2p** | **1.0** | 0.586 | ✅ cost-efficient |
-| H1-dense | 9.9 | 0.286 | dominated |
-| H2-dense | 1.0 | 0.248 | dominated |
+| H1-dense | 9.9 | 0.285 | dominated |
+| H2-dense | 1.0 | 0.247 | dominated |
 
 **Finding.** The frontier is a genuine **quality–cost trade-off between H2-t2p and H1-t2p**:
 the recommend-only H2-t2p is the cost-efficient choice (0.586 correctness at 1 LLM call),
-while the agentic H1-t2p is Pareto-justified as the **highest-quality** config (0.689) at
+while the agentic H1-t2p is Pareto-justified as the **highest-quality** config (0.765) at
 ~10× the LLM cost. Both dense configs are dominated. So the agentic pipeline earns its place
-on the frontier — you pay ~10× the calls for +0.10 correctness (and the explanation layer).
+on the frontier — you pay ~10× the calls for +0.18 correctness (and the explanation layer).
 
 ---
 

@@ -343,7 +343,12 @@ Agent classes and handoffs (`src/foodrag/food_rag/agents/heuristic_agents.py`):
   (EMBEDDING / DOC_2_VEC / BOW_COSINE).
 - **`ExplanationTool`** (`explanation_tools.py:14`). `explain()` writes a concise user-level
   rationale for *why* the plan fits the request (not how it was built) into
-  `MEAL_PLAN_EXPLANATION_KEY`.
+  `MEAL_PLAN_EXPLANATION_KEY`. **Empty-plan gate (commit 54a62ae):** when the recommended plan is
+  empty (all slots `None`), `explain()` short-circuits and returns a fixed `EMPTY_PLAN_MESSAGE`
+  ("No meal plan could be recommended that satisfies the given requirements") with **no LLM call**,
+  instead of letting the Enhance/Explanation agent narrate recipes that were never selected. This
+  removed the fully-hallucinated empty-plan explanations that had dominated the H1-t2p grounding
+  failures (see `docs/ERROR_ANALYSIS.md` §6: ucr=1.0 15.4%→7.3%, faithfulness 0.922→0.997).
 - **`FinalizeRecommendationTool`** (`finalization_tool.py:26`). `finalize()` assembles
   explanation + plan into `FINAL_RECOMMENDATION_KEY`, in `MODE_SIMPLE` (concatenate) or
   `MODE_LLM_REFINED` (LLM reformulation).
@@ -360,6 +365,15 @@ Agent classes and handoffs (`src/foodrag/food_rag/agents/heuristic_agents.py`):
 - **H2 (retrieve-only).** `RagMealPlanAssembler` (`full_pipeline.py:185`) constructs a
   `RecipeRAGQueryEngine(return_meal_plan=True)` and a `MealPlanRecommendationTool(retrieve_only=True)`
   and calls `recommend_meal_plan` once — no agents, no explanation.
+- **Deterministic allergen post-filter (commit 54a62ae).** Both assemblers apply
+  `constraints.enforce_allergen_safety(plan, persona)` (`constraints.py`) to the **final** plan as
+  a hard post-filter (`RagMealPlanAssembler` for H2, `WorkflowMealPlanAssembler` for H1): it drops
+  any meal slot whose recipe's ingredient list intersects the persona's disliked/allergen
+  (blacklisted) set, guaranteeing **zero allergen violations regardless of retrieval or LLM
+  validation**. Because a blacklist-violating recipe can never be the gold answer, only unsafe
+  non-gold slots are removed and hit@10 is unaffected. This eliminated the residual allergen
+  liability across all four FoodRAG configs (allergen_violation → 0.000; see
+  `docs/ERROR_ANALYSIS.md` §4, including the q_01495 green-onion case).
 
 ### 4.5 Why the chain works — the commit-`80b7a03` fix
 
