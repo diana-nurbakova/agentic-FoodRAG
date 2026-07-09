@@ -12,10 +12,17 @@ of doing this on Colab. Two variants:
 This file reproduces a Colab notebook: copy each fenced code block into its own
 Colab cell, in order. Cells marked **[local]** run on your own machine.
 
-> **Why a clone, not `pip install git+…`:** the pFoodReq code uses the vendored
-> `third_party/pfoodreq/` tree (the BAMnet model + `data_builder`), which is *not*
-> part of the installed `foodrag` wheel. We `git clone` and `pip install -e .` so
-> those files are on disk and `settings.repo_root()` resolves to the clone.
+> **Why a clone + `uv`, not `pip install git+…`:** two reasons. (1) The pFoodReq
+> code uses the vendored `third_party/pfoodreq/` tree (the BAMnet model +
+> `data_builder`), which is *not* part of the installed `foodrag` wheel — so the
+> files must be on disk and `settings.repo_root()` must resolve to the clone.
+> (2) The project locks to **Python 3.11** (`uv.lock` → `requires-python == 3.11.*`),
+> but Colab now ships **Python 3.12**, and its 0.12-era llama-index pins don't
+> resolve there — a plain `pip install -e .` fails with `ResolutionImpossible`.
+> Colab has no kernel switcher, so we use **`uv`** to provision a standalone 3.11
+> interpreter, build the exact locked environment, and run the pipeline through it
+> via `uv run` (a small CLI, `scripts/run_pfoodreq_colab.py`) instead of importing
+> `foodrag` into Colab's 3.12 kernel.
 
 ---
 
@@ -44,32 +51,31 @@ print("CUDA:", torch.cuda.is_available(), "|", torch.cuda.get_device_name(0) if 
 # Expected: CUDA: True | Tesla T4   (if False, set Runtime -> T4 GPU)
 ```
 
-## Cell 2 — clone the repo and install it (editable)
+## Cell 2 — clone the repo and build the locked 3.11 env (uv)
 
-Editable install keeps `third_party/pfoodreq/` on disk and `repo_root()` pointing
-at the clone. Pulls foodrag's deps (incl. `rapidfuzz`); takes a few minutes.
+`uv sync --python 3.11 --frozen` downloads a standalone CPython 3.11, then builds
+the exact environment from `uv.lock` into `.venv` — no dependency-resolution
+fighting, and CUDA-enabled torch still comes from PyPI so the GPU is used. Takes a
+few minutes. Everything after this runs through `uv run` (which auto-selects
+`.venv`), not Colab's own Python.
 
 ```python
 import os
 !git clone --branch refactor/uv-loader https://github.com/diana-nurbakova/agentic-FoodRAG.git /content/foodrag
 os.chdir('/content/foodrag')
-!pip install -q -e .
-import foodrag  # noqa
-print("foodrag installed from", foodrag.__file__)
+!pip install -q uv
+!uv sync --python 3.11 --frozen
+# sanity: the env is 3.11 and can import foodrag + torch sees the GPU
+!uv run python -c "import sys, foodrag, torch; print('py', sys.version.split()[0], '| foodrag', foodrag.__file__, '| cuda', torch.cuda.is_available())"
 ```
 
-## Cell 3 — NLTK tokenizer data
+## Cell 3 — NLTK tokenizer data (into the uv env)
 
-`build_all_data` tokenizes with `nltk.word_tokenize` (the faithful path).
+`build_all_data` tokenizes with `nltk.word_tokenize` (the faithful path). Download
+through `uv run` so the data lands where the 3.11 env's `nltk` looks for it.
 
 ```python
-import nltk
-for pkg in ("punkt", "punkt_tab"):
-    try:
-        nltk.download(pkg, quiet=True)
-    except Exception:
-        pass
-print("nltk ready")
+!uv run python -c "import nltk; [nltk.download(p, quiet=True) for p in ('punkt','punkt_tab')]; print('nltk ready')"
 ```
 
 ## Cell 4 — mount Drive and stage inputs
@@ -84,8 +90,9 @@ shutil.copy('/content/drive/MyDrive/foodrag/recipes_df.csv',
             '/content/foodrag/data/hummus/recipes_df.csv')
 # optional: a QA pickle to derive the tight-stratum recipe filter
 QA_PKL = '/content/drive/MyDrive/foodrag/recipe_question_answer_set.pkl'
-# WORK on Drive so checkpoints (KBQA, vectors, partial embeddings) survive a
-# disconnect — re-running a cell then only does the remaining work.
+# Work on Drive so checkpoints (KBQA, vectors, partial embeddings, the trained
+# model) survive a disconnect — re-running a cell then only does the remaining
+# work.
 WORK = '/content/drive/MyDrive/foodrag/work'
 os.makedirs(WORK, exist_ok=True)
 print("recipes staged:",
@@ -93,39 +100,23 @@ print("recipes staged:",
       "| QA pkl present:", os.path.exists(QA_PKL), "| WORK:", WORK)
 ```
 
-## Cell 5 — load recipes + choose the recipe subset (bound the fan-out)
+## Recipe subset (how the fan-out is bounded)
 
 The tag-rooted KB duplicates each recipe under every tag, so a full-corpus run is
-infeasible (see `specs/pFoodReq_Adaptation.md`). Bound to the **tight stratum** if
-a QA pkl is available, else take a sample.
+infeasible (see `specs/pFoodReq_Adaptation.md`). The runner bounds it for you:
 
-```python
-import os, pickle
-from foodrag.baselines.runner import load_recipes_df
-from foodrag.baselines.base import answer_set_stratum
+- pass **`--qa-pkl {QA_PKL}`** to restrict to the **tight stratum** (1–50 valid
+  answers) when a QA pickle is on Drive, or
+- omit it to fall back to a **`--sample`** of recipes (default 3000; raise for a
+  bigger run).
 
-recipes_df = load_recipes_df('/content/foodrag/data/hummus/recipes_df.csv')
-print("recipes:", len(recipes_df))
+Both variant cells below already wire this up.
 
-recipe_filter = None
-if os.path.exists(QA_PKL):
-    qa = pickle.load(open(QA_PKL, 'rb'))
-    recipe_filter = set()
-    for it in qa:
-        ans = it.get('answer') or []
-        if answer_set_stratum(len(ans)) == 'tight':
-            recipe_filter.update(ans)
-    print("tight-stratum recipe_filter:", len(recipe_filter), "recipes")
-else:
-    # no QA pkl -> sample (smoke-sized); raise for a bigger run
-    recipes_df = recipes_df.sample(3000, random_state=0)
-    print("no QA pkl -> sampled", len(recipes_df), "recipes")
-```
+## Cell 5A — variant `pfoodreq` (faithful, GloVe 840B)
 
-## Cell 6A — variant `pfoodreq` (faithful, GloVe 840B)
-
-Downloads GloVe 840B.300d (~2 GB zip → ~5.6 GB txt) and runs the full pipeline on
-the GPU. `build_all_data` is CPU/numpy (the slow stage); training uses CUDA.
+Downloads GloVe 840B.300d (~2 GB zip → ~5.6 GB txt), then runs the full pipeline
+through the 3.11 env. `build_all_data` is CPU/numpy (the slow stage); training
+uses CUDA (`--cuda`).
 
 ```python
 import os
@@ -134,62 +125,50 @@ if not os.path.exists('/content/glove.840B.300d.txt'):
     !unzip -o -q /content/glove.zip -d /content/
 print("glove ready:", os.path.getsize('/content/glove.840B.300d.txt') // 2**20, "MB")
 
-from foodrag.baselines.pfoodreq import run_pfoodreq
-res_glove = run_pfoodreq.run(
-    recipes_df, '/content/work/pfoodreq',
-    recipe_filter=recipe_filter,         # None -> use all of recipes_df
-    max_dishes_per_tag=500,
-    num_epochs=50,
-    glove_path='/content/glove.840B.300d.txt',
-    no_cuda=False,                       # use the GPU
-)
-print("VARIANT:", res_glove["variant"], "| KBQA:", res_glove["kbqa_counts"])
-print("metrics:", {k: round(v, 4) for k, v in res_glove["metrics"].items() if isinstance(v, float)})
+!uv run python scripts/run_pfoodreq_colab.py \
+    --recipes data/hummus/recipes_df.csv \
+    --work-dir /content/drive/MyDrive/foodrag/work/pfoodreq \
+    --variant glove --glove-path /content/glove.840B.300d.txt \
+    --qa-pkl {QA_PKL} \
+    --max-dishes-per-tag 500 --num-epochs 50 --cuda \
+    --metrics-out /content/drive/MyDrive/foodrag/pfoodreq/pfoodreq.metrics.json
 ```
 
-## Cell 6B — variant `pfoodreq_modernemb` (ablation, modern embedding)
+## Cell 5B — variant `pfoodreq_modernemb` (ablation, modern embedding)
 
-Same pipeline; only the embedding matrix changes. Uses a local sentence-transformer
-on the GPU as the embedder, so OOV is 0 by construction (§5.8.1).
+Same pipeline; only the embedding matrix changes. The runner loads a local
+sentence-transformer (`--embed-model`, default `BAAI/bge-m3`) on the GPU as the
+embedder, so OOV is 0 by construction (§5.8.1).
 
 ```python
-from sentence_transformers import SentenceTransformer
-st = SentenceTransformer('BAAI/bge-m3', device='cuda')
-
-def embed_fn(words):
-    # returns one vector per vocab word (static per-word table for BAMnet)
-    return st.encode(list(words), batch_size=128, show_progress_bar=False)
-
-from foodrag.baselines.pfoodreq import run_pfoodreq
-res_modern = run_pfoodreq.run(
-    recipes_df, '/content/work/pfoodreq_modernemb',
-    recipe_filter=recipe_filter,
-    max_dishes_per_tag=500,
-    num_epochs=50,
-    embed_fn=embed_fn,                   # modern embedding instead of glove_path
-    no_cuda=False,
-)
-print("VARIANT:", res_modern["variant"], "| KBQA:", res_modern["kbqa_counts"])
-print("metrics:", {k: round(v, 4) for k, v in res_modern["metrics"].items() if isinstance(v, float)})
+!uv run python scripts/run_pfoodreq_colab.py \
+    --recipes data/hummus/recipes_df.csv \
+    --work-dir /content/drive/MyDrive/foodrag/work/pfoodreq_modernemb \
+    --variant modernemb --embed-model BAAI/bge-m3 \
+    --qa-pkl {QA_PKL} \
+    --max-dishes-per-tag 500 --num-epochs 50 --cuda \
+    --metrics-out /content/drive/MyDrive/foodrag/pfoodreq/pfoodreq_modernemb.metrics.json
 ```
 
-## Cell 7 — save models + metrics back to Drive
+## Cell 6 — combined summary
+
+Both variants already wrote their model (`.../work/<variant>/model/bamnet.model`)
+and a metrics JSON to Drive (`--metrics-out` + Drive `--work-dir`), so nothing is
+lost on a disconnect. This just merges the two metrics files for a side-by-side
+read.
 
 ```python
-import json, shutil, os
-os.makedirs('/content/drive/MyDrive/foodrag/pfoodreq', exist_ok=True)
+import json, os
+base = '/content/drive/MyDrive/foodrag/pfoodreq'
 out = {}
-for name, work in [("pfoodreq", "/content/work/pfoodreq"),
-                   ("pfoodreq_modernemb", "/content/work/pfoodreq_modernemb")]:
-    model = os.path.join(work, "model", "bamnet.model")
-    if os.path.exists(model):
-        shutil.copy(model, f'/content/drive/MyDrive/foodrag/pfoodreq/{name}.model')
-for name, res in [("pfoodreq", locals().get("res_glove")),
-                  ("pfoodreq_modernemb", locals().get("res_modern"))]:
-    if res:
-        out[name] = {"kbqa_counts": res["kbqa_counts"], "metrics": res["metrics"]}
-json.dump(out, open('/content/drive/MyDrive/foodrag/pfoodreq/metrics.json', 'w'), indent=2)
-print("saved models + metrics.json to Drive:", out)
+for name in ("pfoodreq", "pfoodreq_modernemb"):
+    path = os.path.join(base, f"{name}.metrics.json")
+    if os.path.exists(path):
+        out[name] = json.load(open(path))
+json.dump(out, open(os.path.join(base, "metrics.json"), "w"), indent=2)
+for name, res in out.items():
+    m = {k: round(v, 4) for k, v in res.get("metrics", {}).items() if isinstance(v, float)}
+    print(name, "| KBQA:", res.get("kbqa_counts"), "| metrics:", m)
 ```
 
 ---
@@ -201,30 +180,31 @@ print("saved models + metrics.json to Drive:", out)
   not the FoodRAG QA set. Report `pfoodreq` vs `pfoodreq_modernemb` side by side,
   and read both against the GloVe OOV number (`pfoodreq.glove_oov`) so a gap is
   attributable to *method* vs *embedding coverage*.
-- **Faithful GloVe hit ratio:** Cell 6A prints `build_pretrained_w2v`'s
-  "Pretrained word embeddings hit ratio" — this is the authoritative 840B coverage
-  of the built vocab (the headline OOV figure for the paper).
+- **Faithful GloVe hit ratio:** Cell 5A prints `build_pretrained_w2v`'s
+  "Pretrained word embeddings hit ratio" (forwarded from the `uv run` subprocess) —
+  this is the authoritative 840B coverage of the built vocab (the headline OOV
+  figure for the paper).
 - **Scope / runtime:** `build_all_data` is the slow stage (CPU/numpy; ~minutes and
-  scales with KBQA size — bound it with `recipe_filter`/`max_dishes_per_tag`).
+  scales with KBQA size — bound it with `--qa-pkl`/`--max-dishes-per-tag`).
   Training then runs on the GPU. Start with the tight stratum; widen only if time
   allows. The free Colab session caps ~12 h and disconnects when idle.
-- **Resumable (re-run-safe):** `run_pfoodreq.run(..., resume=True)` (the default)
-  is re-entrant — if the session drops, just re-run the same cell against the same
-  `work_dir`. Completed stages are skipped: KBQA generation and vectorisation are
-  reused when their outputs exist, and the modern-embedding file is built
-  word-by-word and flushed per batch, so a re-run **only embeds the remaining
-  vocab** rather than starting over. (To force a clean rebuild, delete `work_dir`
-  or pass `resume=False`.) Keep `work_dir` on Drive — e.g.
-  `/content/drive/MyDrive/foodrag/work/pfoodreq` — so checkpoints survive a
+- **Resumable (re-run-safe):** the runner passes `resume=True` — it is re-entrant.
+  If the session drops, just re-run the same cell against the same `--work-dir`.
+  Completed stages are skipped: KBQA generation and vectorisation are reused when
+  their outputs exist, and the modern-embedding file is built word-by-word and
+  flushed per batch, so a re-run **only embeds the remaining vocab** rather than
+  starting over. (To force a clean rebuild, delete the work dir or add
+  `--no-resume`.) The `--work-dir` above is on Drive, so checkpoints survive a
   disconnect.
 - **Determinism / faithfulness:** the vendored BAMnet is unchanged except three
   documented torch-2.x / PyYAML / rapidfuzz compat patches (see
   `third_party/pfoodreq/NOTICE.md`). The embedding difference (GloVe vs modern) is
   a deliberate between-method variable, not a confound.
-- **Local equivalent (no GPU):** the same call runs locally on CPU —
-  `run_pfoodreq.run(recipes_df, work_dir, glove_path=..., no_cuda=True)` — just
-  slowly. Everything except training/eval (data build, KB, vectorize) is CPU-only
-  regardless.
-- **Ablation embedder:** any model works as `embed_fn` as long as it returns one
-  fixed-length vector per word; `BAAI/bge-m3` (1024-d) matches FoodRAG's own
+- **Local equivalent (no GPU):** the same runner works locally on CPU — drop
+  `--cuda` (CPU is the default) — just slowly. Everything except training/eval
+  (data build, KB, vectorize) is CPU-only regardless. Locally you can also call
+  `run_pfoodreq.run(recipes_df, work_dir, glove_path=..., no_cuda=True)` directly.
+- **Ablation embedder:** any model works as `--embed-model` as long as it returns
+  one fixed-length vector per word; `BAAI/bge-m3` (1024-d) matches FoodRAG's own
   embedding family, making the contrast against GloVe most meaningful.
+```
