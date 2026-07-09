@@ -36,6 +36,37 @@ QUERY_AUGMENTATION_TEMPLATE = PromptTemplate(
     'Original Question: {question}\n\n'
     'Meal Plan Questions:')
 
+# Full-day variant: request a meal-plan question for EVERY meal type (breakfast,
+# lunch, dinner, snack) irrespective of the current time. Used when the tool is
+# constructed with ``full_day=True`` so the pipeline produces a complete 4-slot plan
+# instead of only the meals "relevant to the current time".
+FULL_DAY_QUERY_AUGMENTATION_TEMPLATE = PromptTemplate(
+    'Split the given question into multiple meal-plan questions covering a FULL DAY:\n\n'
+    '- Generate a meal-plan question for EVERY meal type: '
+    + ', '.join([f'"{mt}"' for mt in MealType.get_all_str()]) +
+    ' — exactly one question per meal type, one per meal type.\n'
+    '- Keep all information from the original question in the meal plan.\n'
+    '- Distribute the user\'s whitelist requirements (things the user likes or asks for) '
+    'across the meal-type questions.\n'
+    '- If mentioned, assign whitelist requirements to the respective meal type, otherwise '
+    'distribute them across one or multiple meal type questions to balance the meal plan.\n'
+    '- Optionally, you can assign your own whitelist requirements to any meal type question '
+    'to balance the meal plan.\n'
+    '- You MUST keep all blacklist requirements (things the user dislikes) in EVERY meal-plan question.\n'
+    '- All (blacklist and whitelist) requirements are directly given in the original question.\n'
+    '- Each question should be for a single meal type and be compact, only containing for the '
+    'retrieval necessary information.\n'
+    '- Preserve all nutritional and dietary requirements.\n'
+    '- Use only these meal types: ' + ', '.join([f'"{mt}"' for mt in MealType.get_all_str()]) + '.\n'
+    '- IGNORE the current time: include ALL FOUR meal types regardless of the time of day.\n'
+    '- Optionally, tailor the meal types to the season given by the date: {date}.\n'
+    '- Return the output as a JSON object with meal types as keys and questions as values. For example:\n'
+    '```json\n{"breakfast": "Question 1", "lunch": "Question 2", "dinner": "Question 3", '
+    '"snack": "Question 4"}\n```\n\n'
+    'Current date and time: {date}, {time} (ignore the time; still include all four meal types)\n'
+    'Original Question: {question}\n\n'
+    'Meal Plan Questions:')
+
 
 class MealPlanRecommendationTool(RecipeToolBase):
     """
@@ -46,7 +77,8 @@ class MealPlanRecommendationTool(RecipeToolBase):
     TOOL_NAME_RETRIEVE_ONLY = "meal_plan_alternatives_tool"
 
     def __init__(self, llm: LLM, recipe_query_engine: RecipeRAGQueryEngine, retrieve_only=False,
-                 query_augmentation_template: PromptTemplate = None, time: str = None, date: str = None, verbose=True):
+                 query_augmentation_template: PromptTemplate = None, time: str = None, date: str = None,
+                 full_day: bool = False, verbose=True):
         """
         Initialize the MealPlanRecommendationTool.
 
@@ -55,11 +87,15 @@ class MealPlanRecommendationTool(RecipeToolBase):
         :param bool retrieve_only: Whether to only retrieve the recipes directly from the by the query engine used
          retriever, or to use the whole query engine. Defaults to False which uses the whole query engine.
         :param PromptTemplate query_augmentation_template: Template for generating meal plans. Defaults to the
-        QUERY_AUGMENTATION_TEMPLATE.
+        QUERY_AUGMENTATION_TEMPLATE (or FULL_DAY_QUERY_AUGMENTATION_TEMPLATE when ``full_day`` is True).
         :param str time: The time of day for the recommendation (e.g., "morning", "noon", "evening", "12am" , "10:20",
         ...). If None, "now", or "current" it is automatically set to the current time during query execution.
         :param str date: The date for the recommendation (e.g., "today", "tomorrow", "2023-10-01", ...). If None, it is
         automatically set to the current date during query execution.
+        :param bool full_day: When True, reformulate the query into a meal-plan question for ALL FOUR meal types
+        (breakfast, lunch, dinner, snack) regardless of the current time, producing a complete 4-slot meal plan.
+        Defaults to False (time-aware partial-day plan). Ignored when an explicit ``query_augmentation_template`` is
+        given.
 
         :param bool verbose: Whether to print details of the generation process.
         """
@@ -71,7 +107,13 @@ class MealPlanRecommendationTool(RecipeToolBase):
         self.recipe_query_engine = recipe_query_engine
         self.json_extractor_tool = JsonExtractorTool(llm=recipe_query_engine.llm, verbose=verbose)
         self.retrieve_only = retrieve_only
-        self.query_augmentation_template = query_augmentation_template or QUERY_AUGMENTATION_TEMPLATE
+        self.full_day = full_day
+        if query_augmentation_template is not None:
+            self.query_augmentation_template = query_augmentation_template
+        elif full_day:
+            self.query_augmentation_template = FULL_DAY_QUERY_AUGMENTATION_TEMPLATE
+        else:
+            self.query_augmentation_template = QUERY_AUGMENTATION_TEMPLATE
         self.time = time
         self.date = date
 

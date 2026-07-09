@@ -141,18 +141,24 @@ class RecommendationAgent(FunctionAgent):
             can_handoff_to: Optional[List[str]] = None,
             time: Optional[str] = "now",
             date: Optional[str] = "today",
+            full_day: bool = False,
             **kwargs
     ):
         """``time``/``date`` are forwarded to the meal-plan recommendation tool so the
         live H1 workflow can pin (or default to "now"/"today") the recommendation time.
-        Whatever is resolved is captured into RecipeState and persisted per record."""
+        Whatever is resolved is captured into RecipeState and persisted per record.
+
+        ``full_day`` (default False) is forwarded to the meal-plan recommendation tool so
+        the H1 chain requests ALL FOUR meal types (breakfast/lunch/dinner/snack) — a full
+        4-slot plan — instead of only the meals relevant to the current time."""
         llm = llm or Settings.llm
 
         if tools is None:
             # Provide any default tools needed for meal-plan or recipe recommendations
             tools = [
                 meal_plan_tools.MealPlanRecommendationTool(
-                    llm=llm, recipe_query_engine=query_engine, retrieve_only=True, time=time, date=date
+                    llm=llm, recipe_query_engine=query_engine, retrieve_only=True, time=time, date=date,
+                    full_day=full_day
                 ).to_tool(),
             ]
 

@@ -196,7 +196,7 @@ class RagMealPlanAssembler(MealPlanAssembler):
                  retrieve_only: bool = True, k: int = 5, llm_calls: int = 1,
                  ranking_strategy: Optional[str] = "rating", time: Optional[str] = "now",
                  date: Optional[str] = "today", require_explanation: bool = False,
-                 verbose: bool = False):
+                 full_day: bool = False, verbose: bool = False):
         self.retriever = retriever
         self.llm = llm
         self.config_id = config_id
@@ -207,6 +207,8 @@ class RagMealPlanAssembler(MealPlanAssembler):
         self.time = time
         self.date = date
         self.require_explanation = require_explanation
+        # When True the meal-plan tool requests ALL FOUR meal types (full-day plan).
+        self.full_day = full_day
         self.verbose = verbose
 
     def assemble(self, qa_item: dict) -> AssembledPlan:
@@ -224,7 +226,7 @@ class RagMealPlanAssembler(MealPlanAssembler):
             k=self.k, llm_calls=self.llm_calls, return_meal_plan=True)
         tool = MealPlanRecommendationTool(
             llm=self.llm, recipe_query_engine=query_engine, retrieve_only=self.retrieve_only,
-            time=self.time, date=self.date, verbose=self.verbose)
+            time=self.time, date=self.date, full_day=self.full_day, verbose=self.verbose)
 
         ctx = get_dummy_state().get_context()
         start = time.perf_counter()
@@ -330,12 +332,16 @@ class WorkflowMealPlanAssembler(MealPlanAssembler):
 
     def __init__(self, agent_workflow, retriever, *, config_id: str,
                  memory: Any = None, query_field: str = "question",
-                 run_workflow=None):
+                 full_day: bool = False, run_workflow=None):
         self.agent_workflow = agent_workflow
         self.retriever = retriever
         self.config_id = config_id
         self.memory = memory
         self.query_field = query_field
+        # Informational: the workflow (and its RecommendationAgent's meal-plan tool) is
+        # built by the caller — pass ``full_day`` into build_heuristic_workflow_builder so
+        # the H1 chain requests all four meal types. Recorded here for provenance.
+        self.full_day = full_day
         self._run_workflow = run_workflow or _default_workflow_run
 
     def assemble(self, qa_item: dict) -> AssembledPlan:

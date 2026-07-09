@@ -23,7 +23,8 @@ from typing import Any, Callable
 
 
 def build_heuristic_workflow_builder(*, llm: Any, hummus_data: Any, recipes_df: Any,
-                                     time: Any = "now", date: Any = "today") -> Callable:
+                                     time: Any = "now", date: Any = "today",
+                                     full_day: bool = False) -> Callable:
     """Return a ``workflow_builder(query_engine, retriever) -> AgentWorkflow`` that
     assembles the standard Heuristic-1 five-agent chain.
 
@@ -35,6 +36,10 @@ def build_heuristic_workflow_builder(*, llm: Any, hummus_data: Any, recipes_df: 
     the live H1 workflow's recommendation time is configurable (default "now"/"today").
     The resolved value is captured into RecipeState and persisted per record, so runs
     stay reproducible (pin ``time`` to a fixed value, e.g. "00:01", for full determinism).
+
+    ``full_day`` (default False) is forwarded to the RecommendationAgent's meal-plan tool
+    so the H1 chain requests ALL FOUR meal types (a complete 4-slot plan) regardless of
+    the current time.
     """
 
     def _builder(query_engine, retriever):
@@ -46,7 +51,7 @@ def build_heuristic_workflow_builder(*, llm: Any, hummus_data: Any, recipes_df: 
         from foodrag.food_rag.utils.recipe_context import RecipeState
 
         recommendation_agent = RecommendationAgent(query_engine=query_engine, llm=llm,
-                                                   time=time, date=date)
+                                                   time=time, date=date, full_day=full_day)
         validation_agent = ValidationAgent(llm=llm, query_engine=query_engine, recipe_df=recipes_df)
         substitution_agent = SubstitutionAgent(llm=llm)
         explanation_agent = ExplanationAgent(llm=llm, hummus_data=hummus_data)
