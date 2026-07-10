@@ -1,0 +1,167 @@
+{
+  "_note": "Editable copy for the Report tab (Flow C). Titles/descriptions/label maps live here so they can be updated without code changes (spec: FoodRAG_Report_Tab_Modifications §3.2, §6). Numbers in prose are grounded in eval_results/RESULTS_SUMMARY.md; the stat values themselves are read live from aggregate.csv.",
+
+  "judges": {
+    "judgeA": "Gemma-3-27B",
+    "judgeB": "DeepSeek-V3"
+  },
+
+  "experiments": {
+    "EXP-ret-tight": {
+      "title": "Retriever comparison — which retrieval method finds valid recipes",
+      "sub": "EXP-1 · retrieval-only (Use-1)",
+      "desc": "Compares retrieval methods on their ability to surface constraint-valid recipes for a persona (tight stratum, n=1,646). Headline: lightweight symbolic retrieval (Text→Pandas) reaches hit@10 ≈ 0.43 with a GPT-4o-mini backbone and ≈ 0.85 with Llama-70B — about 8–15× the best embedding retriever (dense 0.055) — at a fraction of the cost of agentic graph traversal."
+    },
+    "EXP-7": {
+      "title": "Full system matrix + baselines — FoodRAG vs the baseline ladder",
+      "sub": "EXP-7 · system + baselines (Use-2)",
+      "desc": "FoodRAG's four system configurations (H1 agentic / H2 recommend-only × dense / Text→Pandas) against the baseline ladder (popularity, LLM-only, naive-RAG, ToG). Headline: an unconstrained LLM violates a hard allergen constraint 90.5% of the time; FoodRAG's deterministic safety filter drives allergen violations to 0.000 across all configs, and the agentic H1-t2p is the best config overall (correctness 0.765)."
+    },
+    "EXP-5": {
+      "title": "Knowledge-graph retrieval — feasibility on the tight stratum",
+      "sub": "EXP-5 · KG traversal",
+      "desc": "Real knowledge-graph retrieval run, tight stratum only (n=12, small_1). Broad-stratum KG retrieval is infeasible without precomputation (Protocol §5.5). Framed as a feasibility demonstration, not a retriever bake-off."
+    },
+    "EXP-10k": {
+      "title": "Popularity baselines — the popularity-bias reference",
+      "sub": "EXP-10k · popularity ladder",
+      "desc": "Popularity-sorted baselines across answer-set strata. Health-aware popularity (0b) pre-filters to the constraint-valid set before ranking, so it trivially hits — a reference ceiling that 'knows the answer key', not a competitor. Raw popularity shows the popularity-bias story: high relevance, low health."
+    },
+    "EXP-10k-tight": {
+      "title": "LLM-only & naive-RAG baselines (tight stratum)",
+      "sub": "EXP-10k · grounding baselines",
+      "desc": "The core justification for retrieval/grounding: an unconstrained LLM-only baseline invents recipes that break a hard allergen constraint 90.5% of the time. Naive-RAG grounds the answer and collapses that to <1%."
+    },
+    "EXP-10k-tog": {
+      "title": "ToG — agentic knowledge-graph traversal baseline",
+      "sub": "EXP-10k · ToG",
+      "desc": "Think-on-Graph agentic KG traversal. Competent (hit@10 ≈ 0.41) but ~903 s/item — heavy agentic traversal buys less than Text→Pandas at ~50× the cost."
+    }
+  },
+
+  "marquee": [
+    {
+      "label": "Text→Pandas retrieval",
+      "experiment": "EXP-7", "config": "foodrag_h1_t2p", "metric": "hit_at_10", "stratum": "aggregate",
+      "fmt": "ratio", "tone": "good",
+      "note": "hit@10 on the strong retriever — ~28× the dense embedding config (0.027)"
+    },
+    {
+      "label": "LLM-only allergen violation",
+      "experiment": "EXP-10k-tight", "config": "llm_only", "metric": "allergen_violation", "stratum": "aggregate",
+      "fmt": "pct", "tone": "bad",
+      "note": "an unconstrained LLM breaks a hard allergen constraint ~9 times in 10"
+    },
+    {
+      "label": "FoodRAG allergen violation",
+      "experiment": "EXP-7", "config": "foodrag_h1_t2p", "metric": "allergen_violation", "stratum": "aggregate",
+      "fmt": "pct", "tone": "good",
+      "note": "deterministic post-filter → zero across every FoodRAG config"
+    },
+    {
+      "label": "H1-t2p correctness",
+      "experiment": "EXP-7", "config": "foodrag_h1_t2p", "metric": "correctness_judgeA", "stratum": "aggregate",
+      "fmt": "ratio", "tone": "good",
+      "note": "best config overall (Judge A · Gemma-3-27B)"
+    }
+  ],
+
+  "reference_ceilings": {
+    "popularity_health_aware": "reference ceiling (knows valid set) — not a competitor",
+    "tog": "heavy agentic KG traversal — ~903 s/item"
+  },
+
+  "config_labels": {
+    "ret_dense": "Dense (embeddings)",
+    "ret_sparse": "Sparse (BM25)",
+    "ret_hybrid": "Hybrid (RRF)",
+    "ret_fulltext": "Full-text",
+    "ret_intersection": "Intersection",
+    "ret_random": "Random",
+    "ret_majority": "Majority",
+    "ret_fusion": "Fusion (3-way)",
+    "ret_text2pandas@gpt4o-mini": "Text→Pandas (GPT-4o-mini)",
+    "ret_text2pandas@llama70b": "Text→Pandas (Llama-70B)",
+    "foodrag_h1_dense": "H1 Agentic · Dense",
+    "foodrag_h1_t2p": "H1 Agentic · Text→Pandas",
+    "foodrag_h2": "H2 Recommend-only · Dense",
+    "foodrag_h2_t2p": "H2 Recommend-only · Text→Pandas",
+    "foodrag_h2_fullday": "H2 Recommend-only · Dense (full-day)",
+    "foodrag_h2_t2p_fullday": "H2 Recommend-only · Text→Pandas (full-day)",
+    "popularity_raw": "Popularity (raw)",
+    "popularity_health_aware": "Popularity (health-aware ref.)",
+    "llm_only": "LLM-only (no retrieval)",
+    "naive_rag": "Naive RAG",
+    "tog": "ToG (agentic KG)",
+    "kg_text_to_cypher": "KG (Text→Cypher)",
+    "dense": "Dense",
+    "sparse": "Sparse (BM25)",
+    "hybrid": "Hybrid",
+    "text-to-pandas": "Text→Pandas",
+    "fusion": "Fusion (3-way)",
+    "rag": "Plain RAG",
+    "heuristic_1": "Heuristic 1 (full agentic)",
+    "heuristic_2": "Heuristic 2 (recommend only)"
+  },
+
+  "metric_labels": {
+    "hit_at_10": "Hit@10",
+    "mrr_at_10": "MRR@10",
+    "ndcg_at_10": "nDCG@10",
+    "avg_nutri_at_10": "Avg NutriScore@10",
+    "avg_fsa_at_10": "Avg FSA@10",
+    "avg_rating_at_10": "Avg rating@10",
+    "allergen_violation": "Allergen violation ↓",
+    "hard_constraint_violation": "Hard-constraint violation ↓",
+    "hard_constraint_sat_perconstraint": "Hard-constraint sat. (per-constraint)",
+    "hard_constraint_sat_allornothing": "Hard-constraint sat. (all-or-nothing)",
+    "soft_constraint_sat": "Soft-constraint satisfaction",
+    "constraint_satisfaction": "Constraint satisfaction",
+    "hallucination_rate": "Hallucination rate ↓",
+    "correctness": "Correctness",
+    "faithfulness": "Faithfulness",
+    "relevancy": "Relevancy",
+    "explanation_quality": "Explanation quality",
+    "correctness_judgeA": "Correctness (Gemma-3-27B)",
+    "correctness_judgeB": "Correctness (DeepSeek-V3)",
+    "faithfulness_judgeA": "Faithfulness (Gemma-3-27B)",
+    "faithfulness_judgeB": "Faithfulness (DeepSeek-V3)",
+    "relevancy_judgeA": "Relevancy (Gemma-3-27B)",
+    "relevancy_judgeB": "Relevancy (DeepSeek-V3)",
+    "explanation_quality_judgeA": "Explanation quality (Gemma-3-27B)",
+    "explanation_quality_judgeB": "Explanation quality (DeepSeek-V3)",
+    "structural_validity": "Structural validity",
+    "intra_plan_diversity": "Intra-plan diversity",
+    "calorie_adherence": "Calorie adherence",
+    "meal_slot_completeness": "Meal-slot completeness",
+    "slot_appropriateness": "Slot appropriateness",
+    "guideline_adherence_overall": "Guideline adherence (overall)",
+    "claim_grounding_rate": "Claim grounding (§8.2)",
+    "unsupported_claim_rate": "Unsupported claim rate ↓",
+    "path_coverage": "Path coverage (§8.1)",
+    "path_validity": "Path validity (§8.1)",
+    "structural_validity_norm": "Structural validity (slot-norm)",
+    "meal_slot_completeness_norm": "Meal-slot completeness (slot-norm)",
+    "guideline_adherence_norm": "Guideline adherence (slot-norm)",
+    "calorie_adherence_norm": "Calorie adherence (slot-norm)",
+    "intra_plan_diversity_norm": "Intra-plan diversity (slot-norm)",
+    "structural_validity_full": "Structural validity (full-day)",
+    "meal_slot_completeness_full": "Meal-slot completeness (full-day)",
+    "guideline_adherence_full": "Guideline adherence (full-day)",
+    "calorie_adherence_full": "Calorie adherence (full-day)",
+    "llm_usage": "LLM calls",
+    "llm_seq_usage": "LLM calls (sequential)",
+    "llm_parsing": "LLM parsing calls",
+    "latency_s": "Latency (s)",
+    "n_requested_slots": "Requested slots",
+    "requested_day_energy_share": "Requested-day energy share",
+    "guideline_adherence_norm_energy": "Guideline · energy (slot-norm)",
+    "guideline_adherence_norm_protein": "Guideline · protein (slot-norm)",
+    "guideline_adherence_norm_carb": "Guideline · carb (slot-norm)",
+    "guideline_adherence_norm_fat": "Guideline · fat (slot-norm)",
+    "guideline_adherence_norm_satfat": "Guideline · sat. fat (slot-norm)",
+    "guideline_adherence_norm_fibre": "Guideline · fibre (slot-norm)",
+    "guideline_adherence_norm_sodium": "Guideline · sodium (slot-norm)",
+    "guideline_adherence_norm_sugar": "Guideline · sugar (slot-norm)"
+  }
+}

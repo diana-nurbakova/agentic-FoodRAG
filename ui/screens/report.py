@@ -1,289 +1,557 @@
-"""Flow C: Report tab (Evaluation Protocol §11).
+"""Flow C: Report tab (Evaluation Protocol §11; spec: FoodRAG_Report_Tab_Modifications).
 
-Interactive view over pre-computed evaluation results (§11.2 — read-only, no live
-computation). Panels render conditionally on available data (§12.3 minimum =
-EXP-1 + EXP-3 + Safety). The aggregate ↔ stratified toggle is the key
-interaction (§3.4 skew).
+Interactive view over the *real* pre-computed evaluation results (§11.2 — read-only,
+no live computation). The tab leads with the headline findings and organises panels
+into three tiers (spec §4):
+
+  ① Headline    Overview (marquee) · Retriever comparison · Safety (before→after)
+  ② Attribution Agentic comparison · Error taxonomy · Retrieval vs full pipeline
+  ③ Depth       Pareto · Explainability · Judge reliability · Plan quality (gated) ·
+                Guideline adherence (gated) · Time-of-day · Case browser · Volatility ·
+                Stratified (demoted)
+
+Real experiment ids: EXP-ret-tight (retrievers), EXP-7 (system + baselines),
+EXP-10k* (baseline ladders), EXP-5 (KG). Descriptive titles, descriptions and the
+config/metric label maps live in ``ui/report_copy.json`` (editable without code).
 """
 
 from __future__ import annotations
+
+import math
 
 import pandas as pd
 import streamlit as st
 
 from .. import eval_results
 from ..components.pareto_chart import render_pareto
+from ..services import report_data as rd
 from ..state import goto
-from ..theme import C, F, FP, html
+from ..theme import C, F, html
 
 _STRATA = ["aggregate", "tight", "medium", "broad"]
-_METRIC_LABEL = {
-    "hit_at_10": "Hit@10", "mrr_at_10": "MRR@10", "ndcg_at_10": "nDCG@10",
-    "avg_nutri_at_10": "Avg NutriScore@10", "avg_fsa_at_10": "Avg FSA@10",
-    "allergen_violation": "Allergen violation ↓", "hard_constraint_violation": "Hard-constraint violation ↓",
-    "constraint_satisfaction": "Constraint satisfaction", "correctness": "Correctness",
-    "faithfulness": "Faithfulness", "relevancy": "Relevancy", "structural_validity": "Structural validity",
-    "explanation_quality": "Explanation quality", "intra_plan_diversity": "Intra-plan diversity",
-    "calorie_adherence": "Calorie adherence", "llm_usage": "LLM calls", "latency_s": "Latency (s)",
-}
-_CONFIG_LABEL = {
-    "dense": "Dense", "sparse": "Sparse (BM25)", "hybrid": "Hybrid",
-    "text-to-pandas": "Text→Pandas", "fusion": "Fusion (3-way)",
-    "rag": "Plain RAG", "heuristic_1": "Heuristic 1 (full agentic)", "heuristic_2": "Heuristic 2 (recommend only)",
-    "kg_text_to_cypher": "KG (Text→Cypher)",
-}
+
+# Experiments that anchor the repointed panels.
+_EXP_RETRIEVER = "EXP-ret-tight"
+_EXP_SYSTEM = "EXP-7"
 
 
-def _label(mapping, key):
-    return mapping.get(key, key)
+# ── shared helpers ─────────────────────────────────────────────────────────
+def _clabel(cid: str) -> str:
+    return rd.config_label(cid)
+
+
+def _mlabel(m: str) -> str:
+    return rd.metric_label(m)
+
+
+def _isnan(v) -> bool:
+    return v is None or (isinstance(v, float) and math.isnan(v))
+
+
+def _fmt(v, fmt: str = "ratio") -> str:
+    if _isnan(v):
+        return "—"
+    if fmt == "pct":
+        return f"{v * 100:.1f}%"
+    if fmt == "num":
+        return f"{v:.1f}"
+    return f"{v:.3f}"
 
 
 def _pivot(df: pd.DataFrame, index: str, columns: str, value: str = "mean") -> pd.DataFrame:
     p = df.pivot_table(index=index, columns=columns, values=value, aggfunc="mean")
-    p.index = [_label(_CONFIG_LABEL, i) if index == "config_id" else i for i in p.index]
+    if index == "config_id":
+        p.index = [_clabel(i) for i in p.index]
     if columns == "metric":
-        p.columns = [_label(_METRIC_LABEL, c) for c in p.columns]
+        p.columns = [_mlabel(c) for c in p.columns]
     return p
 
 
-# ── panels ─────────────────────────────────────────────────────────────────
+def _stat_card(col, label: str, value: str, note: str = "", tone: str = "neutral") -> None:
+    color = {"good": C["nutA"], "bad": C["nutE"], "warn": C["warn"]}.get(tone, C["primary"])
+    col.markdown(
+        f"<div style=\"border:1px solid {C['border']};border-radius:10px;padding:12px 14px;"
+        f"background:{C['card']};height:100%\">"
+        f"<div style=\"font-family:{F};font-size:11px;color:{C['textMuted']};margin-bottom:2px\">{label}</div>"
+        f"<div style=\"font-family:{F};font-size:26px;font-weight:800;color:{color};line-height:1.1\">{value}</div>"
+        f"<div style=\"font-family:{F};font-size:11px;color:{C['textMuted']};margin-top:4px;line-height:1.4\">{note}</div>"
+        f"</div>",
+        unsafe_allow_html=True,
+    )
+
+
+def _exp_select(agg: pd.DataFrame, key: str, only=None) -> str:
+    """Descriptive experiment selector + description block (spec §3)."""
+    exps = sorted(agg["experiment_id"].unique())
+    if only:
+        exps = [e for e in only if e in set(exps)] or exps
+    exp = st.selectbox("Experiment", exps, format_func=lambda e: rd.exp_meta(e)["title"], key=key)
+    meta = rd.exp_meta(exp)
+    html(f"<div style=\"font-family:{F};font-size:11px;color:{C['textMuted']};"
+         f"letter-spacing:.04em;margin:-4px 0 4px\">{meta.get('sub', exp)}</div>")
+    if meta.get("desc"):
+        st.caption(meta["desc"])
+    return exp
+
+
+def _ceiling_captions(configs) -> None:
+    """Reference-ceiling / cost caveats for any flagged config in view (spec §7)."""
+    for cid in configs:
+        note = rd.ceiling_note(cid)
+        if note:
+            st.caption(f"⚑ **{_clabel(cid)}** — {note}")
+
+
+# ═══ TIER 1 — HEADLINE ══════════════════════════════════════════════════════
 def _overview(agg: pd.DataFrame) -> None:
-    exp = st.selectbox("Experiment", sorted(agg["experiment_id"].unique()), key="rep_ov_exp")
-    sub = agg[(agg["experiment_id"] == exp) & (agg["stratum"] == "aggregate")]
-    if sub.empty:
-        st.info("No aggregate-stratum rows for this experiment.")
-        return
-    st.caption("Headline metrics per configuration (aggregate stratum).")
-    table = _pivot(sub, "config_id", "metric").round(3)
-    st.dataframe(table, use_container_width=True)
+    st.caption("Offline evaluation of FoodRAG against retrieval and baseline ladders "
+               "(tight stratum, n=1,646; generator Llama-3.3-70B; dual-judge Gemma-3-27B / "
+               "DeepSeek-V3). The marquee findings:")
+    cards = rd.marquee_values(agg)
+    cols = st.columns(len(cards)) if cards else []
+    for col, card in zip(cols, cards):
+        _stat_card(col, card["label"], _fmt(card["value"], card.get("fmt", "ratio")),
+                   card.get("note", ""), card.get("tone", "neutral"))
+    st.divider()
+    st.markdown("**What's in this report**")
+    for e in ("EXP-ret-tight", "EXP-7", "EXP-10k", "EXP-10k-tight", "EXP-10k-tog", "EXP-5"):
+        if e in set(agg["experiment_id"]):
+            m = rd.exp_meta(e)
+            html(f"<div style=\"font-family:{F};font-size:12px;color:{C['text']};margin:2px 0\">"
+                 f"<b>{m['title']}</b> "
+                 f"<span style=\"color:{C['textMuted']}\">· {m.get('sub','')}</span></div>")
 
 
 def _retriever_comparison(agg: pd.DataFrame) -> None:
-    exp1 = agg[agg["experiment_id"] == "EXP-1"]
+    exp1 = agg[agg["experiment_id"] == _EXP_RETRIEVER]
     if exp1.empty:
-        st.info("EXP-1 (retriever comparison) results not available.")
+        st.info("Retriever comparison (EXP-ret-tight) results not available.")
         return
+    m = rd.exp_meta(_EXP_RETRIEVER)
+    html(f"<div style=\"font-family:{F};font-size:11px;color:{C['textMuted']};margin-bottom:4px\">"
+         f"{m.get('sub','')}</div>")
+    st.caption(m.get("desc", ""))
     metrics = ["hit_at_10", "mrr_at_10", "ndcg_at_10", "avg_nutri_at_10", "avg_fsa_at_10"]
-    metrics = [m for m in metrics if m in set(exp1["metric"])]
+    metrics = [x for x in metrics if x in set(exp1["metric"])]
     chosen = st.multiselect("Metrics", metrics, default=metrics[:3],
-                            format_func=lambda m: _METRIC_LABEL.get(m, m), key="rep_rc_metrics")
-    view = st.radio("View", ["Aggregate", "Stratified"], horizontal=True, key="rep_rc_view")
+                            format_func=_mlabel, key="rep_rc_metrics")
     if not chosen:
         st.caption("Pick at least one metric.")
         return
-    if view == "Aggregate":
-        sub = exp1[(exp1["metric"].isin(chosen)) & (exp1["stratum"] == "aggregate")]
-        st.bar_chart(_pivot(sub, "config_id", "metric"))
-    else:
-        metric = st.selectbox("Metric", chosen, format_func=lambda m: _METRIC_LABEL.get(m, m),
-                              key="rep_rc_strat_metric")
-        sub = exp1[(exp1["metric"] == metric) & (exp1["stratum"] != "aggregate")]
-        chart = _pivot(sub, "config_id", "stratum")
-        chart = chart[[s for s in _STRATA if s in chart.columns]]
-        st.bar_chart(chart)
-        st.caption("Tight = 1–50 valid answers (where health-aware recommendation matters most, §9.1).")
-
-
-def _stratified(agg: pd.DataFrame) -> None:
-    exp = st.selectbox("Experiment", sorted(agg["experiment_id"].unique()), key="rep_st_exp")
-    sub0 = agg[agg["experiment_id"] == exp]
-    metric = st.selectbox("Metric", sorted(sub0["metric"].unique()),
-                          format_func=lambda m: _METRIC_LABEL.get(m, m), key="rep_st_metric")
-    sub = sub0[(sub0["metric"] == metric) & (sub0["stratum"] != "aggregate")]
-    if sub.empty:
-        st.info("No stratified rows.")
-        return
-    chart = _pivot(sub, "config_id", "stratum")
-    chart = chart[[s for s in _STRATA if s in chart.columns]]
-    st.bar_chart(chart)
-    st.caption("Aggregates are dominated by broad personas — always read alongside the tight stratum (§3.4).")
+    sub = exp1[(exp1["metric"].isin(chosen)) & (exp1["stratum"] == "aggregate")]
+    st.bar_chart(_pivot(sub, "config_id", "metric"))
+    st.caption("Lightweight symbolic retrieval (Text→Pandas) dominates dense/sparse embeddings — "
+               "hit@10 0.43 (GPT-4o-mini) vs 0.055 (dense). Tight = 1–50 valid answers, where "
+               "health-aware recommendation matters most (§9.1).")
+    with st.expander("Full metric table"):
+        table = _pivot(exp1[exp1["stratum"] == "aggregate"], "config_id", "metric").round(3)
+        st.dataframe(table, use_container_width=True)
+    _ceiling_captions(exp1["config_id"].unique())
 
 
 def _safety(agg: pd.DataFrame) -> None:
-    st.caption("Deterministic, rule-based safety metrics (target = 0). Allergen detection uses the "
-               "FoodOn hierarchy, not string matching (§4.3).")
-    safety_metrics = ["allergen_violation", "hard_constraint_violation"]
-    stratum = st.radio("Stratum", ["aggregate", "tight"], horizontal=True, key="rep_safety_stratum",
-                       help="Tight ≈ allergen/constraint-heavy personas.")
-    sub = agg[(agg["metric"].isin(safety_metrics)) & (agg["stratum"] == stratum)]
-    if sub.empty:
-        st.info("Safety metrics not available.")
-        return
-    for metric in safety_metrics:
-        msub = sub[sub["metric"] == metric]
-        if msub.empty:
+    st.caption("Deterministic, rule-based safety (target = 0). Allergen detection uses the FoodOn "
+               "hierarchy, not string matching (§4.3). Safety is a hard feasibility gate — never "
+               "slot-normalized, never a Pareto axis.")
+
+    def allergen(exp, cfg):
+        return rd.cell(agg, exp, cfg, "allergen_violation", "aggregate")
+
+    # Before → after arc.
+    st.markdown("**Allergen violation — the grounding arc**")
+    c1, c2, c3 = st.columns(3)
+    _stat_card(c1, "Unconstrained LLM-only", _fmt(allergen("EXP-10k-tight", "llm_only"), "pct"),
+               "invents recipes with no retrieval — breaks a hard allergen constraint ~9× in 10", "bad")
+    naive = allergen("EXP-10k-tight", "naive_rag")
+    _stat_card(c2, "Grounded baseline (naive-RAG)", _fmt(naive, "pct"),
+               "grounding the answer collapses the violation rate below 1%", "warn")
+    foodrag_max = agg[(agg["experiment_id"] == _EXP_SYSTEM)
+                      & (agg["metric"] == "allergen_violation")
+                      & (agg["stratum"] == "aggregate")]["mean"].max()
+    _stat_card(c3, "FoodRAG (post-filter)", _fmt(foodrag_max, "pct"),
+               "deterministic post-filter → zero across every FoodRAG config", "good")
+
+    st.divider()
+    st.markdown("**Per-config safety (aggregate stratum)**")
+    for metric in ("allergen_violation", "hard_constraint_violation"):
+        sub = agg[(agg["metric"] == metric) & (agg["stratum"] == "aggregate")]
+        if sub.empty:
             continue
-        html(f"<div style=\"font-family:{F};font-weight:700;font-size:12px;color:{C['text']};margin:8px 0 4px\">"
-             f"{_METRIC_LABEL[metric]}</div>")
-        cols = st.columns(len(msub))
-        for col, (_, row) in zip(cols, msub.sort_values("config_id").iterrows()):
-            val = row["mean"]
-            color = C["nutA"] if val <= 0.01 else (C["nutC"] if val < 0.1 else C["nutE"])
-            col.markdown(
-                f"<div style=\"text-align:center;border:1px solid {C['border']};border-radius:8px;padding:8px\">"
-                f"<div style=\"font-family:{F};font-size:10px;color:{C['textMuted']}\">{_label(_CONFIG_LABEL, row['config_id'])}</div>"
-                f"<div style=\"font-family:{F};font-size:20px;font-weight:800;color:{color}\">{val:.0%}</div></div>",
-                unsafe_allow_html=True,
-            )
+        html(f"<div style=\"font-family:{F};font-weight:700;font-size:12px;color:{C['text']};"
+             f"margin:8px 0 4px\">{_mlabel(metric)}</div>")
+        sub = sub.sort_values("mean")
+        chart = pd.DataFrame({"mean": sub["mean"].values},
+                             index=[_clabel(c) for c in sub["config_id"]])
+        st.bar_chart(chart)
 
 
+# ═══ TIER 2 — ATTRIBUTION ═══════════════════════════════════════════════════
 def _agentic(agg: pd.DataFrame, pw: pd.DataFrame | None) -> None:
-    exp3 = agg[agg["experiment_id"] == "EXP-3"]
-    if exp3.empty:
-        st.info("EXP-3 (meal-plan generators) results not available.")
+    sysm = agg[agg["experiment_id"] == _EXP_SYSTEM]
+    if sysm.empty:
+        st.info("Full system matrix (EXP-7) results not available.")
         return
-    metric = st.selectbox("Metric", sorted(exp3["metric"].unique()),
-                          format_func=lambda m: _METRIC_LABEL.get(m, m), key="rep_ag_metric")
-    stratum = st.radio("Stratum", _STRATA, horizontal=True, key="rep_ag_stratum")
-    sub = exp3[(exp3["metric"] == metric) & (exp3["stratum"] == stratum)].sort_values("config_id")
+    st.caption("H1 = agentic (Recommend + Correct + Enhance + Explain); H2 = recommend-only. "
+               "Compare on a fixed retriever (dense / Text→Pandas). The agentic pipeline helps "
+               "most when retrieval is strong — on t2p it recovers dropped-gold recipes and lifts "
+               "correctness; on weak (dense) retrieval it has little to correct.")
+    metric = st.selectbox("Metric", sorted(sysm["metric"].unique()),
+                          format_func=_mlabel, key="rep_ag_metric")
+    strata = [s for s in _STRATA if s in set(sysm["stratum"])]
+    stratum = st.radio("Stratum", strata, horizontal=True, key="rep_ag_stratum")
+    sub = sysm[(sysm["metric"] == metric) & (sysm["stratum"] == stratum)].sort_values("config_id")
     if sub.empty:
         st.info("No rows for this selection.")
         return
     chart = pd.DataFrame({"mean": sub["mean"].values},
-                         index=[_label(_CONFIG_LABEL, c) for c in sub["config_id"]])
+                         index=[_clabel(c) for c in sub["config_id"]])
     st.bar_chart(chart)
-    # Mean ± 95% CI table
     show = sub[["config_id", "mean", "ci_low", "ci_high", "per_question_variance"]].copy()
-    show["config_id"] = show["config_id"].map(lambda c: _label(_CONFIG_LABEL, c))
-    st.dataframe(show.round(3).rename(columns={"config_id": "config"}), use_container_width=True, hide_index=True)
-    if pw is not None:
+    show["config_id"] = show["config_id"].map(_clabel)
+    st.dataframe(show.round(3).rename(columns={"config_id": "config"}),
+                 use_container_width=True, hide_index=True)
+
+    # Error decomposition callout (retriever-miss vs pipeline-dropped-gold).
+    et = rd.error_taxonomy()
+    if et is not None and {"foodrag_h2_t2p", "foodrag_h1_t2p"}.issubset(et.index):
+        h2 = et.loc["foodrag_h2_t2p", "empty_plan"]
+        h1 = et.loc["foodrag_h1_t2p", "empty_plan"]
+        st.caption(f"Error decomposition (t2p): empty-plan / dropped-gold rate {h2:.1%} (H2) → "
+                   f"{h1:.1%} (H1) — the Correct stage recovers plans H2 would have left empty.")
+
+    if pw is not None and not pw.empty:
         sig = pw[(pw["metric"] == metric) & (pw["stratum"] == stratum)]
         for _, r in sig.iterrows():
             mark = "✅ significant" if r["significant"] else "ns"
-            st.caption(f"{_label(_CONFIG_LABEL, r['config_a'])} vs {_label(_CONFIG_LABEL, r['config_b'])}: "
+            st.caption(f"{_clabel(r['config_a'])} vs {_clabel(r['config_b'])}: "
                        f"Δ={r['mean_diff']:+.3f}, {r['test']}, p={r['p_value']} "
                        f"(corrected {r['p_value_corrected']}) — {mark}")
 
 
-def _pareto_df(result, x_axis: str, y_axis: str) -> pd.DataFrame | None:
-    """Plot-ready frame from a ``foodrag.analysis.pareto.ParetoResult``.
+def _error_taxonomy(agg: pd.DataFrame) -> None:
+    et = rd.error_taxonomy()
+    if et is None:
+        st.info("Per-question parquets not available — error taxonomy cannot be computed.")
+        return
+    st.caption("Per-config failure rates (fraction of per-question records; higher = worse). "
+               "The **dense↔t2p** split is the dominant error axis: dense configs miss retrieval "
+               "~97% of the time, so everything downstream fails.")
+    buckets = ["retrieval_miss", "empty_plan", "hard_violation", "low_correctness",
+               "unfaithful", "structural_invalid"]
+    labels = {
+        "retrieval_miss": "Retrieval miss", "empty_plan": "Empty plan",
+        "hard_violation": "Hard-constraint viol.", "low_correctness": "Low correctness (<0.5)",
+        "unfaithful": "Unfaithful (<0.5)", "structural_invalid": "Structural-invalid *",
+    }
+    disp = et[buckets].rename(columns=labels).copy()
+    disp.index = [_clabel(i) for i in disp.index]
+    st.dataframe(
+        disp.style.format("{:.1%}").background_gradient(cmap="Reds", vmin=0, vmax=1),
+        use_container_width=True,
+    )
+    st.caption("\\* **Structural-invalid is an artifact**, not a real failure: it is computed on a "
+               "full-day (4-slot) denominator, but the deployed planner is time-aware and returns "
+               "partial-day plans (mean 2.32 of 4 slots). Read the slot-normalized value in the "
+               "**Plan quality** panel instead (§5).")
 
-    One row per compared config with the two axis columns, a display ``config``
-    label, and a boolean ``frontier`` flag (the module's domination relation is
-    reused verbatim — the UI never recomputes it)."""
+
+def _retrieval_vs_pipeline(agg: pd.DataFrame) -> None:
+    st.caption("Dual-use decomposition: retrieval-only (Use-1) vs the full meal-plan pipeline "
+               "(Use-2) hit@10, per retrieval approach. Shows what the end-to-end system adds on "
+               "top of raw retrieval.")
+
+    def hit(exp, cfg):
+        return rd.cell(agg, exp, cfg, "hit_at_10", "aggregate")
+
+    rows = [
+        {"Approach": "Dense (embeddings)",
+         "Use-1 retrieval": hit(_EXP_RETRIEVER, "ret_dense"),
+         "Use-2 H2 (rec-only)": hit(_EXP_SYSTEM, "foodrag_h2"),
+         "Use-2 H1 (agentic)": hit(_EXP_SYSTEM, "foodrag_h1_dense")},
+        {"Approach": "Text→Pandas",
+         "Use-1 retrieval": hit(_EXP_RETRIEVER, "ret_text2pandas@gpt4o-mini"),
+         "Use-2 H2 (rec-only)": hit(_EXP_SYSTEM, "foodrag_h2_t2p"),
+         "Use-2 H1 (agentic)": hit(_EXP_SYSTEM, "foodrag_h1_t2p")},
+    ]
+    df = pd.DataFrame(rows).set_index("Approach")
+    st.dataframe(df.round(3), use_container_width=True)
+    st.caption("External baselines (Use-1 vs Use-2 where available):")
+    brows = []
+    for exp, cfg in [("EXP-10k-tight", "llm_only"), ("EXP-10k-tight", "naive_rag"),
+                     ("EXP-10k-tog", "tog"), ("EXP-10k", "popularity_raw"),
+                     ("EXP-10k", "popularity_health_aware")]:
+        brows.append({"Baseline": _clabel(cfg), "hit@10": hit(exp, cfg),
+                      "allergen": rd.cell(agg, exp, cfg, "allergen_violation", "aggregate")})
+    st.dataframe(pd.DataFrame(brows).round(3), use_container_width=True, hide_index=True)
+    _ceiling_captions(["popularity_health_aware", "tog"])
+
+
+# ═══ TIER 3 — DEPTH ═════════════════════════════════════════════════════════
+def _pareto_df(result, x_axis: str, y_axis: str) -> pd.DataFrame | None:
     recs = result.as_records()
     if not recs:
         return None
     rows = []
     for r in recs:
-        rows.append({
-            "config_id": r["config_id"],
-            "config": _label(_CONFIG_LABEL, r["config_id"]),
-            x_axis: r.get(x_axis),
-            y_axis: r.get(y_axis),
-            "frontier": bool(r["frontier"]),
-        })
+        rows.append({"config_id": r["config_id"], "config": _clabel(r["config_id"]),
+                     x_axis: r.get(x_axis), y_axis: r.get(y_axis), "frontier": bool(r["frontier"])})
     return pd.DataFrame(rows)
 
 
 def _domination_captions(result) -> None:
-    """Surface the explicit domination relationships (§9.4: 'config X dominates
-    baseline Y') and any NaN-excluded configs."""
     lines = []
     for cfg in result.frontier:
         beaten = result.dominates.get(cfg, [])
         if beaten:
-            lines.append(f"**{_label(_CONFIG_LABEL, cfg)}** dominates "
-                         + ", ".join(_label(_CONFIG_LABEL, b) for b in beaten))
+            lines.append(f"**{_clabel(cfg)}** dominates " + ", ".join(_clabel(b) for b in beaten))
     if lines:
         st.caption("Domination (§9.4): " + "; ".join(lines) + ".")
     if result.excluded:
         st.caption("Excluded (missing metric): "
-                   + ", ".join(f"{_label(_CONFIG_LABEL, c)} ({why})"
-                               for c, why in result.excluded.items()) + ".")
+                   + ", ".join(f"{_clabel(c)} ({why})" for c, why in result.excluded.items()) + ".")
 
 
 def _pareto(agg: pd.DataFrame) -> None:
     from foodrag.analysis import pareto as pmod
 
-    st.caption("Pareto-optimal (non-dominated) configurations are highlighted and connected by the frontier; "
-               "dominated configs are greyed. This is an **analysis lens** over feasible outputs (§9.4) — it "
-               "does not change how Flow A recommends (weighted-sum ranking). Safety is **never** a Pareto axis: "
-               "hard constraints gate the feasible set, they are not a traded objective.")
-
-    # ── Panel 1 — Pareto: Health vs Relevance ─────────────────────────────
-    st.markdown("**Pareto: Health vs Relevance**")
-    # Preserve the priority order (don't alphabetise) so the default lands on an
-    # experiment that has the required metrics.
+    st.caption("Pareto-optimal (non-dominated) configs are highlighted and connected by the "
+               "frontier; dominated configs are greyed. An **analysis lens** over feasible outputs "
+               "(§9.4) — safety is **never** a Pareto axis (hard constraints gate feasibility).")
     avail = set(agg["experiment_id"])
-    exps_hr = [e for e in ("EXP-1", "EXP-10k", "EXP-7") if e in avail]
+
+    st.markdown("**Health vs Relevance**")
+    exps_hr = [e for e in (_EXP_RETRIEVER, "EXP-10k", _EXP_SYSTEM) if e in avail]
     if not exps_hr:
         st.info("No experiment with health/relevance metrics available.")
     else:
         c1, c2 = st.columns(2)
-        exp_hr = c1.selectbox("Experiment", exps_hr, key="rep_par_hr_exp",
-                              help="EXP-1 = retrievers; EXP-10k = popularity baselines.")
+        exp_hr = c1.selectbox("Experiment", exps_hr, format_func=lambda e: rd.exp_meta(e)["title"],
+                              key="rep_par_hr_exp")
         health = c2.radio("Health axis", ["avg_nutri_at_10", "avg_fsa_at_10"], horizontal=True,
-                          format_func=lambda m: _METRIC_LABEL.get(m, m), key="rep_par_hr_health")
+                          format_func=_mlabel, key="rep_par_hr_health")
         res = pmod.health_vs_relevance(agg, experiment_id=exp_hr, health_metric=health)
         df = _pareto_df(res, "relevance", "health")
         if df is None:
             st.info("Health/relevance metrics not available for this experiment.")
         else:
-            rel_lbl = _METRIC_LABEL.get(res.axis_labels.get("relevance", ""),
-                                        res.axis_labels.get("relevance", "relevance"))
-            hlt_lbl = _METRIC_LABEL.get(health, health)
-            render_pareto(df, "relevance", "health", f"{rel_lbl} (relevance)", f"{hlt_lbl} (health)",
-                          x_dir="max", y_dir="max", flag_col="frontier",
-                          ideal="Ideal: top-right — relevant *and* healthy. The popularity/rating-sorted "
-                                "baseline sits high-relevance / low-health; health-aware configs trace toward "
-                                "high health (§9.4 popularity-bias story).")
+            rel_lbl = _mlabel(res.axis_labels.get("relevance", "relevance"))
+            render_pareto(df, "relevance", "health", f"{rel_lbl} (relevance)",
+                          f"{_mlabel(health)} (health)", x_dir="max", y_dir="max", flag_col="frontier",
+                          ideal="Ideal: top-right — relevant *and* healthy. Popularity/rating-sorted "
+                                "baselines sit high-relevance / low-health (§9.4 popularity bias).")
             _domination_captions(res)
+            _ceiling_captions(df["config_id"].unique())
 
     st.divider()
-    # ── Panel 2 — Pareto: Quality vs Cost ─────────────────────────────────
-    st.markdown("**Pareto: Quality vs Cost**")
-    exps_qc = [e for e in ("EXP-3", "EXP-7") if e in set(agg["experiment_id"])]
+    st.markdown("**Quality vs Cost**")
+    exps_qc = [e for e in (_EXP_SYSTEM,) if e in avail]
     if not exps_qc:
         st.info("No experiment with quality/cost metrics available.")
     else:
         c1, c2 = st.columns(2)
-        exp_qc = c1.selectbox("Experiment", exps_qc, key="rep_par_qc_exp",
-                              help="EXP-3 = meal-plan generators (rag / heuristic 1 / 2).")
+        exp_qc = c1.selectbox("Experiment", exps_qc, format_func=lambda e: rd.exp_meta(e)["title"],
+                              key="rep_par_qc_exp")
         cost = c2.radio("Cost axis", ["llm_usage", "latency_s"], horizontal=True,
-                        format_func=lambda m: _METRIC_LABEL[m], key="rep_par_qc_cost")
+                        format_func=_mlabel, key="rep_par_qc_cost")
         res = pmod.quality_vs_cost(agg, experiment_id=exp_qc, cost_metric=cost)
         df = _pareto_df(res, "cost", "quality")
         if df is None:
             st.info("Quality/cost metrics not available for this experiment.")
         else:
-            render_pareto(df, "cost", "quality", f"{_METRIC_LABEL[cost]} (cost ↓)", "Correctness (quality)",
-                          x_dir="min", y_dir="max", flag_col="frontier",
-                          ideal="Ideal: top-left — high quality at low cost. If agentic Heuristic 1 is on the "
-                                "frontier it is **Pareto-justified**; if a cheaper config is equally correct it "
-                                "is not (§9.4 — an honest either-way finding).")
+            render_pareto(df, "cost", "quality", f"{_mlabel(cost)} (cost ↓)",
+                          "Correctness (quality)", x_dir="min", y_dir="max", flag_col="frontier",
+                          ideal="Ideal: top-left — high quality at low cost. Frontier is the genuine "
+                                "trade-off {H2-t2p (cheap), H1-t2p (best quality)} (§9.4).")
             _domination_captions(res)
 
     st.divider()
-    # ── Panel 3 — Pareto: Safety vs Coverage ──────────────────────────────
-    st.markdown("**Pareto: Safety vs Coverage**")
-    # EXP-10k (has a constraint-satisfaction coverage proxy) leads so the default
-    # panel is non-empty; EXP-1 (no coverage metric) is last.
-    exps_sc = [e for e in ("EXP-10k", "EXP-3", "EXP-7", "EXP-1")
-               if e in set(agg["experiment_id"])]
+    st.markdown("**Safety vs Coverage**")
+    exps_sc = [e for e in ("EXP-10k", "EXP-10k-tog", _EXP_SYSTEM) if e in avail]
     if not exps_sc:
         st.info("No experiment with a coverage proxy available.")
     else:
-        exp_sc = st.selectbox("Experiment", exps_sc, key="rep_par_sc_exp")
+        exp_sc = st.selectbox("Experiment", exps_sc, format_func=lambda e: rd.exp_meta(e)["title"],
+                              key="rep_par_sc_exp")
         res = pmod.safety_vs_coverage(agg, experiment_id=exp_sc)
         df = _pareto_df(res, "strictness", "coverage")
         if df is None or df.empty:
             st.info("Coverage proxy not available across strata for this experiment.")
         else:
             df = df.copy()
-            df["config"] = df["config_id"]  # points are strata (tight/medium/broad), not configs
-            cov_lbl = _METRIC_LABEL.get(res.axis_labels.get("coverage", ""),
-                                        res.axis_labels.get("coverage", "coverage"))
+            df["config"] = df["config_id"]  # points are strata, not configs
+            cov_lbl = _mlabel(res.axis_labels.get("coverage", "coverage"))
             render_pareto(df, "strictness", "coverage", "Strictness (answer-set stratum, proxy)",
                           f"Coverage — {cov_lbl}", x_dir="max", y_dir="max", flag_col="frontier",
-                          ideal="Axes: relaxation level (strictness) vs fraction of personas with a full "
-                                "feasible plan (§9.4). Strictness uses the answer-set-size stratum as a "
-                                "documented PROXY (tight = 1–50 valid answers → high strictness; broad → low). "
-                                "Never-relaxing safety (tight) typically costs coverage.")
-            st.caption("⚠ This is a **documented proxy**: the current results have no explicit per-config "
-                       "relaxation-level axis, so answer-set-size strata stand in for strictness (§9.1). "
-                       "Safety itself is never an axis — hard constraints gate feasibility upstream (§9.4).")
+                          ideal="Relaxation level (strictness) vs fraction of personas with a full "
+                                "feasible plan (§9.4). Strictness uses answer-set-size strata as a "
+                                "documented PROXY (tight → high strictness).")
+            st.caption("⚠ Documented proxy: answer-set-size strata stand in for a per-config "
+                       "relaxation axis (§9.1). Safety is never an axis — hard constraints gate "
+                       "feasibility upstream (§9.4).")
             _domination_captions(res)
+
+
+def _explainability(agg: pd.DataFrame) -> None:
+    st.caption("Two explanation channels. **Intrinsic KG paths** are read from HUMMUS (always "
+               "valid); the **NL explanation layer** is LLM-generated and can drift. The intrinsic "
+               "layer is the more reliable channel.")
+    cfg = st.selectbox("Config", ["foodrag_h1_t2p", "foodrag_h1_dense"], format_func=_clabel,
+                       key="rep_expl_cfg")
+    c1, c2, c3, c4 = st.columns(4)
+    _stat_card(c1, "KG path validity", _fmt(rd.cell(agg, _EXP_SYSTEM, cfg, "path_validity"), "pct"),
+               "intrinsic paths read from the graph", "good")
+    _stat_card(c2, "KG path coverage", _fmt(rd.cell(agg, _EXP_SYSTEM, cfg, "path_coverage"), "pct"),
+               "share of plan items with a KG path", "neutral")
+    _stat_card(c3, "NL claim grounding", _fmt(rd.cell(agg, _EXP_SYSTEM, cfg, "claim_grounding_rate"), "pct"),
+               "NL claims supported by evidence (§8.2)", "neutral")
+    _stat_card(c4, "Unsupported claims", _fmt(rd.cell(agg, _EXP_SYSTEM, cfg, "unsupported_claim_rate"), "pct"),
+               "NL claims with no support ↓", "warn")
+    st.caption("The stronger retriever (t2p) yields better-grounded NL explanations (0.71 vs 0.55 "
+               "on dense); intrinsic KG paths stay 100% valid regardless.")
+
+
+def _judge_reliability(agg: pd.DataFrame) -> None:
+    ja = rd.judge_agreement()
+    if ja is None:
+        st.info("Per-question judge scores not available — cross-judge agreement cannot be computed.")
+        return
+    st.caption("Cross-judge agreement between **Judge A (Gemma-3-27B)** and **Judge B "
+               "(DeepSeek-V3)**, per config × metric (Pearson over per-question scores). "
+               "Judge–human calibration is **future work**; only cross-judge agreement is shown.")
+    disp = ja.copy()
+    disp["config"] = disp["config_id"].map(_clabel)
+    disp["metric"] = disp["metric"].map(lambda m: _mlabel(m))
+    disp = disp[["config", "metric", "pearson", "mean_a", "mean_b", "mean_abs_diff", "n"]]
+    st.dataframe(disp.round(3).rename(columns={
+        "pearson": "Pearson r", "mean_a": "mean (Gemma)", "mean_b": "mean (DeepSeek)",
+        "mean_abs_diff": "mean |Δ|"}), use_container_width=True, hide_index=True)
+    st.caption("Agreement is only moderate (correctness r ≈ 0.35–0.76) — the headline uses Judge A "
+               "(Gemma, cross-lineage) and reports Judge B alongside rather than averaging them.")
+
+
+def _plan_quality(agg: pd.DataFrame) -> None:
+    st.warning("⚠ **Partial-day confound.** The deployed planner is time-aware and returns "
+               "partial-day plans (mean 2.32 of 4 meal slots), so full-day-denominated metrics read "
+               "as artifacts. The **slot-normalized** values below are the honest reading (§5); the "
+               "raw full-day values are in the toggle. See the **Time-of-day** panel for why.")
+    sysm = agg[agg["experiment_id"] == _EXP_SYSTEM]
+    norm = ["meal_slot_completeness_norm", "calorie_adherence_norm", "intra_plan_diversity_norm",
+            "structural_validity_norm"]
+    norm = [m for m in norm if m in set(sysm["metric"])]
+    sub = sysm[(sysm["metric"].isin(norm)) & (sysm["stratum"] == "aggregate")]
+    if sub.empty:
+        st.info("Slot-normalized plan-quality metrics not available.")
+        return
+    st.markdown("**Slot-normalized (displayed)**")
+    st.dataframe(_pivot(sub, "config_id", "metric").round(3), use_container_width=True)
+    with st.expander("Show raw full-day values (strict reading — includes the partial-day artifact)"):
+        full = ["meal_slot_completeness_full", "calorie_adherence_full", "structural_validity_full"]
+        full = [m for m in full if m in set(sysm["metric"])]
+        fsub = sysm[(sysm["metric"].isin(full)) & (sysm["stratum"] == "aggregate")]
+        if fsub.empty:
+            st.caption("Full-day values not available.")
+        else:
+            st.dataframe(_pivot(fsub, "config_id", "metric").round(3), use_container_width=True)
+            st.caption("These full-day numbers (e.g. structural validity ≈ 0.17) are conservative on "
+                       "partial-day plans — do not read them as failures.")
+
+
+def _guideline_adherence(agg: pd.DataFrame) -> None:
+    st.warning("⚠ **Slot-normalized reading (§5).** Per-nutrient guideline adherence on the "
+               "slot-normalized denominator; raw full-day is in the toggle. Never read the bare "
+               "full-day bands.")
+    sysm = agg[agg["experiment_id"] == _EXP_SYSTEM]
+    cfg = st.selectbox("Config", sorted(sysm["config_id"].unique()), format_func=_clabel,
+                       key="rep_gl_cfg")
+    nutrients = ["energy", "protein", "carb", "fat", "satfat", "fibre", "sodium", "sugar"]
+    rows = []
+    for n in nutrients:
+        v = rd.cell(agg, _EXP_SYSTEM, cfg, f"guideline_adherence_norm_{n}")
+        if not _isnan(v):
+            rows.append({"nutrient": n, "adherence (slot-norm)": v})
+    if not rows:
+        st.info("Slot-normalized per-nutrient guideline metrics not available for this config.")
+        return
+    df = pd.DataFrame(rows).set_index("nutrient")
+    st.bar_chart(df)
+    overall = rd.cell(agg, _EXP_SYSTEM, cfg, "guideline_adherence_norm")
+    st.caption(f"Overall (slot-norm): {_fmt(overall)}. Bands are per-nutrient; low energy/carb "
+               "reflect the partial-day confound, not a planner failure.")
+
+
+def _time_of_day() -> None:
+    tod = rd.time_of_day()
+    if tod is None:
+        st.info("mealplan_time_of_day.csv not available.")
+        return
+    st.caption("Deployed behaviour: the meal-plan tool selects meal types by time of day (it plans "
+               "'the remaining day'), so plans are **partial-day**. This is the quantitative reason "
+               "the full-day plan-level metrics read low — a feature, not a bug (no breakfast at 9 pm).")
+    meals = tod.set_index("hour")[["breakfast", "lunch", "dinner", "snack"]]
+    st.markdown("**Meal-type selection probability by hour**")
+    st.line_chart(meals)
+    st.markdown("**Mean meals per plan by hour**")
+    st.bar_chart(tod.set_index("hour")[["mean_meals"]])
+    st.caption("Mornings → breakfast-dominant; evenings → dinner + snack. Mean 2.32 meals/plan "
+               "overall (not 4), which is why full-day completeness reads ~0.48 (§5).")
+
+
+def _case_browser() -> None:
+    cases = rd.cases()
+    if not cases:
+        st.info("Per-question parquet not available — case browser is empty.")
+        return
+    st.caption("Illustrative per-question cases from the H1-t2p run.")
+    for c in cases:
+        with st.container(border=True):
+            html(f"<div style=\"font-family:{F};font-weight:700;color:{C['primary']}\">{c['kind']}</div>"
+                 f"<div style=\"font-family:{F};font-size:12px;color:{C['textMuted']};margin-bottom:6px\">"
+                 f"{c['why']}</div>")
+            if c["plan"]:
+                st.markdown("**Plan:** " + ", ".join(f"{k} → `{str(v).split('/')[-1]}`"
+                                                      for k, v in c["plan"].items()))
+            else:
+                st.markdown("**Plan:** _(empty — honest no-recommendation)_")
+            if c["explanation"]:
+                st.caption("Explanation: " + c["explanation"])
+            cols = st.columns(4)
+            for col, (k, lbl) in zip(cols, [("hit_at_10", "hit@10"),
+                                            ("correctness_judgeA", "corr. (Gemma)"),
+                                            ("correctness_judgeB", "corr. (DeepSeek)"),
+                                            ("allergen_violation", "allergen")]):
+                col.metric(lbl, _fmt(c.get(k)))
+
+
+def _volatility(agg: pd.DataFrame) -> None:
+    vol = rd.volatility(agg, experiment=_EXP_SYSTEM)
+    if vol is None:
+        st.info("No per-question variance recorded for EXP-7.")
+        return
+    st.caption("Per-question variance by config (EXP-7, aggregate). Higher variance = noisier "
+               "per-question behaviour for that metric.")
+    metric = st.selectbox("Metric", sorted(vol["metric"].unique()), format_func=_mlabel,
+                          key="rep_vol_metric")
+    sub = vol[vol["metric"] == metric].sort_values("per_question_variance", ascending=False)
+    chart = pd.DataFrame({"variance": sub["per_question_variance"].values},
+                         index=[_clabel(c) for c in sub["config_id"]])
+    st.bar_chart(chart)
+
+
+def _stratified(agg: pd.DataFrame) -> None:
+    st.caption("Demoted: the headline results are all on the tight stratum (n=1,646) by design, so "
+               "cross-stratum views are thin. Kept for completeness.")
+    exp = _exp_select(agg, "rep_st_exp")
+    sub0 = agg[agg["experiment_id"] == exp]
+    metric = st.selectbox("Metric", sorted(sub0["metric"].unique()), format_func=_mlabel,
+                          key="rep_st_metric")
+    sub = sub0[(sub0["metric"] == metric) & (sub0["stratum"] != "aggregate")]
+    if sub.empty:
+        st.info("No stratified rows for this experiment (tight-only).")
+        return
+    chart = _pivot(sub, "config_id", "stratum")
+    chart = chart[[s for s in _STRATA if s in chart.columns]]
+    st.bar_chart(chart)
+    st.caption("Aggregates are dominated by broad personas — read alongside the tight stratum (§3.4).")
 
 
 # ── entry ────────────────────────────────────────────────────────────────
@@ -297,36 +565,57 @@ def render() -> None:
         if st.button("← Back", use_container_width=True):
             goto("welcome")
 
-    html(f"<p style=\"font-family:{F};font-size:13px;color:{C['textMuted']};margin:4px 0 10px;line-height:1.6\">"
-         f"Offline evaluation results (Evaluation Protocol §11). Pre-computed and read-only.</p>")
+    html(f"<p style=\"font-family:{F};font-size:13px;color:{C['textMuted']};margin:4px 0 10px;"
+         f"line-height:1.6\">Offline evaluation results (Evaluation Protocol §11). "
+         f"Pre-computed and read-only.</p>")
 
     if not eval_results.available():
-        st.warning("No evaluation results found. Place `aggregate.csv` (+ optional `pairwise.csv`) in "
-                   "`eval_results/` (or set `FOODRAG_EVAL_RESULTS`). See Evaluation Protocol §13 for the schema.")
+        st.warning("No evaluation results found. Place `aggregate.csv` (+ optional `pairwise.csv`) "
+                   "in `eval_results/` (or set `FOODRAG_EVAL_RESULTS`). See Evaluation Protocol §13.")
         return
 
     if eval_results.is_sample():
-        real = eval_results.real_experiments()
-        msg = ("⚠ Most panels show **bundled sample results (synthetic placeholders)** so they're explorable. "
-               "Replace `eval_results/*.csv` with real evaluation outputs to see real numbers.")
-        if real:
-            note = eval_results.manifest().get("exp5_note", "")
-            msg += f"\n\n✅ **Real results:** {', '.join(real)}" + (f" — {note}" if note else "")
-        st.warning(msg)
+        st.warning("⚠ Showing **bundled sample results (synthetic placeholders)**. Replace "
+                   "`eval_results/*.csv` with real evaluation outputs to see real numbers.")
 
-    agg = eval_results.load_aggregate()
-    pw = eval_results.load_pairwise()
+    agg = rd.load_aggregate()
+    pw = rd.load_pairwise()
 
-    tabs = st.tabs(["Overview", "Retriever comparison", "Stratified", "Safety", "Agentic", "⚖ Pareto"])
-    with tabs[0]:
-        _overview(agg)
-    with tabs[1]:
-        _retriever_comparison(agg)
-    with tabs[2]:
-        _stratified(agg)
-    with tabs[3]:
-        _safety(agg)
-    with tabs[4]:
-        _agentic(agg, pw)
-    with tabs[5]:
-        _pareto(agg)
+    tier1, tier2, tier3 = st.tabs(["① Headline", "② Attribution", "③ Depth"])
+    with tier1:
+        t = st.tabs(["Overview", "Retriever comparison", "Safety"])
+        with t[0]:
+            _overview(agg)
+        with t[1]:
+            _retriever_comparison(agg)
+        with t[2]:
+            _safety(agg)
+    with tier2:
+        t = st.tabs(["Agentic comparison", "Error taxonomy", "Retrieval vs full pipeline"])
+        with t[0]:
+            _agentic(agg, pw)
+        with t[1]:
+            _error_taxonomy(agg)
+        with t[2]:
+            _retrieval_vs_pipeline(agg)
+    with tier3:
+        t = st.tabs(["Pareto", "Explainability", "Judge reliability", "Plan quality",
+                     "Guideline adherence", "Time-of-day", "Case browser", "Volatility", "Stratified"])
+        with t[0]:
+            _pareto(agg)
+        with t[1]:
+            _explainability(agg)
+        with t[2]:
+            _judge_reliability(agg)
+        with t[3]:
+            _plan_quality(agg)
+        with t[4]:
+            _guideline_adherence(agg)
+        with t[5]:
+            _time_of_day()
+        with t[6]:
+            _case_browser()
+        with t[7]:
+            _volatility(agg)
+        with t[8]:
+            _stratified(agg)

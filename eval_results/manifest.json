@@ -1,9 +1,14 @@
 {
-  "sample": true,
-  "note": "SYNTHETIC placeholder results for the Report tab. Replace with real evaluation outputs (Evaluation Protocol \u00a713).",
-  "generated": "demo",
+  "sample": false,
+  "note": "Real evaluation results (Evaluation Protocol §13). Tight stratum (personas with 1-50 valid answers, n=1,646). Generator: Llama-3.3-70B. Dual-judge: Judge A = Gemma-3-27B (cross-lineage, headline), Judge B = DeepSeek-V3. Synthetic placeholder rows (EXP-1, EXP-3) removed; the UI is repointed to the real experiment ids (EXP-ret-tight, EXP-7, EXP-10k*, EXP-5).",
+  "generated": "2026-07",
   "real_experiments": [
+    "EXP-7",
+    "EXP-ret-tight",
+    "EXP-10k",
+    "EXP-10k-tight",
+    "EXP-10k-tog",
     "EXP-5"
   ],
-  "exp5_note": "EXP-5 KG retrieval: real run, tight stratum only, n=12 (small_1). Broad-stratum KG retrieval is infeasible without precomputation (protocol \u00a75.5)."
+  "exp5_note": "EXP-5 KG retrieval: real run, tight stratum only, n=12 (small_1). Broad-stratum KG retrieval is infeasible without precomputation (protocol §5.5)."
 }
