@@ -126,6 +126,41 @@ def enforce_allergen_safety(plan: dict, persona: dict,
     return safe
 
 
+def enforce_distinct_slots(plan: dict) -> dict:
+    """Deterministically guarantee no recipe appears in more than one plan slot.
+
+    ``plan`` is ``{meal_type: recipe_row_dict|None}`` where a slot may hold ``None``
+    or an empty dict for an unfilled slot. Slots are iterated in a STABLE order
+    (breakfast → lunch → dinner → snack, the canonical ``STANDARD_SLOTS`` order from
+    :mod:`meal_plan_metrics`, with any non-standard meal types visited afterwards in
+    insertion order). A recipe is kept in its FIRST slot; any LATER slot whose recipe
+    shares a ``recipe_url`` already seen is DROPPED (the meal_type is removed from the
+    returned dict). Empty/None slots pass through unchanged. Returns a NEW dict — the
+    input is never mutated.
+
+    This is the deterministic guard behind degenerate meal plans: regardless of what
+    the retriever hands back (a fixed pool, a wrapping rotation, etc.), a single recipe
+    can never occupy multiple slots of the final plan. Recipes without a ``recipe_url``
+    are always kept (they cannot be identified as duplicates).
+    """
+    from foodrag.baselines.meal_plan_metrics import STANDARD_SLOTS
+
+    order = [s for s in STANDARD_SLOTS if s in (plan or {})]
+    order += [s for s in (plan or {}) if s not in STANDARD_SLOTS]
+
+    seen_urls: set = set()
+    distinct: dict = {}
+    for meal_type in order:
+        recipe = plan[meal_type]
+        url = recipe.get("recipe_url") if recipe else None
+        if url is not None and url in seen_urls:
+            continue  # duplicate recipe → drop this later slot
+        if url is not None:
+            seen_urls.add(url)
+        distinct[meal_type] = recipe
+    return distinct
+
+
 def _tags_ok(row, persona: dict) -> bool:
     liked = persona.get("tags", {}).get("likes", [])
     disliked = persona.get("tags", {}).get("dislikes", [])

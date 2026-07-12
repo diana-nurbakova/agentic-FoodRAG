@@ -237,6 +237,8 @@ class RagMealPlanAssembler(MealPlanAssembler):
         # Hard allergen/blacklist post-filter: guarantee the FINAL plan is allergen-safe
         # even if the LLM validation let a disliked ingredient through (drops unsafe slots).
         plan = constraints.enforce_allergen_safety(plan, qa_item["persona"])
+        # Deterministic guard: no recipe may occupy more than one slot (drops later dupes).
+        plan = constraints.enforce_distinct_slots(plan)
         urls = _dedupe([r.get("recipe_url") for r in plan.values() if r and r.get("recipe_url")])
         usage = self._usage(RecipeState, ctx)
         # Read the resolved recommendation time + requested meal types the tool captured
@@ -356,6 +358,8 @@ class WorkflowMealPlanAssembler(MealPlanAssembler):
         plan = _normalise_any_plan(state.get(_PLAN_KEY))
         # Hard allergen/blacklist post-filter on the FINAL plan (drops unsafe slots).
         plan = constraints.enforce_allergen_safety(plan, persona or {})
+        # Deterministic guard: no recipe may occupy more than one slot (drops later dupes).
+        plan = constraints.enforce_distinct_slots(plan)
         explanation = str(state.get(_EXPLANATION_KEY, "") or "")
         has_explanation = explanation.strip().lower() not in _EXPLANATION_DEFAULTS
         urls = _dedupe([r.get("recipe_url") for r in plan.values() if r and r.get("recipe_url")])
