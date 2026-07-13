@@ -34,7 +34,7 @@ import json
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Mapping, Optional, Sequence, Tuple
+from typing import Callable, Dict, List, Mapping, Optional, Sequence, Tuple
 
 import numpy as np
 from scipy import stats
@@ -287,6 +287,38 @@ def _metrics_for_pair(config_a: str, config_b: str) -> List[str]:
     return FOODRAG_METRICS
 
 
+# ── Full-day comparisons (separate Holm family; keeps partial-day pairwise.csv stable) ──
+# Full-day mode forces all four meal slots. These pairs mirror the partial-day H1-vs-H2
+# and retriever-sensitivity contrasts, plus the partial-vs-full-day contrast per config
+# (paired on question_id — same question, different requested-slot scope).
+CONFIG_PAIRS_FULLDAY: List[Tuple[str, str]] = [
+    # Agentic (H1) vs recommend-only (H2), per retriever — full-day.
+    ("foodrag_h1_dense_fullday", "foodrag_h2_fullday"),
+    ("foodrag_h1_t2p_fullday", "foodrag_h2_t2p_fullday"),
+    # Retriever sensitivity (t2p vs dense), per system — full-day.
+    ("foodrag_h1_t2p_fullday", "foodrag_h1_dense_fullday"),
+    ("foodrag_h2_t2p_fullday", "foodrag_h2_fullday"),
+    # Partial-day vs full-day, per config (scope effect).
+    ("foodrag_h1_t2p", "foodrag_h1_t2p_fullday"),
+    ("foodrag_h1_dense", "foodrag_h1_dense_fullday"),
+    ("foodrag_h2", "foodrag_h2_fullday"),
+    ("foodrag_h2_t2p", "foodrag_h2_t2p_fullday"),
+]
+
+# Full-day family also reports the plan-structure metrics (full + slot-normalized), which
+# is where the slot-count scope effect shows up most directly.
+FULLDAY_METRICS: List[str] = FOODRAG_METRICS + [
+    "meal_slot_completeness_full", "meal_slot_completeness_norm",
+    "structural_validity_full", "structural_validity_norm",
+    "guideline_adherence_norm", "calorie_adherence_full", "calorie_adherence_norm",
+    "slot_appropriateness",
+]
+
+
+def _metrics_for_pair_fullday(config_a: str, config_b: str) -> List[str]:
+    return FULLDAY_METRICS
+
+
 def compute_pairwise(
     records_by_config: Mapping[str, Sequence[dict]],
     config_pairs: Sequence[Tuple[str, str]] = tuple(CONFIG_PAIRS),
@@ -295,6 +327,7 @@ def compute_pairwise(
     experiment_id: str = "EXP-7",
     bootstrap_n: int = 10000,
     seed: int = 0,
+    metric_selector: "Callable[[str, str], List[str]]" = _metrics_for_pair,
 ) -> List[dict]:
     """Build §13.3 Pairwise-Comparison Records for every (metric, config pair).
 
@@ -309,7 +342,7 @@ def compute_pairwise(
         rb = records_by_config.get(config_b)
         if ra is None or rb is None:
             continue
-        for metric in _metrics_for_pair(config_a, config_b):
+        for metric in metric_selector(config_a, config_b):
             if not (metric_available(ra, metric) and metric_available(rb, metric)):
                 continue
             a, b, qids = build_paired_vectors(ra, rb, metric, stratum_filter)
@@ -364,33 +397,43 @@ def _repo_root() -> Path:
     return Path(__file__).resolve().parents[3]
 
 
-def main() -> None:
+def _write_pairwise(rows: List[dict], out_csv: Path, out_json: Path) -> None:
     import csv
 
-    root = _repo_root()
-    json_dir = root / "eval_results" / "json"
-    needed = {c for pair in CONFIG_PAIRS for c in pair}
-    records_by_config = {
-        cid: load_per_question(json_dir / f"{cid}_per_question.json") for cid in sorted(needed)
-    }
-    rows = compute_pairwise(records_by_config)
-    rows.sort(key=lambda r: (r["metric"], r["config_a"], r["config_b"]))
-
-    out_csv = root / "eval_results" / "pairwise.csv"
+    rows = sorted(rows, key=lambda r: (r["metric"], r["config_a"], r["config_b"]))
     with open(out_csv, "w", encoding="utf-8", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=_JSON_COLUMNS)
         writer.writeheader()
         for r in rows:
             writer.writerow({k: r.get(k) for k in _JSON_COLUMNS})
-
-    out_json = json_dir / "pairwise.json"
     with open(out_json, "w", encoding="utf-8") as f:
         json.dump([{k: r.get(k) for k in _JSON_COLUMNS} for r in rows], f,
                   ensure_ascii=False, indent=1)
-
     n_sig = sum(1 for r in rows if r.get("significant"))
     print(f"wrote {len(rows)} pairwise records ({n_sig} significant after Holm) -> "
           f"{out_csv} and {out_json}")
+
+
+def main() -> None:
+    root = _repo_root()
+    json_dir = root / "eval_results" / "json"
+
+    def _load(pairs):
+        needed = {c for pair in pairs for c in pair}
+        return {cid: load_per_question(json_dir / f"{cid}_per_question.json")
+                for cid in sorted(needed)}
+
+    # Partial-day family (unchanged — own Holm correction over CONFIG_PAIRS).
+    rows = compute_pairwise(_load(CONFIG_PAIRS))
+    _write_pairwise(rows, root / "eval_results" / "pairwise.csv", json_dir / "pairwise.json")
+
+    # Full-day + partial-vs-full family (separate Holm correction; does not perturb the
+    # partial-day p-values above).
+    fd_rows = compute_pairwise(_load(CONFIG_PAIRS_FULLDAY),
+                               config_pairs=CONFIG_PAIRS_FULLDAY,
+                               metric_selector=_metrics_for_pair_fullday)
+    _write_pairwise(fd_rows, root / "eval_results" / "pairwise_fullday.csv",
+                    json_dir / "pairwise_fullday.json")
 
 
 if __name__ == "__main__":

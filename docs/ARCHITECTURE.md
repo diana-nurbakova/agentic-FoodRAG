@@ -259,7 +259,14 @@ replay saved text-to-pandas retrievals into the FoodRAG configs so no live re-re
   advances a cursor and returns the pool **rotated** so a new top recipe leads while rank order is
   preserved (`[u0,u1,u2] → [u1,u2,u0] → …`). This is needed for the **live H1-t2p** path, where
   the meal-plan tool calls `retrieve` once per slot and takes `.head(1)`; without rotation every
-  slot would pick the same recipe and the plan would collapse to one dish.
+  slot would pick the same recipe and the plan would collapse to one dish (partial-day only).
+- **`NonRepeatingReplayRetriever`** — the **full-day** replay variant. Rotation still *wraps*
+  when the pool holds fewer distinct recipes than requested slots, so a 4-slot day over a 3-recipe
+  pool would repeat a dish. NonRepeating instead **slices forward** (`urls[cursor:]`, then
+  `cursor += 1`), returning a distinct rank-ordered recipe per slot and going **empty** once the
+  pool is exhausted — never repeating. Wired for the `_fullday` t2p configs (`ReplayH2Assembler`
+  and `LiveH1Assembler._retriever` when `FULLDAY`); partial-day keeps `RotatingReplayRetriever`.
+  This is one of the two full-day degeneracy guards (the other is `enforce_distinct_slots`, §7.2).
 
 ---
 
@@ -530,9 +537,20 @@ Two entry points share one record schema (`specs/FoodRAG_Evaluation_Protocol.md`
   `WorkflowMealPlanAssembler` (H1). `AssembledPlan` (`:42`) is the interface dataclass carrying
   `question`, `answer_text`, `plan`, `recipe_urls`, `contexts`, `has_explanation`,
   `explanation_text/structured`, `recommendation_time`, `requested_meal_types`, and usage/latency.
+- **`full_day` mode.** Both assemblers take a `full_day` flag threaded to the meal-plan tool:
+  when set, the plan requests **all four** meal slots (`[breakfast, lunch, dinner, snack]`) instead
+  of the time-driven partial-day subset (§10 of the results report). This drives the `*_fullday`
+  benchmark configs.
+- **`enforce_distinct_slots` guard.** Immediately after `enforce_allergen_safety`, both assemblers
+  apply `constraints.enforce_distinct_slots(plan)` — a deterministic guard that keeps a recipe in
+  its first slot (breakfast→lunch→dinner→snack order) and drops any later slot re-using the same
+  `recipe_url`. Never mutates its input; `None`/empty pass through. This protects against degenerate
+  plans (the same dish in multiple slots) regardless of retriever, and pairs with
+  `NonRepeatingReplayRetriever` (§3.6) on the full-day t2p path. Covered by `tests/test_distinct_slots.py`.
 
 The resilient driver `c:/tmp/run_foodrag_pipeline.py` re-implements this per-item scoring loop
-(`score_item`, `:539`) so it can checkpoint each record immediately (see §9).
+(`score_item`, `:539`) so it can checkpoint each record immediately (see §9). Its full-day configs
+carry a `_fullday` suffix; `base_config()` strips it to resolve seeds/retrievers.
 
 ### 7.3 §13.1 per-question record schema
 

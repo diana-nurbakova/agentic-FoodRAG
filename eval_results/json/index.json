@@ -1,7 +1,19 @@
 [
  {
+  "config_id": "foodrag_h1_dense_fullday",
+  "file": "foodrag_h1_dense_fullday_per_question.json",
+  "n_records": 4938,
+  "n_runs": 3
+ },
+ {
   "config_id": "foodrag_h1_dense",
   "file": "foodrag_h1_dense_per_question.json",
+  "n_records": 4938,
+  "n_runs": 3
+ },
+ {
+  "config_id": "foodrag_h1_t2p_fullday",
+  "file": "foodrag_h1_t2p_fullday_per_question.json",
   "n_records": 4938,
   "n_runs": 3
  },
@@ -100,5 +112,17 @@
   "file": "ret_text2pandas_at_llama70b_per_question.json",
   "n_records": 8230,
   "n_runs": 5
+ },
+ {
+  "config_id": "foodrag_h2_fullday",
+  "file": "foodrag_h2_fullday_per_question.json",
+  "n_records": 4938,
+  "n_runs": 3
+ },
+ {
+  "config_id": "foodrag_h2_t2p_fullday",
+  "file": "foodrag_h2_t2p_fullday_per_question.json",
+  "n_records": 4938,
+  "n_runs": 3
  }
 ]

@@ -46,11 +46,18 @@ def _safe_name(cid: str) -> str:
 
 
 # ---- per-question records, one JSON per config ----
-parquets = sorted(glob.glob("eval_results/*_per_question.parquet")) + \
-           sorted(glob.glob("eval_results_llama/*_per_question.parquet"))
+# Prefer Parquet; fall back to the .pkl a config was written as when its records
+# have a column the Parquet engine rejects (write_results falls back to pickle).
+parquets = [p for p in sorted(glob.glob("eval_results/*_per_question.parquet")) +
+            sorted(glob.glob("eval_results_llama/*_per_question.parquet"))
+            if os.path.getsize(p) > 0]  # skip 0-byte turds from a failed to_parquet
+_covered = {Path(p).name[: -len("_per_question.parquet")] for p in parquets}
+pkls = [p for p in sorted(glob.glob("eval_results/*_per_question.pkl")) +
+        sorted(glob.glob("eval_results_llama/*_per_question.pkl"))
+        if Path(p).name[: -len("_per_question.pkl")] not in _covered]
 index = []
-for pq in parquets:
-    df = pd.read_parquet(pq)
+for pq in parquets + pkls:
+    df = pd.read_pickle(pq) if pq.endswith(".pkl") else pd.read_parquet(pq)
     cid = str(df["config_id"].iloc[0]) if "config_id" in df.columns and len(df) else Path(pq).stem
     recs = [_clean(r) for r in df.to_dict(orient="records")]
     # sort by (run, question_id) so the file reads run-by-run

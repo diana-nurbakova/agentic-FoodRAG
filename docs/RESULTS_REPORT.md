@@ -532,7 +532,10 @@ breakfast collapses (0.09), and evenings are dinner + snack (dinner ≈ 1.0, bre
 ≈ 0). This is a *deployment feature* — the planner never proposes a breakfast at 9 pm — and
 it is the **quantitative reason the full-day plan-level metrics read ~0.3–0.5**
 (guideline overall ~0.27–0.30, meal-slot completeness ~0.48–0.57): those metrics assume a
-full 4-slot day, but the tool deliberately returns a partial-day plan.
+full 4-slot day, but the tool deliberately returns a partial-day plan. A companion **full-day
+benchmark** that forces all four slots is reported in **§12**; it confirms completeness is a
+slot-count artifact (rises to ~0.98 for dense) while guideline adherence stays low — indeed
+falls slightly — at full day.
 
 ---
 
@@ -543,9 +546,11 @@ full 4-slot day, but the tool deliberately returns a partial-day plan.
    partial-day plans the tool produces (§10). This is why per-nutrient adherence is high on
    ceiling nutrients (sat-fat 0.68, sugar 0.66) but low on band-target nutrients (energy
    0.05, carb 0.07, fibre 0.10) — a full day cannot be assembled from a partial plan. A
-   full-day re-run was deliberately *not* done (it would flatten completeness toward 1.0 and
-   cost ~3 days of compute); the *cross-config comparison remains valid* because guideline
-   adherence is slot-agnostic and completeness is 0.48–0.57 across all four configs.
+   **full-day companion run** (all four slots forced) is now reported in **§12**: it flattens
+   completeness toward ~0.98 (dense) as expected, and confirms the *cross-config comparison
+   remains valid* — guideline adherence is slot-agnostic and stays low (~0.21–0.29, actually
+   *lower* at full day) in both regimes, while the completeness/structural gaps are slot-count
+   artifacts. The partial-day numbers below remain the deployed-behavior reference.
 2. **Reconstructed vs native slot metrics (‡).** `slot_appropriateness` is computed on
    *reconstructed* plans for H2 and H1-dense (the native plan was not persisted at run time)
    vs the *native* plan for H1-t2p. Treat **H1-t2p (0.519) as the reliable value**; the
@@ -575,6 +580,82 @@ full 4-slot day, but the tool deliberately returns a partial-day plan.
    nutrition-specialist review (Protocol §4.5.1). All adherence numbers are "adherence to
    guideline-derived reference bands," *not* clinical validation, and are a single-day
    snapshot approximation of longer-horizon guidelines.
+
+---
+
+## 12. Full-day meal-plan benchmark (all-four-slots variant)
+
+The deployed tool returns **partial-day** plans (§10, mean 2.32 meals). To measure the pipeline
+free of the partial-day slot-count confound, all four FoodRAG configs were re-run in a **full-day
+variant** (`*_fullday`) that forces every plan to request all four meal slots
+(`requested_meal_types = [breakfast, lunch, dinner, snack]`, persisted per record for **all four**
+configs — so slot-normalized metrics are `"persisted"`-sourced throughout). Same QA set
+(1,646 items × 3 runs), retrievers, judges and metrics as §4. Sources: the `*_fullday` rows of
+`eval_results/aggregate.csv`, the `*_fullday_per_question.{parquet,pkl}` files, and
+`eval_results/pairwise_fullday.csv`.
+
+**Degeneracy protection.** A full-day plan must fill four *distinct* slots. Two guards ensure this
+(both now permanent — Architecture §3.6 / §7.2):
+
+- `NonRepeatingReplayRetriever` — the text-to-pandas replay draws a *distinct* rank-ordered recipe
+  for each of the four per-slot `retrieve()` calls (empty once the saved pool is exhausted), instead
+  of wrapping/repeating the pool.
+- `constraints.enforce_distinct_slots` — a deterministic post-assembly guard that drops any later
+  slot re-using an earlier slot's `recipe_url`.
+
+After the fix, **0.000 % of plans are degenerate** (same recipe in ≥ 2 slots) across all four
+configs (4,938 records/config); an unguarded run produced up to **100 %** degeneracy on `h2_t2p`
+(plain replay returns the same pool every slot) and 17.7 % on `h1_t2p`.
+
+### 12.1 Full-day headline (mean [95 % CI], n ≈ 1,646; slot-normalized plan metrics)
+
+| Metric | H2-dense | H1-dense | H2-t2p | H1-t2p |
+|---|---|---|---|---|
+| hit@10 | 0.046 [.038,.055] | 0.049 [.040,.058] | **0.828** [.810,.845] | 0.786 [.767,.804] |
+| correctness (Judge A) | 0.262 [.254,.269] | 0.281 [.274,.288] | **0.718** [.704,.731] | 0.561 [.547,.575] |
+| correctness (Judge B) | 0.264 | 0.310 | **0.794** | 0.621 |
+| allergen violation | **0.000** | **0.000** | **0.000** | **0.000** |
+| completeness (norm) | 0.982 [.977,.987] | **0.990** [.987,.993] | 0.731 [.714,.748] | 0.782 [.763,.800] |
+| structural validity (norm) | 0.362 [.344,.381] | **0.392** [.375,.408] | 0.015 [.009,.021] | 0.022 [.015,.028] |
+| guideline adherence (full) | 0.209 | 0.211 | **0.243** | 0.239 |
+| guideline adherence (norm) | 0.216 | 0.218 | **0.285** | 0.279 |
+| calorie adherence (norm) | 0.812 | 0.812 | 0.767 | 0.787 |
+| slot appropriateness | **0.831** | 0.716 | 0.445 | 0.507 |
+
+Because the full-day request set *is* all four slots, ρ(Q) = 1 and each `_norm` value is within 0.01
+of its `_full` counterpart (spec `FoodRAG_Slot_Normalized_Metrics.md`). `structural_validity_norm` is
+strict all-or-nothing (all four requested slots filled *and* admissible), which is why the t2p configs
+— which cannot always fill four slots from their replay pool — read ~0.01–0.02 despite `_full` ≈ 0.999.
+
+### 12.2 What full-day reveals (paired Wilcoxon, Holm-corrected within family; `pairwise_fullday.csv`)
+
+**Retriever is the dominant axis — and it trades off.** text-to-pandas beats dense on retrieval and
+correctness (hit@10 +0.74 H1 / +0.78 H2; correctness +0.28 H1 / +0.46 H2; guideline +0.03 both; all
+p < 1e-8), but **dense beats t2p on slot coverage**: completeness_norm +0.21 H1 / +0.25 H2 and
+structural_norm +0.37 / +0.35 (all p < 1e-70). The saved t2p replay pool often holds < 4 distinct
+recipes, so the NonRepeating retriever leaves later slots empty rather than repeat — high correctness
+on the slots it fills, lower full-slot coverage.
+
+**Agentic (H1) vs recommend-only (H2), full-day.** H1 *hurts* t2p correctness (−0.157 vs H2-t2p,
+p ≈ 4e-115) but slightly *helps* dense (+0.019, p ≈ 1e-6); H1 improves completeness_norm for both
+(+0.05 t2p, +0.008 dense). No significant H1/H2 guideline difference.
+
+**Partial-day vs full-day (scope effect; same questions paired).**
+
+- **Completeness rises** (full-day fills ~0.98 of slots for dense vs ~0.52 partial-day; paired diff
+  0.20–0.47, all p < 1e-98) — confirming the low partial-day completeness/structural reading was a
+  **slot-count artifact**, not a pipeline failure.
+- **Guideline adherence *falls* going partial → full** (0.03–0.09 lower at full-day, all p < 1e-10):
+  a full four-slot day *overshoots* the energy/macro bands more than a 2–3 slot plan. This is the
+  genuine, scope-independent limitation — it does **not** disappear under normalization or a full day.
+- Correctness is mixed by retriever: t2p partial > full (the time-aware partial-day plan is more
+  correct), dense ≈ flat.
+
+**Takeaway.** The full-day run separates the two headline stories: (i) the low partial-day
+*completeness/structural* numbers are a slot-count artifact that fills/normalizes away; (ii) the low
+*guideline adherence* (~0.21–0.29) is a real limitation that persists — indeed worsens — at full day.
+Retrieval quality (t2p) vs slot coverage (dense) is a genuine trade-off a future hybrid retriever
+should close.
 
 ---
 

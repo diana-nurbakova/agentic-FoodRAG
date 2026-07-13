@@ -426,6 +426,14 @@ and re-judged)
    fully-ungrounded explanations (ucr=1.0) **15.4%→7.3%**, claim-grounding **0.654→0.717**,
    faithfulness **0.922→0.997**, correctness **0.689→0.765**, UNFAITHFUL **8.0%→0.3%** (§1, §5,
    §6). Cases D and E are fixed.
+3. **Distinct-slot guard** (`constraints.enforce_distinct_slots`, applied after the allergen
+   filter in both assemblers) + `NonRepeatingReplayRetriever` for the full-day t2p replay path.
+   Fixes a **degenerate-plan** failure mode — the same recipe placed in multiple slots — surfaced
+   by the full-day benchmark: an unguarded full-day run put one dish in all four slots for up to
+   **100%** of `h2_t2p` plans (plain replay returns the same pool every slot) and 17.7% of
+   `h1_t2p`. **Measured effect:** **0.000% degenerate** plans across all four full-day configs
+   (4,938 records each); the guard is a no-op on the already-distinct partial-day plans. See the
+   full-day benchmark (RESULTS_REPORT §12).
 
 **Remaining highest-leverage targets** (not yet done)
 1. **Retrieval is still the highest-leverage target overall** — moving dense→t2p is a ~70-point

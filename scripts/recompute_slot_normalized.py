@@ -46,6 +46,11 @@ CONFIG_RUNS = {
     "foodrag_h2":       [f"foodrag_h2_run{r}.jsonl" for r in (1, 2, 3)],
     "foodrag_h2_t2p":   [f"foodrag_h2_t2p_run{r}.jsonl" for r in (1, 2, 3)],
     "foodrag_h1_dense": [f"foodrag_h1_dense_run{r}.jsonl" for r in (1, 2, 3)],
+    # full-day variants (all 4 meal slots requested; requested_meal_types persisted for all).
+    "foodrag_h1_t2p_fullday":   [f"foodrag_h1_t2p_fullday_run{r}.jsonl" for r in (1, 2, 3)],
+    "foodrag_h2_fullday":       [f"foodrag_h2_fullday_run{r}.jsonl" for r in (1, 2, 3)],
+    "foodrag_h2_t2p_fullday":   [f"foodrag_h2_t2p_fullday_run{r}.jsonl" for r in (1, 2, 3)],
+    "foodrag_h1_dense_fullday": [f"foodrag_h1_dense_fullday_run{r}.jsonl" for r in (1, 2, 3)],
 }
 
 # full-day metric key -> the backward-compat *_full key it is preserved under (spec §4).

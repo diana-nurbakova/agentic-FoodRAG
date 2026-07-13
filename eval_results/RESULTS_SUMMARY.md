@@ -115,17 +115,43 @@ The meal-plan tool selects meal types by time of day (plans "the remaining day")
 **partial-day** (mean 2.32 meals/plan, not 4). Selection is strongly time-driven
 (`eval_results/mealplan_time_of_day.csv`): mornings → breakfast-dominant; evenings →
 dinner+snack; breakfast/lunch drop once past. This is a deployment feature — and the
-quantitative reason the full-day plan-level metrics (guideline, completeness) read ~0.3–0.5.
+quantitative reason the partial-day plan-level metrics (guideline, completeness) read ~0.3–0.5.
+A companion **full-day** benchmark (§5.1) forces all four slots to separate this artifact from
+the genuine guideline limitation.
+
+---
+
+## 5.1 Full-day benchmark (all-four-slots variant)
+
+All four configs re-run forcing `requested_meal_types = [breakfast, lunch, dinner, snack]`
+(1,646 × 3 runs; `*_fullday` rows in `aggregate.csv`, `pairwise_fullday.csv`). Two permanent
+guards keep plans distinct — `NonRepeatingReplayRetriever` + `constraints.enforce_distinct_slots`
+— giving **0.000 % degenerate plans** (vs up to 100 % unguarded on h2_t2p). Judge A, mean:
+
+| Metric (full-day) | H2-dense | H1-dense | H2-t2p | H1-t2p |
+|---|---|---|---|---|
+| hit@10 | 0.046 | 0.049 | **0.828** | 0.786 |
+| correctness (A) | 0.262 | 0.281 | **0.718** | 0.561 |
+| allergen violation | 0.000 | 0.000 | 0.000 | 0.000 |
+| completeness (norm) | 0.982 | **0.990** | 0.731 | 0.782 |
+| guideline adherence (norm) | 0.216 | 0.218 | **0.285** | 0.279 |
+
+**Findings** (paired Wilcoxon, Holm-corrected): (i) completeness rises 0.20–0.47 partial→full
+(all p<1e-98) — the low partial-day completeness was a **slot-count artifact**; (ii) guideline
+adherence *falls* 0.03–0.09 partial→full (all p<1e-10) — a full day *overshoots* the energy
+bands, a **genuine limitation** that persists at full day; (iii) retriever trade-off: t2p ≫ dense
+on retrieval/correctness (hit@10 +0.74–0.78) but dense ≫ t2p on slot coverage (completeness_norm
++0.21–0.25) because the t2p replay pool exhausts before four distinct slots.
 
 ---
 
 ## 6. Limitations / caveats
 
 - **† Partial-day plans**: guideline-adherence, calorie-distribution and meal-slot-completeness
-  assume a full 4-slot day, so they are conservative on partial-day plans. A full-day re-run
-  was deliberately not done (it would flatten completeness toward 1.0 and cost ~3 days); the
-  cross-config comparison remains valid (guideline is slot-agnostic; completeness is 0.48–0.57
-  across all four).
+  assume a full 4-slot day, so they are conservative on partial-day plans. A **full-day companion
+  run** (§5.1) was done: completeness rises to ~0.98 (dense) — confirming that gap is a slot-count
+  artifact — while guideline adherence stays low (~0.21–0.29, slightly *lower* at full day). The
+  cross-config comparison is valid in both regimes.
 - **‡ slot appropriateness** is computed on *reconstructed* plans for H2/H1-dense (native plan
   not persisted at run time) vs the *native* plan for H1-t2p; treat H1-t2p (0.519) as the
   reliable value and the others as reconstruction-biased.
