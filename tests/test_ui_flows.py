@@ -144,5 +144,9 @@ def test_admin_auth_and_tabs(monkeypatch):
 
 
 def test_report_tab_renders():
+    # ``at.tabs`` is flat across the whole tree, so assert on labels rather than a
+    # count — the nested Depth strip grows as analyses are added.
     at = _render(query={"report": "true"})
-    assert len(at.tabs) == 6
+    labels = {t.label for t in at.tabs}
+    assert {"① Headline", "② Attribution", "③ Depth"} <= labels   # the three tiers
+    assert {"Overview", "Agentic comparison", "Pareto"} <= labels  # one nested tab per tier
