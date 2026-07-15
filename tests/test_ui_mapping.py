@@ -34,6 +34,29 @@ def test_recipe_to_card():
     assert card["img"] == "🥗"               # lunch emoji
 
 
+def test_recipe_to_card_per_serving_and_food_com():
+    from ui.services.mapping import recipe_to_card
+
+    recipe = dict(RECIPE, **{
+        "servingSize [g]": 250.0, "recipe_id": 42,
+        "recipe_url": "https://www.food.com/recipe/hummus-dip-42",
+    })
+    card = recipe_to_card(recipe, "lunch")
+    # HUMMUS nutrients are per-100 g; per serving = value/100 × servingSize.
+    assert card["cal"] == round(382.2 / 100 * 250)      # 956
+    assert card["protein"] == round(18.8 / 100 * 250)   # 47
+    assert card["serving_size_g"] == 250
+    assert card["recipe_url"] == "https://www.food.com/recipe/hummus-dip-42"
+
+
+def test_food_com_url_from_locator():
+    from ui.services.mapping import food_com_url
+
+    assert food_com_url({"recipe_url": "https://www.food.com/recipe/x-1"}) == "https://www.food.com/recipe/x-1"
+    assert food_com_url({"food_kg_locator": "http://idea.rpi.edu/heals/kb/recipe/x-2"}) == "https://www.food.com/recipe/x-2"
+    assert food_com_url({}) == ""
+
+
 def test_meal_plan_to_recipes_order():
     from ui.services.mapping import meal_plan_to_recipes
 

@@ -53,13 +53,25 @@ def test_flow_a_onboarding_screens(screen):
     _render(lambda at: at.session_state.__setitem__("screen", screen))
 
 
-def test_flow_a_main_prerun():
+def test_flow_a_main_prerun_mock():
     def setup(at):
         at.session_state["persona"] = PERSONA
         at.session_state["hexad_type"] = "Achiever"
+        at.session_state["backend_live"] = False   # mock preview path
         at.session_state["screen"] = "main"
     at = _render(setup)
     assert any("Run pipeline" in b.label for b in at.button)
+
+
+def test_flow_a_main_prerun_live_default():
+    # The recommender defaults to the LIVE backend switch → the live run button renders
+    # (the engine is only built on click, so rendering stays cheap).
+    def setup(at):
+        at.session_state["persona"] = PERSONA
+        at.session_state["screen"] = "main"
+    at = _render(setup)
+    assert at.session_state["backend_live"] is True
+    assert any("Run live pipeline" in b.label for b in at.button)
 
 
 def test_flow_b_demographics_and_assignment():
@@ -68,11 +80,19 @@ def test_flow_b_demographics_and_assignment():
                                        at.session_state.__setitem__("screen", s)))
 
 
+def _first_profile_id() -> str:
+    from ui.study_data import get_study_profiles
+
+    return get_study_profiles()[0]["id"]
+
+
 def test_flow_b_plan_evaluation():
+    pid = _first_profile_id()
+
     def setup(at):
         ss = at.session_state
         ss["flow"] = "evaluation"; ss["screen"] = "plan_evaluation"
-        ss["assigned_profile_id"] = "A"; ss["plan_order"] = [0, 1, 2]
+        ss["assigned_profile_id"] = pid; ss["plan_order"] = [0, 1, 2]
         ss["latin_square_group"] = 0
         ss["plan_index"] = 0; ss["plan_answers"] = []; ss["attention_results"] = []
     at = _render(setup)
@@ -85,16 +105,18 @@ def test_flow_b_post_study_ranking_completion():
     _render(lambda at: (at.session_state.__setitem__("flow", "evaluation"),
                         at.session_state.__setitem__("screen", "post_study")))
 
+    pid = _first_profile_id()
+
     def rank(at):
         ss = at.session_state
         ss["flow"] = "evaluation"; ss["screen"] = "ranking"
-        ss["assigned_profile_id"] = "A"; ss["plan_order"] = [1, 2, 0]
+        ss["assigned_profile_id"] = pid; ss["plan_order"] = [1, 2, 0]
     _render(rank)
 
     def done(at):
         ss = at.session_state
         ss["flow"] = "evaluation"; ss["screen"] = "completion"
-        ss["assigned_profile_id"] = "A"; ss["plan_order"] = [1, 2, 0]; ss["latin_square_group"] = 1
+        ss["assigned_profile_id"] = pid; ss["plan_order"] = [1, 2, 0]; ss["latin_square_group"] = 1
         ss["demographics"] = {"age_range": "25–34", "country": "France", "employment": "Student",
                               "cooking_frequency": "Daily", "cooking_skill": "Intermediate"}
         ss["plan_answers"] = [{"plan_position_seen": i, "plan_cond": f"C{i+1}",
