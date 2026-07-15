@@ -78,7 +78,7 @@ class MealPlanRecommendationTool(RecipeToolBase):
 
     def __init__(self, llm: LLM, recipe_query_engine: RecipeRAGQueryEngine, retrieve_only=False,
                  query_augmentation_template: PromptTemplate = None, time: str = None, date: str = None,
-                 full_day: bool = False, verbose=True):
+                 full_day: bool = False, single_meal: str = None, verbose=True):
         """
         Initialize the MealPlanRecommendationTool.
 
@@ -108,6 +108,12 @@ class MealPlanRecommendationTool(RecipeToolBase):
         self.json_extractor_tool = JsonExtractorTool(llm=recipe_query_engine.llm, verbose=verbose)
         self.retrieve_only = retrieve_only
         self.full_day = full_day
+        # When set to a valid meal type, recommend ONLY that meal — skips the LLM
+        # meal-split (guaranteeing a single slot and one fewer LLM call). ``full_day``
+        # takes precedence (a full-day plan can't also be a single meal).
+        self.single_meal = (str(single_meal).lower()
+                            if single_meal and not full_day
+                            and str(single_meal).lower() in MealType.get_all_str() else None)
         if query_augmentation_template is not None:
             self.query_augmentation_template = query_augmentation_template
         elif full_day:
@@ -141,12 +147,17 @@ class MealPlanRecommendationTool(RecipeToolBase):
         current_state = RecipeState.from_context(ctx)
         current_state.set_original_user_question(question)
 
-        # Transform the question into meal plan questions
-        reformulated_meal_plan_query = self._reformulate_query(current_state=current_state, llm=self.llm,
-                                                               question=question, time=self.time, date=self.date,
-                                                               query_augmentation_template=self.query_augmentation_template,
-                                                               verbose=self.verbose).response
-        meal_plan_query = self._parse_meal_plan_query(reformulated_meal_plan_query)
+        if self.single_meal:
+            # Single-meal request: skip the LLM meal-split and target exactly one slot.
+            meal_plan_query = MealPlanQuestions.from_dict({self.single_meal: question})
+            current_state.set_recommendation_time(f"{self.date or 'today'} {self.time or 'now'}")
+        else:
+            # Transform the question into meal plan questions
+            reformulated_meal_plan_query = self._reformulate_query(current_state=current_state, llm=self.llm,
+                                                                   question=question, time=self.time, date=self.date,
+                                                                   query_augmentation_template=self.query_augmentation_template,
+                                                                   verbose=self.verbose).response
+            meal_plan_query = self._parse_meal_plan_query(reformulated_meal_plan_query)
         current_state.set_meal_plan_questions(meal_plan_query)
 
         # Update history

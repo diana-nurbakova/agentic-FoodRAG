@@ -142,6 +142,7 @@ class RecommendationAgent(FunctionAgent):
             time: Optional[str] = "now",
             date: Optional[str] = "today",
             full_day: bool = False,
+            single_meal: Optional[str] = None,
             **kwargs
     ):
         """``time``/``date`` are forwarded to the meal-plan recommendation tool so the
@@ -150,7 +151,10 @@ class RecommendationAgent(FunctionAgent):
 
         ``full_day`` (default False) is forwarded to the meal-plan recommendation tool so
         the H1 chain requests ALL FOUR meal types (breakfast/lunch/dinner/snack) — a full
-        4-slot plan — instead of only the meals relevant to the current time."""
+        4-slot plan — instead of only the meals relevant to the current time.
+
+        ``single_meal`` (optional meal type) restricts the plan to exactly ONE slot,
+        skipping the LLM meal-split — much faster (fewer meals to validate/explain)."""
         llm = llm or Settings.llm
 
         if tools is None:
@@ -158,7 +162,7 @@ class RecommendationAgent(FunctionAgent):
             tools = [
                 meal_plan_tools.MealPlanRecommendationTool(
                     llm=llm, recipe_query_engine=query_engine, retrieve_only=True, time=time, date=date,
-                    full_day=full_day
+                    full_day=full_day, single_meal=single_meal
                 ).to_tool(),
             ]
 
@@ -201,14 +205,17 @@ class ValidationAgent(FunctionAgent):
             llm: Optional[LLM] = None,
             tools: Optional[List] = None,
             can_handoff_to: Optional[List[str]] = None,
+            max_correction_rounds: Optional[int] = None,
             **kwargs
     ):
         llm = llm or Settings.llm
         if tools is None:
-            # Provide any default validation tools
+            # Provide any default validation tools. ``max_correction_rounds`` caps the
+            # generalization loop so hard constraints don't run to a timeout.
             tools = [
-                validation_tools.CorrectionTool(llm=llm, recipe_df=recipe_df,
-                                                recipe_query_engine=query_engine).to_tool(),
+                validation_tools.CorrectionTool(
+                    llm=llm, recipe_df=recipe_df, recipe_query_engine=query_engine,
+                    max_correction_rounds=max_correction_rounds).to_tool(),
             ]
         if can_handoff_to is None:
             can_handoff_to = ["ExplanationAgent", "SubstitutionAgent"]

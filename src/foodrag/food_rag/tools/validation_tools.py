@@ -4,7 +4,7 @@ from llama_index.core.llms import LLM
 from llama_index.core.workflow import Context
 from pydantic import Field
 from pydantic.fields import FieldInfo
-from typing import List
+from typing import List, Optional
 
 from foodrag.food_rag.meal_plan.meal_plan_structures import MealPlan, MealPlanQuestions, MealPlanValidation
 from foodrag.food_rag.meal_plan.meal_type import MealType
@@ -352,7 +352,7 @@ class CorrectionTool(RecipeToolBase):
 
     def __init__(self, llm: LLM, recipe_df: pd.DataFrame, recipe_query_engine: RecipeRAGQueryEngine,
                  use_food_on: bool = False, ingredient_tool: ingredient_tools.IngredientHierarchyTool = None,
-                 verbose: bool = True):
+                 max_correction_rounds: Optional[int] = None, verbose: bool = True):
         """
         Initialize the correction tool.
 
@@ -360,8 +360,11 @@ class CorrectionTool(RecipeToolBase):
         :param recipe_df: The Pandas DataFrame containing known recipes.
         :param use_food_on: If True, includes fitting food_on hierarchies and classes to validate the recipe.
         :param ingredient_tool: The ingredient tool to use for food_on validation if use_food_on is True.
+        :param max_correction_rounds: Cap on generalization rounds (None = full MAX_GENERALIZATION_LEVEL).
+            Lower it (e.g. 2) to keep hard-constraint runs from looping to a timeout.
         :param verbose: If True, prints the correction result.
         """
+        self.max_correction_rounds = max_correction_rounds
         super().__init__(fn=self.correct_recipes, tool_name=self.TOOL_NAME, verbose=verbose)
         self.llm = llm
         self.recipe_df = recipe_df
@@ -379,6 +382,8 @@ class CorrectionTool(RecipeToolBase):
         If they stay invalid, restore the originals.
         """
         max_gen_level = self.generalization_tool.MAX_GENERALIZATION_LEVEL
+        if self.max_correction_rounds is not None:
+            max_gen_level = min(max_gen_level, max(1, int(self.max_correction_rounds)))
 
         # 1. Load state
         current_state = RecipeState.from_context(ctx)
