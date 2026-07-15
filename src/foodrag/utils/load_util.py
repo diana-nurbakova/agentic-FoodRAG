@@ -146,14 +146,14 @@ def get_hummus(data_location, graph_location, additional_location, data_path='',
     return data
 
 
-def get_current_hummus(data_path=''):
+def get_current_hummus(data_path='', exclude=None):
     # check if the data has already been initialized by loading the loading_state file
     ensure_dir(Path(data_path, SUB_DIRECTORY_NAME))
     file_path = Path(data_path, SUB_DIRECTORY_NAME, 'loading_state.json')
     is_initialized = os.path.exists(file_path) and os.path.isfile(file_path)
 
     if is_initialized:
-        return _load_hummus(data_path)
+        return _load_hummus(data_path, exclude=exclude)
     else:
         raise Exception('The data has not been initialized. Please initialize it first. Path: ' + str(file_path))
 
@@ -184,9 +184,9 @@ def _init_hummus(data_location, graph_location, additional_location, data_path, 
     return hummus_data
 
 
-def _load_hummus(data_path):
+def _load_hummus(data_path, exclude=None):
     data_path = Path(data_path, SUB_DIRECTORY_NAME)
-    data = load_data(data_path)
+    data = load_data(data_path, exclude=exclude)
 
     # Normalize tags, directions, ingredient_names, ingredients, and meal types
     data['recipes_df']['tags'] = data['recipes_df']['tags'].apply(lambda x: serialize(x))
@@ -270,8 +270,14 @@ def update_config(new_value_pairs, config_path):
         ryaml.YAML(typ='rt').dump(data, file)
 
 
-def load_data(path, s3=None):
+def load_data(path, s3=None, exclude=None):
+    """Load every file in ``path`` keyed by filename stem.
+
+    ``exclude`` (optional iterable of stems) skips those files entirely — e.g. the
+    GUI engine skips ``reviews_df``/``users_df``/``usda_json`` (hundreds of MB it never
+    reads at runtime) to cut cold-start time. Defaults to loading everything."""
     loaded_data = {}
+    exclude = set(exclude or ())
 
     # Check if the directory exists and get all files in the directory
     if s3 is None:
@@ -289,6 +295,8 @@ def load_data(path, s3=None):
 
     # Load all files in the directory
     for file_name in file_names:
+        if file_name.split('.')[0] in exclude:
+            continue
         file_path = Path(path, file_name)
 
         if file_path.is_file():
