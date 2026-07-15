@@ -13,9 +13,7 @@
 > This document is grounded in the code under `src/foodrag/`, `ui/`, `scripts/`, `deploy/` and
 > `config/`. Model ids, versions and hyperparameters are quoted verbatim from `config/models.yml`,
 > `pyproject.toml`, `frozen_requirements.txt`, `docker-compose.yml` and the `Dockerfile`. It
-> supersedes the earlier architecture note and the (now partly stale) `PROJECT_DESCRIPTION.md`
-> (which still references Llama 3.1 / Jina embeddings / a three-agent chain — the current system is
-> Llama-3.3-70B / BGE-M3 / a five-agent chain).
+> supersedes the earlier architecture notes.
 
 ## Table of contents
 

@@ -35,8 +35,6 @@ This is a refactored, reproducible version of the original research prototype
 recovery, resumable runs, deterministic safety guards, and a test suite.
 
 **Full architecture & reproducibility reference:** [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
-(the older [PROJECT_DESCRIPTION.md](PROJECT_DESCRIPTION.md) predates the current stack and is kept
-for history only).
 
 > **Status:** functional and deployable on branch `refactor/uv-loader`. Data-prep, embedding,
 > stores, QA generation, the agentic pipeline, the evaluation framework and the study app are all
