@@ -1,0 +1,28 @@
+# Keep the Docker/Space build context tiny. The runtime data slice is pulled
+# from the HF Dataset at boot (scripts/bootstrap_hf_data.py), NOT baked into the
+# image — never COPY the 54 GB data/ tree.
+data/
+.venv/
+venv/
+eval_results/
+eval_results_llama/
+error_analysis.txt
+
+# caches / vcs / junk
+.git/
+**/__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+htmlcov/
+.coverage*
+*.log
+
+# notebooks aren't needed to serve the app
+notebooks/
+
+# local secrets never go into the image (set them as HF Space secrets)
+.env
+api_key
+insa_api_key
