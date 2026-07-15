@@ -21,6 +21,37 @@ denominator so the reader can see how much data backs each figure.
 
 ---
 
+## 0. Data, personas & ground truth (what a "failure" is measured against)
+
+The evaluation set is generated **procedurally**, so every error below is a failure against a
+*known, rule-derived* answer key rather than a human label (see `docs/RESULTS_REPORT.md` §1.1–1.2
+for the full pipeline).
+
+- **Personas.** Each of the 1,646 tight questions is a rule-based persona: hard preference
+  constraints drawn from `config/persona_config.yml` — tag likes (0–1)/dislikes (0–2), ingredient
+  likes (0–1)/dislikes (0–2), per-100 g nutrient bands, per-serving daily caps, and health-score
+  floors. The tight set is **constraint-heavy**: mean **4.99** requirements/persona (median 5;
+  62 % carry ≥ 5), which is why hard-constraint and retrieval failures concentrate at high
+  `num_requirements` (§3a).
+- **Query.** The evaluated query is the deterministic structured question
+  (`"What are the recipes that meet the following criteria?" + bulleted constraints`); the
+  `llm_questions` reformulations are auxiliary and not scored.
+- **Ground truth.** The gold answer set is the **exhaustive** set of HUMMUS recipes (310,228-recipe
+  corpus) satisfying *all* of a persona's constraints, computed by `_get_valid_recipes_for_persona`.
+  A "retrieval MISS" therefore means the pipeline's top-10 missed a recipe that provably satisfies
+  every stated requirement; an "allergen violation" means a served recipe provably contains a
+  disliked ingredient. Both are exact, not judgment calls.
+- **Why the empty-plan gate matters.** Of the 10,000 personas generated, **5,518 (55.2 %) are
+  over-constrained — no recipe satisfies them** (the `empty` stratum). The deployed tool must often
+  legitimately return *nothing*, which is precisely the case the empty-plan explanation gate (§6)
+  handles: on the tight set the residual empty-plan rate is 8.6–10.7 % (§1), and honestly refusing
+  those is scored as correct/faithful rather than hallucinated.
+- **Requirement-type mix (of 1,646, overlapping):** health 1,646 (100 %), tag 1,347, nutrient_bound
+  1,181, allergen 1,104, ingredient 987 — so the `allergen` (safety-critical) slice is 3,312 of the
+  4,938 item-runs (§3c), and the `ingredient` slice (the hardest to retrieve, §3b) is 2,961.
+
+---
+
 ## 1. Failure taxonomy and per-config rates
 
 Rate = fraction of item-runs exhibiting the failure, over the *defined* denominator for that

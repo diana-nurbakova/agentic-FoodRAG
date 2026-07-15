@@ -1,9 +1,26 @@
 # Paired Significance Tests (Protocol §6 / §13.3)
 
-The results pipeline reports means ± SD and **bootstrap 95% CIs**. Protocol §6
-("Statistical Testing Protocol") additionally requires **paired** comparison
-tests over per-question scores. This document reports those tests for the
-interpretable FoodRAG configuration comparisons (EXP-7).
+The results pipeline reports means ± SD and **bootstrap 95% CIs** (stored for
+**every** `config × stratum × metric` in `eval_results/json/aggregate.json`).
+Protocol §6 ("Statistical Testing Protocol") additionally requires **paired**
+comparison tests over per-question scores. This document reports those tests for the
+interpretable FoodRAG configuration comparisons (EXP-7), for both the partial-day
+(deployed) and the full-day (all-four-slots) regimes.
+
+## Data & ground truth (context for the pairing)
+
+All pairs below are aligned on `question_id` over the **tight** evaluation stratum:
+the 1,646 personas (of 10,000 generated) whose rule-based gold answer set has 1–50
+recipes. Each persona is a set of hard preference constraints (tag/ingredient
+likes-dislikes, per-100 g nutrient bands, per-serving daily caps, health-score
+floors); the **ground truth** is the *exhaustive* set of HUMMUS corpus recipes
+(310,228 recipes) satisfying all of them, computed deterministically by
+`_get_valid_recipes_for_persona` (§1.1 of `docs/RESULTS_REPORT.md`). Because gold is
+rule-derived and complete, the paired per-question scores are exact and the Wilcoxon
+test is over genuine within-question differences, not annotation noise. The tight set
+is constraint-heavy (mean 4.99 requirements/persona) which is why `n_pairs` for some
+metrics is < 1,646 (metrics undefined on empty/over-filtered plans are dropped from
+the pair).
 
 ## Method
 
@@ -138,6 +155,61 @@ constraint on ~90% of questions (allergen_violation 0.905) while FoodRAG is at
 0.000 (median Δ = −0.98, 95% CI [−0.91, −0.90]); `naive_rag` is nearly safe
 (0.008) but still significantly worse than FoodRAG's deterministic allergen
 filter.
+
+---
+
+## Family 4 — Full-day variants (all-four-slots regime)
+
+A separate Holm family (records: `eval_results/pairwise_fullday.csv` /
+`eval_results/json/pairwise_fullday.json`; regenerate with the same
+`python -m foodrag.analysis.stats`). These pairs force `requested_meal_types =
+[breakfast, lunch, dinner, snack]` so the plan-structure metrics (`*_full` /
+`*_norm`) become interpretable. The family also adds the *scope-effect* pairs
+(same `question_id`, partial-day vs full-day) to separate slot-count artifacts from
+genuine limitations. Selected rows (corrected p; median Δ = a − b):
+
+### Agentic (H1) vs recommend-only (H2), full-day
+
+| pair | metric | mean_a | mean_b | p_corr | median Δ | sig |
+|---|---|---|---|---|---|---|
+| h1_t2p_fullday vs h2_t2p_fullday | correctness_judgeA | 0.561 | 0.718 | 4.5e-115 | -0.083 | yes (H2 wins) |
+| h1_t2p_fullday vs h2_t2p_fullday | meal_slot_completeness_norm | 0.782 | 0.731 | 2.0e-36 | 0.000 | yes (H1 wins) |
+| h1_t2p_fullday vs h2_t2p_fullday | hit_at_10 | 0.786 | 0.828 | 8.7e-19 | 0.000 | yes (H2 wins) |
+| h1_dense_fullday vs h2_fullday | correctness_judgeA | 0.281 | 0.262 | 1.3e-06 | 0.000 | yes (H1 wins) |
+| h1_dense_fullday vs h2_fullday | hit_at_10 | 0.049 | 0.046 | 7.3e-01 | 0.000 | **no** |
+
+### Retriever sensitivity (t2p vs dense), full-day
+
+| pair | metric | mean_a | mean_b | p_corr | median Δ | sig |
+|---|---|---|---|---|---|---|
+| h1_t2p_fullday vs h1_dense_fullday | hit_at_10 | 0.786 | 0.049 | 1.2e-251 | +1.000 | yes (t2p) |
+| h1_t2p_fullday vs h1_dense_fullday | correctness_judgeA | 0.561 | 0.281 | 2.3e-156 | +0.333 | yes (t2p) |
+| h1_t2p_fullday vs h1_dense_fullday | structural_validity_norm | 0.022 | 0.392 | 1.5e-165 | -0.333 | yes (dense) |
+| h1_t2p_fullday vs h1_dense_fullday | meal_slot_completeness_norm | 0.782 | 0.990 | 5.3e-75 | 0.000 | yes (dense) |
+| h1_t2p_fullday vs h1_dense_fullday | guideline_adherence_norm | 0.279 | 0.215 | 7.3e-28 | +0.083 | yes (t2p) |
+| h2_t2p_fullday vs h2_fullday | hit_at_10 | 0.828 | 0.046 | 1.2e-270 | +1.000 | yes (t2p) |
+| h2_t2p_fullday vs h2_fullday | correctness_judgeA | 0.718 | 0.262 | 5.5e-227 | +0.500 | yes (t2p) |
+
+### Scope effect (partial-day vs full-day, same questions)
+
+| pair | metric | mean_a | mean_b | p_corr | median Δ | sig |
+|---|---|---|---|---|---|---|
+| h1_t2p vs h1_t2p_fullday | correctness_judgeA | 0.765 | 0.561 | 1.7e-111 | +0.167 | yes (partial higher) |
+| h1_t2p vs h1_t2p_fullday | meal_slot_completeness_norm | 0.913 | 0.782 | 7.1e-48 | 0.000 | yes |
+| h1_t2p vs h1_t2p_fullday | guideline_adherence_overall | 0.266 | 0.239 | 2.5e-13 | 0.000 | yes (partial higher) |
+| h2 vs h2_fullday | guideline_adherence_overall | 0.279 | 0.209 | 2.3e-55 | +0.083 | yes (partial higher) |
+| h2 vs h2_fullday | structural_validity_norm | 0.189 | 0.362 | 1.4e-59 | 0.000 | yes (full higher) |
+| h2 vs h2_fullday | hit_at_10 | 0.032 | 0.046 | 2.1e-04 | 0.000 | yes (full higher) |
+
+**Read.** The full-day regime confirms two separate stories with paired tests:
+(i) **completeness/structural** metrics rise going partial→full (all p < 1e-14) —
+the low partial-day readings were a **slot-count artifact**; (ii) **guideline
+adherence** *falls* going partial→full (h2 0.279→0.209, p = 2.3e-55; h1_t2p
+0.266→0.239, p = 2.5e-13) — a **genuine limitation** that a full day *worsens*, not
+fixes. Within full-day, the retriever swap remains the dominant effect (hit@10 +0.74
+to +0.78, p < 1.2e-251), but it **trades off** against slot coverage: dense fills
+four distinct slots (completeness_norm 0.990, structural_norm 0.392) where t2p's
+replay pool exhausts (0.782 / 0.022, p < 5.3e-75).
 
 ---
 

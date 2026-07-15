@@ -2,8 +2,20 @@
 
 Tight stratum (personas with 1–50 valid answers, n=1,646). Generator: Llama-3.3-70B.
 Dual-judge (Judge A = Gemma-3-27B cross-lineage; Judge B = DeepSeek-V3). All numbers
-are aggregate-stratum means; per-question records + bootstrap 95% CIs in the per-config
-parquets / `json/aggregate.json`.
+are aggregate-stratum means; **bootstrap 95% CIs for every metric** are in
+`json/aggregate.json`, and **paired Wilcoxon tests** (Holm-corrected) in
+`pairwise.csv` / `docs/STATISTICAL_TESTS.md`. Full narrative + all-metric CI tables:
+`docs/RESULTS_REPORT.md`.
+
+**Data & ground truth.** Personas are rule-based (tag/ingredient likes-dislikes,
+per-100 g nutrient bands, per-serving daily caps, health-score floors from
+`config/persona_config.yml`); the query is the deterministic structured question; and
+the **gold answer set is the exhaustive set of HUMMUS recipes** (310,228-recipe corpus)
+satisfying every constraint, computed deterministically (§1.1 of the report). Of 10,000
+generated personas, **5,518 (55%) are over-constrained/empty, 1,646 tight, 1,192 medium,
+1,644 broad**; the tight set is constraint-heavy (mean 4.99 requirements/persona,
+median 5). Ground truth is symbolic and complete — retrieval and safety metrics are
+exact, not human-labelled.
 
 ---
 
@@ -32,11 +44,17 @@ gpt-4o-mini for the Pandas generation (0.854 vs 0.427).
 
 | Rung | hit@10 | mrr@10 | allergen viol. | latency (s) |
 |---|---|---|---|---|
-| 0a Popularity (raw, unaware) | 0.293 | 0.135 | 0.001 | — |
-| 0b Popularity (health-aware) | 1.000* | 1.000* | 0.000 | — |
+| 0a Popularity (raw, unaware) — tight | 0.002 | 0.001 | 0.001 | — |
+| 0b Popularity (health-aware) * — tight | 1.000* | 1.000* | 0.000 | — |
 | 2 LLM-only (no retrieval) | 0.006 | 0.003 | **0.905** | — |
 | 3 Naive-RAG | 0.055 | 0.023 | 0.008 | — |
-| ToG (agentic KG traversal) | 0.407 | 0.316 | 0.000 | 902.8 |
+| ToG (agentic KG traversal) — aggregate | 0.407 | 0.316 | 0.000 | 902.8 |
+
+*(Popularity spans all 10k strata; shown at **tight** for a like-for-like comparison —
+its all-strata aggregate hit@10 is 0.293 (an artifact of large gold sets: raw-popularity
+hit@10 climbs 0.002 tight → 0.065 medium → 0.748 broad). ToG shown at aggregate, n=300;
+tight n=96 is 0.594. **Full per-stratum whole-dataset breakdown: RESULTS_REPORT §3.1.**
+CIs for all rows in `json/aggregate.json`.)*
 
 **Findings.**
 - **LLM-only violates a hard allergen constraint 90.5% of the time** — the core justification
@@ -74,8 +92,10 @@ H1 = agentic (Recommend + Correct + Enhance); H2 = Recommend-only. dense vs text
 - **Retriever quality dominates**: t2p configs get ~20–25× the hit@10 of dense (0.71–0.77 vs
   0.03), near-perfect hard-constraint satisfaction, and zero allergen violations.
 - **The agentic pipeline pays off when retrieval is good, not when it is weak**: on t2p, H1
-  beats H2 on hit@10 (0.773 vs 0.709) and correctness (0.765 vs 0.586); on dense, H1 ≈ H2
-  (both retrieve almost nothing, so correction has nothing to work with — H1-dense's very high
+  beats H2 on hit@10 (0.773 vs 0.709) and correctness (0.765 vs 0.586; paired Wilcoxon
+  p=8.5e-88, median Δ=+0.167); on dense, H1 ≈ H2 on hit@10 (0.027 vs 0.032, Wilcoxon n.s.,
+  p=0.089) —
+  both retrieve almost nothing, so correction has nothing to work with (H1-dense's very high
   faithfulness 0.989 reflects tiny, cautious plans). The agentic value emerges once the
   retriever supplies valid candidates to correct/enhance.
 - **Safety is now perfect across all configs** (allergen violation 0.000 everywhere after the
