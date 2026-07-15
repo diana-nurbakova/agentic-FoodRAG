@@ -50,8 +50,9 @@ def inject_global_css() -> None:
         <style>
           html, body, [class*="css"] {{ font-family: {F}; }}
           .stApp {{ background: {C['bg']}; }}
-          /* Tighten the default Streamlit top padding for a denser, app-like feel */
-          .block-container {{ padding-top: 2rem; padding-bottom: 3rem; max-width: 820px; }}
+          /* Keep enough top padding to clear the fixed Streamlit toolbar, while
+             staying denser than the default for an app-like feel */
+          .block-container {{ padding-top: 3.5rem; padding-bottom: 3rem; max-width: 820px; }}
           /* Headings use the display serif */
           h1, h2, h3 {{ font-family: {FP}; color: {C['primary']}; }}
           /* Primary buttons */

@@ -18,7 +18,8 @@ from .admin_config import default_admin_config
 from .services.config_service import effective_config
 
 # Flow A screens (spec §4) and Flow B screens (spec §5)
-FLOW_A_SCREENS = ["consent", "hexad", "persona", "main"]
+# HEXAD questionnaire hidden for now — kept out of the Flow A screen sequence.
+FLOW_A_SCREENS = ["consent", "persona", "main"]
 FLOW_B_SCREENS = ["consent", "demographics", "profile_assignment", "plan_evaluation",
                   "post_study", "ranking", "completion"]
 
@@ -51,8 +52,10 @@ def init_state() -> None:
     _pd = ss["admin_config"]["pipeline_defaults"]
     ss.setdefault("config_a", {"retriever": _pd["default_retriever"],
                                "validation": _pd["validation_default"],
+                               "substitution": _pd.get("substitution_default", True),
                                "explanation": _pd["explanation_default"]})
-    ss.setdefault("config_b", {"retriever": "sparse", "validation": True, "explanation": False})
+    ss.setdefault("config_b", {"retriever": "sparse", "validation": True,
+                               "substitution": True, "explanation": False})
 
     # Flow B
     ss.setdefault("demographics", None)
@@ -69,9 +72,18 @@ def init_state() -> None:
 
 
 def goto(screen: str) -> None:
-    """Navigate to a screen and rerun."""
+    """Navigate to a screen and rerun. Use imperatively (inside the script body),
+    never from a widget callback — ``st.rerun()`` is forbidden there."""
     st.session_state["screen"] = screen
     st.rerun()
+
+
+def nav_to(screen: str) -> None:
+    """Callback-safe navigation for ``st.button(on_click=...)``: set the target
+    screen only. No ``st.rerun()`` — the widget interaction already reruns the app,
+    and a callback that sets state (rather than the inline ``if st.button(): goto()``
+    pattern) can't be dropped by a concurrent ``run_every`` fragment rerun."""
+    st.session_state["screen"] = screen
 
 
 def log_event(event_type: str, payload: dict | None = None) -> None:

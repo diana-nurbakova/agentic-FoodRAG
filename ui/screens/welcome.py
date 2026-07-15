@@ -42,7 +42,7 @@ def render() -> None:
             f"<div style=\"background:{C['card']};border:1px solid {C['border']};border-radius:12px;"
             f"padding:18px;min-height:170px\">"
             f"<div style=\"font-size:26px\">🧭</div>"
-            f"<div style=\"font-family:{F};font-size:15px;font-weight:700;color:{C['text']};margin-top:6px\">Explore the system</div>"
+            f"<div style=\"font-family:{F};font-size:15px;font-weight:700;color:{C['text']};margin-top:6px\">Recommender System</div>"
             f"<div style=\"font-family:{F};font-size:12px;color:{C['textMuted']};line-height:1.6;margin-top:4px\">"
             f"Open-ended demo: pick a persona, run the agent pipeline, switch retrievers, compare configs in arena mode.</div></div>"
         )

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import streamlit as st
 
+from ..components.study_common import render_step_nav
 from ..mock_data import HEXAD_Q
 from ..state import goto, log_event
 from ..theme import C, F, FP, html
@@ -25,6 +26,7 @@ def _score(answers: list[int]) -> tuple[dict[str, int], str]:
 
 
 def render() -> None:
+    render_step_nav(back_screen="consent", home_screen="welcome")
     html(
         f"<h2 style=\"font-family:{FP};font-size:20px;color:{C['primary']};margin:0 0 3px\">Player Profile (HEXAD)</h2>"
         f"<p style=\"font-family:{F};font-size:10px;color:{C['textMuted']};margin:0 0 12px\">"

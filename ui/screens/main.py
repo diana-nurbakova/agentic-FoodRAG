@@ -8,9 +8,17 @@ pipeline configs). Data is mocked (spec §12 Phase 2 wires the real backend).
 
 from __future__ import annotations
 
+import os
+import threading
 import time
+from datetime import datetime
 
 import streamlit as st
+
+# In-flight live runs, keyed by session+side. The pipeline runs on a background thread
+# and appends trace lines here; a polling fragment renders them (Streamlit buffers
+# element updates during a blocking run, so the work must NOT block the script thread).
+_LIVE_RUNS: dict = {}
 
 from ..admin_config import pipeline_defaults
 from ..components.correction_log import render_correction_log
@@ -19,6 +27,7 @@ from ..components.pipeline_strip import render_pipeline_strip
 from ..components.query_inspector import render_query_inspector
 from ..components.recipe_card import render_recipe_card
 from ..components.recipe_detail import recipe_detail_dialog
+from ..components.study_common import render_step_nav
 from ..mock_data import (
     MEALS,
     PLAN_META,
@@ -33,7 +42,242 @@ from ..theme import C, F, html
 
 # ── helpers ───────────────────────────────────────────────────────────────
 def _config_sig(cfg: dict) -> str:
-    return f"{cfg['retriever']}|{cfg['validation']}|{cfg['explanation']}"
+    return (f"{cfg['retriever']}|{cfg['validation']}|"
+            f"{cfg.get('substitution', True)}|{cfg['explanation']}")
+
+
+def _full_day() -> bool:
+    """Whether the user asked for a full-day plan (vs. a single meal)."""
+    return bool(st.session_state.get("full_day", False))
+
+
+def _current_meal() -> str:
+    """Meal slot matching the local time of day — the default single-meal target
+    when the query names no explicit meal (spec §4.4)."""
+    h = datetime.now().hour
+    if 5 <= h < 11:
+        return "Breakfast"
+    if 11 <= h < 16:
+        return "Lunch"
+    if 16 <= h < 21:
+        return "Dinner"
+    return "Snack"
+
+
+def _query_meal_type(query: str) -> str | None:
+    """The explicit meal slot named in the query (lower-case), or None. Word-boundary
+    match so 'dinner' hits but 'breakfast-y' style substrings still resolve."""
+    import re
+
+    q = (query or "").lower()
+    for meal in MEALS:
+        if re.search(rf"\b{meal.lower()}\b", q):
+            return meal.lower()
+    return None
+
+
+def _target_meal(query: str) -> str:
+    """The single meal to recommend: the query's explicit meal, else the current slot."""
+    mt = _query_meal_type(query)
+    return mt.capitalize() if mt else _current_meal()
+
+
+# Live-pipeline progress: agent name → (icon, human label) for the status panel.
+_AGENT_STEPS = {
+    "RecommendationAgent": ("🔍", "Retrieving & recommending recipes"),
+    "ValidationAgent": ("✅", "Validating dietary constraints"),
+    "SubstitutionAgent": ("🔧", "Substituting to fix violations"),
+    "ExplanationAgent": ("💡", "Writing the explanation"),
+    "FinalizationAgent": ("📦", "Finalizing the plan"),
+}
+
+
+def _friendly_tool(name: str) -> str:
+    return (name or "").replace("_tool", "").replace("_", " ").strip().capitalize()
+
+
+def _recommended_titles(ev) -> list[str]:
+    """Extract 'Meal — Recipe title' strings from a recommendation tool's result, so the
+    recommended recipes are visible immediately (before validation runs)."""
+    raw = getattr(getattr(ev, "tool_output", None), "raw_output", None)
+    try:
+        if hasattr(raw, "to_dict"):
+            raw = raw.to_dict()
+        items = list(raw.items()) if hasattr(raw, "items") else []
+    except Exception:  # noqa: BLE001
+        return []
+    out = []
+    for meal, rec in items:
+        meal_name = getattr(meal, "value", None) or str(meal)
+        title = None
+        if hasattr(rec, "get"):
+            title = rec.get("title")
+        elif hasattr(rec, "to_dict"):
+            try:
+                title = rec.to_dict().get("title")
+            except Exception:  # noqa: BLE001
+                title = None
+        if title:
+            out.append(f"{str(meal_name).capitalize()} — {title}")
+    return out
+
+
+def _output_preview(text: str, limit: int = 260) -> str:
+    """One-line, truncated preview of an agent/tool output for the live status panel.
+    Leads with a verdict chip when the text announces VALID/INVALID."""
+    t = " ".join((text or "").split())
+    if len(t) < 8:
+        return ""
+    up = t.upper()
+    chip = "🔴 INVALID · " if "INVALID" in up else ("🟢 VALID · " if "VALID" in up else "")
+    body = t if len(t) <= limit else t[:limit].rstrip() + "…"
+    return chip + body
+
+
+def _clean_md(t: str) -> str:
+    t = " ".join((t or "").split())
+    for ch in ("`", "*", "_"):  # avoid breaking markdown emphasis
+        t = t.replace(ch, "")
+    return t
+
+
+def _make_trace_appender(buf: dict):
+    """on_event callback that appends a readable trace to ``buf`` (a plain dict shared
+    with the polling fragment). Runs on the pipeline's background thread, so it must NOT
+    call any ``st.*`` — it only mutates ``buf['lines']`` / ``buf['stream']`` / ``buf['stage']``."""
+    seen = {"agent": None}
+
+    def _push(line: str) -> None:
+        if line and (not buf["lines"] or buf["lines"][-1] != line):
+            buf["lines"].append(line)
+
+    def _on_event(ev) -> None:
+        etype = type(ev).__name__
+        agent = getattr(ev, "current_agent_name", None)
+        if agent and agent != seen["agent"] and agent in _AGENT_STEPS:
+            seen["agent"] = agent
+            icon, label = _AGENT_STEPS[agent]
+            buf["stage"] = f"{icon} {label}"
+            _push(f"{icon} **{label}**")
+            buf["stream"] = ""
+        elif etype == "AgentStream":                      # LLM writing — show it live
+            buf["stream"] = getattr(ev, "response", "") or ""
+        elif etype == "ToolCall":
+            tname = getattr(ev, "tool_name", "") or ""
+            if tname and "handoff" not in tname.lower():
+                _push(f"&nbsp;&nbsp;↳ {_friendly_tool(tname)}…")
+        elif etype == "ToolCallResult":
+            tname = (getattr(ev, "tool_name", "") or "").lower()
+            titles = _recommended_titles(ev) if ("recommend" in tname or "alternativ" in tname) else []
+            if titles:
+                _push("🍽 **Recommended:** " + " · ".join(titles))
+            else:
+                try:
+                    out = ev.tool_output
+                    preview = _output_preview(str(getattr(out, "content", out) or ""))
+                except Exception:  # noqa: BLE001
+                    preview = ""
+                if preview:
+                    _push(f"&nbsp;&nbsp;{preview}")
+            buf["stream"] = ""
+        elif etype == "AgentOutput":
+            try:
+                preview = _output_preview(ev.response.content or "")
+            except Exception:  # noqa: BLE001
+                preview = ""
+            if preview:
+                _push(f"&nbsp;&nbsp;{preview}")
+            buf["stream"] = ""
+
+    return _on_event
+
+
+def _start_live_run(buf: dict, persona: dict, query: str, run_config: dict) -> None:
+    """Run the live pipeline on a daemon thread, streaming a trace into ``buf`` and
+    parking the result/error there for the polling fragment to pick up."""
+    from ..services import rag_service
+
+    on_event = _make_trace_appender(buf)
+
+    def _bg() -> None:
+        try:
+            buf["result"] = rag_service.generate_meal_plan(persona, query, run_config, on_event=on_event)
+        except Exception as exc:  # noqa: BLE001 — surfaced in the UI via buf["error"]
+            buf["error"] = f"{type(exc).__name__}: {exc}"
+        finally:
+            buf["done"] = True
+
+    threading.Thread(target=_bg, name="foodrag-live-run", daemon=True).start()
+
+
+def _render_trace(buf: dict) -> None:
+    """Render the current live trace (called every second from the polling fragment)."""
+    from ..services import backend
+
+    elapsed = int(time.time() - buf.get("t0", time.time()))
+    stage = buf.get("stage") or ("📚 Loading HUMMUS dataset & models (first run)…"
+                                 if not backend.engine_ready() else "Starting…")
+    st.markdown(f"**{stage}**  ·  ⏱ {elapsed}s")
+    lines = buf.get("lines", [])[-10:]
+    body = "  \n".join(lines)
+    if buf.get("stream"):
+        body += f"  \n&nbsp;&nbsp;💭 _{_clean_md(buf['stream'][-320:])}…_"
+    if body:
+        st.markdown(body)
+
+
+def _poll_live_run(run_key: str, side: str, res_key: str, err_key: str, run_flag: str) -> None:
+    """Render the in-flight run's trace, then either promote the finished result or
+    sleep ~1s and rerun the whole app to poll again.
+
+    A full-app rerun loop (not a ``run_every`` fragment, which proved unreliable, nor
+    ``st.rerun(scope='fragment')``, which is illegal on a fragment's first execution).
+    The page renders fully *before* the sleep, so there's no mid-render blocking/garble."""
+    buf = _LIVE_RUNS.get(run_key)
+    if buf is None:
+        st.session_state[run_flag] = False
+        st.rerun()
+    with st.container(border=True):
+        _render_trace(buf)
+    if buf.get("done"):
+        result = buf.get("result")
+        if result is not None:
+            st.session_state[res_key] = result
+            log_event("pipeline_completed",
+                      {"backend": "real", "llm_calls": result.get("llm_calls"),
+                       "elapsed": result.get("elapsed"), "partial": result.get("partial", False)})
+        if buf.get("error"):
+            st.session_state[err_key] = buf["error"]
+        st.session_state[run_flag] = False
+        _LIVE_RUNS.pop(run_key, None)
+        st.rerun()
+    else:
+        time.sleep(1.0)
+        st.rerun()
+
+
+def _hummus_warm_indicator() -> None:
+    """Show a background-load status while the engine warms, and notify once when done.
+    Only relevant when the live backend is on.
+
+    Deliberately NOT an auto-refreshing fragment: a ``run_every`` fragment forces
+    frontend re-renders that ghost/duplicate the st.columns pipeline strip while a live
+    run blocks the script. A static caption is stable; the ready toast fires on the next
+    natural rerun (a live run ends with one, so it appears right after)."""
+    from ..services import backend
+
+    if not st.session_state.get("backend_live", True):
+        return
+    if backend.engine_ready():
+        if not st.session_state.get("_hummus_notified"):
+            st.session_state["_hummus_notified"] = True
+            st.toast("✅ HUMMUS dataset loaded — live backend ready.", icon="✅")
+        return
+    # Self-heal: (re)start the warm-up if it isn't running — e.g. after a module
+    # reload reset the engine singleton. Idempotent (no-op while already warming).
+    backend.warm_engine_in_background()
+    st.caption("⏳ Loading HUMMUS dataset & models in the background — "
+               "live runs will be fast once this finishes. Reload the page to refresh status.")
 
 
 def _simulate_run(config: dict) -> dict:
@@ -181,44 +425,76 @@ def _render_real_results(side: str, arena_mode: bool) -> None:
     """Live-backend variant: one generated plan from the agentic RAG pipeline."""
     cfg_key = f"config_{side.lower()}"
     config = st.session_state[cfg_key]
+    res_key, err_key = f"real_res_{side}", f"real_err_{side}"
+    run_flag = f"live_running_{side}"
+    run_key = f"live_{st.session_state.get('session_id', '')}_{side}"
+    running = bool(st.session_state.get(run_flag))
+
     locked = not pipeline_defaults()["user_can_change_pipeline"]
-    config = render_pipeline_strip(config, key=side, disabled=locked)
+    config = render_pipeline_strip(config, key=side, disabled=locked or running)
     st.session_state[cfg_key] = config
 
     if config["retriever"] == "fusion":
         st.caption("ℹ Fusion runs reciprocal-rank fusion over dense + sparse "
                    "(+ Neo4j KG when available, per protocol §5.5).")
 
-    res_key, err_key = f"real_res_{side}", f"real_err_{side}"
+    # A run is in flight for this side → show the live trace and poll (background thread
+    # does the work so the script never blocks and updates flush live).
+    if running:
+        st.markdown("**▶ Running the live pipeline…**")
+        _poll_live_run(run_key, side, res_key, err_key, run_flag)
+        return
 
     if st.button("▶ Run live pipeline", key=f"runreal_{side}", type="primary",
                  use_container_width=True):
+        from ..services.stores_bootstrap import ensure_stores_up
+
         persona = st.session_state["persona"]
         query = st.session_state.get("query_text", "")
-        log_event("pipeline_started", {"config": dict(config), "backend": "real"})
+        single = bool(st.session_state.get("single_meal_mode", False))
+        # Three modes: Single → one meal (overrides Full day); Full day → all 4 meals;
+        # neither → the meals remaining in the current day (time-aware). Only Single sets
+        # a target meal (the query's explicit meal, else the current-time slot).
+        full_day = _full_day() and not single
+        run_config = {**config, "full_day": full_day,
+                      "meal_type": _target_meal(query).lower() if single else None}
+        log_event("pipeline_started", {"config": run_config, "backend": "real"})
         st.session_state.pop(err_key, None)
-        try:
-            with st.spinner("Running the agentic pipeline (retrieve → validate → explain)… "
-                            "first run also loads HUMMUS, so it can take a while."):
-                result = rag_service.generate_meal_plan(persona, query, config)
-            st.session_state[res_key] = result
-            log_event("pipeline_completed",
-                      {"backend": "real", "llm_calls": result["llm_calls"],
-                       "elapsed": result["elapsed"]})
-        except Exception as exc:  # noqa: BLE001
-            st.session_state[err_key] = f"{type(exc).__name__}: {exc}"
+        st.session_state.pop(res_key, None)
+        ensure_stores_up()  # self-heal (fast no-op when Postgres is reachable)
+        buf = {"lines": [], "stream": "", "stage": "", "done": False,
+               "result": None, "error": None, "t0": time.time()}
+        _LIVE_RUNS[run_key] = buf
+        st.session_state[run_flag] = True
+        _start_live_run(buf, persona, query, run_config)
         st.rerun()
 
     if st.session_state.get(err_key):
-        st.error(f"Live pipeline failed: {st.session_state[err_key]}")
-        st.caption("Check the live-backend status in the admin panel, or turn the live "
-                   "backend off to use mock data.")
+        err = st.session_state[err_key]
+        st.error(f"Live pipeline failed: {err}")
+        # The vector-store retrievers (Dense/Sparse/Hybrid/Fusion) need pgvector on :5432.
+        if any(tok in err for tok in ("5432", "OperationalError", "Connection refused",
+                                      "connection to server")):
+            st.warning(
+                "The vector database (pgvector, port 5432) isn't running, so this retriever "
+                "can't fetch recipes. Either **switch the retriever to Text→Pandas** above "
+                "(runs with no database), or start the backing stores with `docker compose up -d`.")
+        else:
+            st.caption("Check the live-backend status in the admin panel, or switch the "
+                       "Live backend toggle off to use mock data.")
         return
 
     result = st.session_state.get(res_key)
     if not result:
         st.info("Configure the pipeline and click **Run live pipeline** to generate a plan.")
         return
+
+    if result.get("partial"):
+        st.warning(
+            "⏱ The pipeline hit its time limit before validation/explanation finished — "
+            "showing the **recommendation as-is** (not fully validated). This usually happens on "
+            "hard constraints that trigger many correction rounds. To get a full run faster, try a "
+            "simpler query, or turn off **Validation** in the pipeline strip for a recommend-only run.")
 
     # Stats
     html(f"<div style=\"font-family:{F};font-size:9px;color:{C['textMuted']};margin:6px 0;line-height:1.6\">"
@@ -343,13 +619,15 @@ def render_pipeline_results(side: str, arena_mode: bool) -> None:
     recipes = RECIPES_SETS[plan]
     meta = PLAN_META[plan]
 
-    # View toggle
-    view = st.radio("View", ["🗓 Full Day", "🍽 Single"], key=f"view_{side}",
-                    horizontal=True, label_visibility="collapsed")
-    single = view == "🍽 Single"
+    # Mock preview: the Single toggle shows one meal (query's explicit meal, else the
+    # current slot); otherwise the full-day view (the live backend distinguishes
+    # remaining-day vs full-day, but the mock set only carries the 4 canonical meals).
+    single = bool(st.session_state.get("single_meal_mode", False))
+    query = st.session_state.get("query_text", "")
+    cur_idx = MEALS.index(_target_meal(query)) if single else 0
 
     if single:
-        r = recipes[0]
+        r = recipes[cur_idx]
         summary = {"cal": str(r["cal"]), "ns": r["nutriscore"], "prot": f"{r['protein']}g",
                    "fiber": f"{r['fiber']}g", "skill": r["skill"]}
     else:
@@ -362,7 +640,9 @@ def render_pipeline_results(side: str, arena_mode: bool) -> None:
 
     with tabs[0]:
         if single:
-            render_recipe_card(recipes[0], key=f"{side}_single", on_expand=_open_detail, compact=arena_mode)
+            html(f"<div style=\"font-family:{F};font-size:8px;font-weight:700;color:{C['textMuted']};"
+                 f"text-transform:uppercase;letter-spacing:1px;margin:6px 0 3px\">{MEALS[cur_idx]}</div>")
+            render_recipe_card(recipes[cur_idx], key=f"{side}_single", on_expand=_open_detail, compact=arena_mode)
         else:
             for i, meal in enumerate(MEALS):
                 html(f"<div style=\"font-family:{F};font-size:8px;font-weight:700;color:{C['textMuted']};"
@@ -389,9 +669,10 @@ def render_pipeline_results(side: str, arena_mode: bool) -> None:
 
     with tabs[idx]:
         persona = st.session_state["persona"]
-        meal_recipes = [recipes[0]] if single else recipes
+        meal_recipes = [recipes[cur_idx]] if single else recipes
+        meal_names = [MEALS[cur_idx]] if single else MEALS
         choice = st.selectbox("Explain which meal?", range(len(meal_recipes)),
-                              format_func=lambda i: f"{('' if single else MEALS[i] + ': ')}{meal_recipes[i]['name']}",
+                              format_func=lambda i: f"{meal_names[i]}: {meal_recipes[i]['name']}",
                               key=f"kg_meal_{side}")
         render_recipe_paths(meal_recipes[choice], persona)
 
@@ -420,21 +701,30 @@ def _cfg_summary(cfg: dict) -> str:
 
 def render() -> None:
     persona = st.session_state["persona"]
-    hexad_type = st.session_state.get("hexad_type") or "—"
+    hexad_type = st.session_state.get("hexad_type")  # None while HEXAD is hidden
     st.session_state.setdefault("arena_mode", False)
     arena_available = pipeline_defaults()["arena_available"]
     if not arena_available:
         st.session_state["arena_mode"] = False
 
+    # Navigation: Flow A is consent → persona → main, so Back returns to the
+    # persona chooser and Home to the flow chooser (spec §4.4). Shared helper uses
+    # on_click callbacks, robust against the live-backend warm-poll fragment.
+    render_step_nav(back_screen="persona", home_screen="welcome")
+
     # Header
     head_l, head_r = st.columns([4, 1])
     with head_l:
+        hexad_badge = (
+            f"<span style=\"background:{C['primaryPale']};color:{C['primary']};font-size:8px;padding:1px 6px;"
+            f"border-radius:6px;font-family:{F};font-weight:600;margin-left:6px\">HEXAD: {hexad_type}</span>"
+            if hexad_type else ""
+        )
         html(
             f"<span class=\"foodrag-brand\" style=\"font-size:18px\">FoodRAG</span>"
             f"<span style=\"font-family:{F};font-size:9px;color:{C['textMuted']};margin-left:6px\">"
             f"{persona['emoji']} {persona['name']} · CS:{persona['cs']} FS:{persona['fs']}</span>"
-            f"<span style=\"background:{C['primaryPale']};color:{C['primary']};font-size:8px;padding:1px 6px;"
-            f"border-radius:6px;font-family:{F};font-weight:600;margin-left:6px\">HEXAD: {hexad_type}</span>"
+            f"{hexad_badge}"
         )
     with head_r:
         if arena_available and st.button(
@@ -445,9 +735,41 @@ def render() -> None:
             st.session_state["arena_winner"] = None
             st.rerun()
 
-    st.text_input("Query", key="query_text",
-                  placeholder="e.g. Suggest a low-sugar dinner for diabetes…",
-                  label_visibility="collapsed")
+    st.text_area("Query", key="query_text",
+                 placeholder="e.g. Suggest a low-sugar dinner for diabetes…",
+                 label_visibility="collapsed", height=80)
+
+    st.session_state.setdefault("full_day", False)
+    st.session_state.setdefault("single_meal_mode", False)
+    st.session_state.setdefault("backend_live", True)
+    _q = st.session_state.get("query_text", "")
+    _explicit = _query_meal_type(_q)
+    _single_target = (_explicit.capitalize() if _explicit else _current_meal())
+    _reason = "named in your query" if _explicit else "based on the time of day"
+    _single_on = st.session_state.get("single_meal_mode", False)
+    tog_l, tog_m, tog_r = st.columns(3)
+    with tog_l:
+        # Single overrides Full day (a single meal can't also be a full day).
+        st.toggle(
+            "🗓 Full day", key="full_day", disabled=_single_on,
+            help=("Off: the meals remaining in the current day (time-aware). "
+                  "On: a full-day plan — breakfast, lunch, dinner and a snack."),
+        )
+    with tog_m:
+        st.toggle(
+            "🍽 Single", key="single_meal_mode",
+            help=(f"On: just one meal — {_single_target} ({_reason}). Overrides Full day. "
+                  "Fastest, and the most likely to finish a fully-validated plan."),
+        )
+    with tog_r:
+        forced = os.environ.get("FOODRAG_REAL_BACKEND", "").lower() in ("1", "true", "yes", "on")
+        st.toggle(
+            "🟢 Live backend", key="backend_live", disabled=forced,
+            help=("On: run the real agentic pipeline over HUMMUS (slower, hits the LLM). "
+                  "Off: fast mock preview." + (" Forced on by env." if forced else "")),
+        )
+
+    _hummus_warm_indicator()
 
     arena = st.session_state["arena_mode"]
     winner = st.session_state.get("arena_winner")

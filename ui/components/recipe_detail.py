@@ -24,8 +24,24 @@ def _summary_html(recipe: dict) -> str:
             f"<div style=\"font-family:{F};font-size:7px;color:{C['textMuted']}\">{s['l']}</div></div>"
         )
     return (
-        f"<div style=\"background:{C['primaryPale']};border-radius:6px;padding:8px;margin-top:8px;"
+        f"<div style=\"font-family:{F};font-size:8px;color:{C['textMuted']};text-transform:uppercase;"
+        f"letter-spacing:0.6px;margin-top:8px\">Nutrition per serving</div>"
+        f"<div style=\"background:{C['primaryPale']};border-radius:6px;padding:8px;margin-top:2px;"
         f"display:flex;justify-content:space-around\">{cells}</div>"
+    )
+
+
+def _food_com_html(recipe: dict) -> str:
+    """External link to the recipe on food.com (empty when no URL is available)."""
+    url = recipe.get("recipe_url")
+    if not url:
+        return ""
+    return (
+        f"<a href=\"{url}\" target=\"_blank\" rel=\"noopener noreferrer\" "
+        f"style=\"display:inline-flex;align-items:center;gap:5px;margin-top:12px;font-family:{F};"
+        f"font-size:11px;font-weight:600;color:{C['primary']};text-decoration:none;"
+        f"border:1px solid {C['primary']};border-radius:6px;padding:5px 10px\">"
+        f"🔗 View this recipe on food.com ↗</a>"
     )
 
 
@@ -88,6 +104,7 @@ def recipe_detail_dialog(recipe: dict) -> None:
     html(_ingredients_html(recipe))
     html(f"<h3 style=\"font-family:{F};font-size:13px;font-weight:700;color:{C['text']};margin:12px 0 5px\">Directions</h3>")
     html(_directions_html(recipe))
+    html(_food_com_html(recipe))
 
     if st.button("Close", key="close_detail", use_container_width=True):
         st.rerun()

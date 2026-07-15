@@ -9,8 +9,9 @@ from __future__ import annotations
 
 import streamlit as st
 
-from ..admin_config import active_personas
+from ..components.study_common import render_step_nav
 from ..state import goto, log_event
+from ..study_data import flow_a_personas
 from ..theme import C, F, FP, html
 
 
@@ -31,13 +32,17 @@ def _persona_card_html(p: dict) -> str:
 
     age = (f"<span style=\"font-weight:400;color:{C['textMuted']};font-size:10px;margin-left:3px\">{p['age']}y</span>"
            if p["age"] else "")
-    cond = p["condition"] if p["condition"] != "None" else "No health conditions"
+    # Real evaluation profiles carry a full constraint description; show it as the subtitle.
+    subtitle = p.get("desc") or (p["condition"] if p["condition"] != "None" else "No health conditions")
+    for d in (p.get("dislikedIng", []) + p.get("dislikedTags", [])):
+        badges += (f"<span style=\"background:#fee2e2;color:#991b1b;font-size:8px;padding:1px 6px;"
+                   f"border-radius:6px;font-family:{F};font-weight:600;margin:1px\">✕{d}</span>")
     return (
         f"<div style=\"background:{C['card']};border:1px solid {C['border']};border-radius:8px;"
         f"padding:12px;min-height:128px\">"
         f"<div style=\"font-size:22px;margin-bottom:3px\">{p['emoji']}</div>"
         f"<div style=\"font-family:{F};font-weight:700;font-size:13px;color:{C['text']}\">{p['name']}{age}</div>"
-        f"<div style=\"font-family:{F};font-size:9px;color:{C['textMuted']};margin-top:2px\">{cond}</div>"
+        f"<div style=\"font-family:{F};font-size:9px;color:{C['textMuted']};margin-top:2px;line-height:1.4\">{subtitle}</div>"
         f"<div style=\"margin-top:5px;display:flex;flex-wrap:wrap;gap:2px\">{badges}</div></div>"
     )
 
@@ -67,11 +72,17 @@ def _builder() -> None:
 
 def _select(persona: dict) -> None:
     st.session_state["persona"] = persona
+    # Real evaluation profiles seed the query with their exact study prompt so the live
+    # pipeline reproduces evaluated behaviour (user can still edit or clear it).
+    if persona.get("prompt"):
+        st.session_state["query_text"] = persona["prompt"]
     log_event("persona_selected", {"persona_id": persona["id"], "persona_data": persona})
     goto("main")
 
 
 def render() -> None:
+    # Flow A is consent → persona → main: Back returns to consent, Home to welcome.
+    render_step_nav(back_screen="consent", home_screen="welcome")
     html(
         f"<h2 style=\"font-family:{FP};font-size:20px;color:{C['primary']};margin:0 0 3px\">Select a Persona</h2>"
         f"<p style=\"font-family:{F};font-size:10px;color:{C['textMuted']};margin:0 0 14px\">"
@@ -79,7 +90,7 @@ def render() -> None:
     )
 
     cols = st.columns(2)
-    for idx, p in enumerate(active_personas()):
+    for idx, p in enumerate(flow_a_personas()):
         with cols[idx % 2]:
             html(_persona_card_html(p))
             is_no_profile = p["id"] == 4

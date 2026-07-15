@@ -30,6 +30,8 @@ def render() -> None:
         )
         pd_cfg["validation_default"] = st.toggle("Validation agent on by default",
                                                 value=pd_cfg["validation_default"])
+        pd_cfg["substitution_default"] = st.toggle("Substitution agent on by default",
+                                                  value=pd_cfg.get("substitution_default", True))
         pd_cfg["explanation_default"] = st.toggle("Explanation agent on by default",
                                                  value=pd_cfg["explanation_default"])
     with c2:
@@ -61,6 +63,7 @@ def render() -> None:
         st.session_state["config_a"] = {
             "retriever": pd_cfg["default_retriever"],
             "validation": pd_cfg["validation_default"],
+            "substitution": pd_cfg.get("substitution_default", True),
             "explanation": pd_cfg["explanation_default"],
         }
         # reset any completed run so the new config is used

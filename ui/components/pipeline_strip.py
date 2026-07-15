@@ -1,8 +1,9 @@
 """Pipeline strip: click-to-toggle agents + retriever selector (spec §4.4).
 
-Recommendation (retriever) is always on; Validation and Explanation toggle.
-Rendered with native widgets so toggles/selection are captured server-side,
-styled to echo the mockup's node strip. Per-agent timings appear after a run.
+Recommendation (retriever) and Finalization are always on and shown locked;
+Validation, Substitution and Explanation toggle and are wired straight to the
+agent graph (ui/services/backend.build_workflow). Rendered with native widgets
+so toggles/selection are captured server-side. Per-agent timings appear after a run.
 """
 
 from __future__ import annotations
@@ -35,13 +36,17 @@ def render_pipeline_strip(config: dict, key: str, times: dict | None = None,
                           disabled: bool = False) -> dict:
     """Render the strip; returns the (possibly mutated) config.
 
-    Layout: [retriever select] → [Validation toggle] → [Explanation toggle].
-    When ``disabled`` (admin locked the pipeline, spec §6.4) the controls are
-    read-only.
+    Layout: [Recommend + retriever] → [Validation] → [Substitution] → [Explanation]
+    → [Finalize]. Recommend and Finalize are always-on (shown locked); the three
+    middle stages toggle and drive ``build_workflow``. When ``disabled`` (admin locked
+    the pipeline, spec §6.4) every control is read-only.
     """
-    arrow = f"<div style=\"display:flex;align-items:center;justify-content:center;height:48px;color:{C['primary']};opacity:0.5\">→</div>"
+    config.setdefault("substitution", True)
+    arrow = (f"<div style=\"display:flex;align-items:center;justify-content:center;height:48px;"
+             f"color:{C['primary']};opacity:0.5\">→</div>")
 
-    col_r, col_a1, col_v, col_a2, col_e = st.columns([3, 0.4, 2, 0.4, 2])
+    col_r, a1, col_v, a2, col_s, a3, col_e, a4, col_f = st.columns(
+        [2.6, 0.3, 1.9, 0.3, 1.9, 0.3, 1.9, 0.3, 1.7])
 
     with col_r:
         html(_node_html("🔍", "Recommend", True, times.get("retriever") if times else None, dashed=False))
@@ -58,23 +63,26 @@ def render_pipeline_strip(config: dict, key: str, times: dict | None = None,
             config["retriever"] = new_retriever
             log_event("agent_toggled", {"agent": "retriever", "state": new_retriever})
 
-    with col_a1:
-        html(arrow)
-    with col_a2:
-        html(arrow)
+    for col in (a1, a2, a3, a4):
+        with col:
+            html(arrow)
 
-    with col_v:
-        html(_node_html("✅", "Validation", config["validation"],
-                        times.get("validation") if times else None, dashed=not config["validation"]))
-        config["validation"] = st.toggle("Validation", value=config["validation"],
-                                          key=f"val_{key}", label_visibility="collapsed",
-                                          disabled=disabled)
+    for col, icon, label, cfg_key in (
+        (col_v, "✅", "Validation", "validation"),
+        (col_s, "🔧", "Substitution", "substitution"),
+        (col_e, "💡", "Explanation", "explanation"),
+    ):
+        with col:
+            html(_node_html(icon, label, config[cfg_key],
+                            times.get(cfg_key) if times else None, dashed=not config[cfg_key]))
+            new_val = st.toggle(label, value=config[cfg_key], key=f"{cfg_key}_{key}",
+                                label_visibility="collapsed", disabled=disabled)
+            if new_val != config[cfg_key]:
+                config[cfg_key] = new_val
+                log_event("agent_toggled", {"agent": cfg_key, "state": new_val})
 
-    with col_e:
-        html(_node_html("💡", "Explanation", config["explanation"],
-                        times.get("explanation") if times else None, dashed=not config["explanation"]))
-        config["explanation"] = st.toggle("Explanation", value=config["explanation"],
-                                          key=f"exp_{key}", label_visibility="collapsed",
-                                          disabled=disabled)
+    with col_f:
+        html(_node_html("📦", "Finalize", True, None, dashed=False))
+        st.caption("always on")
 
     return config
