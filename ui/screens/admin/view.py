@@ -13,7 +13,14 @@ import os
 import streamlit as st
 
 from ...theme import C, F, FP, html
-from . import dashboard, data_export, persona_manager, pipeline_defaults, questionnaire_config
+from . import (
+    dashboard,
+    data_export,
+    persona_manager,
+    pipeline_defaults,
+    questionnaire_config,
+    study_flow,
+)
 
 _DEV_FALLBACK = "admin"  # used only when ADMIN_PASSWORD is not configured
 
@@ -64,7 +71,8 @@ def render() -> None:
             st.rerun()
 
     tabs = st.tabs([
-        "📊 Analytics", "👤 Personas", "📋 Questionnaire", "⚙️ Pipeline", "💾 Data export",
+        "📊 Analytics", "👤 Personas", "📋 Questionnaire", "⚙️ Pipeline",
+        "🧪 Study (Flow B)", "💾 Data export",
     ])
     with tabs[0]:
         dashboard.render()
@@ -75,4 +83,6 @@ def render() -> None:
     with tabs[3]:
         pipeline_defaults.render()
     with tabs[4]:
+        study_flow.render()
+    with tabs[5]:
         data_export.render()

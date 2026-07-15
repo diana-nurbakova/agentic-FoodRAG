@@ -10,13 +10,14 @@ from __future__ import annotations
 import streamlit as st
 
 from ...components.likert_scale import render_likert
-from ...components.study_common import render_progress
+from ...components.study_common import render_progress, render_step_nav
 from ...state import goto, log_event
 from ...study_data import POST_STUDY_ITEMS
 from ...theme import C, F, html
 
 
 def render() -> None:
+    render_step_nav("plan_evaluation")
     render_progress(7, 9, "Step 7 of 8 — A few questions about the system")
     html(f"<h2>About the system overall</h2>"
          f"<p style=\"font-family:{F};font-size:13px;color:{C['textMuted']};line-height:1.7;margin:0 0 12px\">"

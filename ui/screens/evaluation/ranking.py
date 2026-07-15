@@ -10,20 +10,21 @@ from __future__ import annotations
 import streamlit as st
 
 from ...components.ranking_widget import render_ranking
-from ...components.study_common import render_progress
+from ...components.study_common import render_progress, render_step_nav
 from ...state import goto, log_event
-from ...study_data import STUDY_CONFIG, STUDY_PLANS
+from ...study_data import STUDY_CONFIG, load_study_plans
 from ...theme import C, F, html
 
 
 def _seen_plans() -> list[dict]:
     ss = st.session_state
     n_plans = STUDY_CONFIG["plans_per_profile"]
-    plans = STUDY_PLANS[ss["assigned_profile_id"]][:n_plans]
+    plans = load_study_plans(ss["assigned_profile_id"], n_plans)
     return [plans[ss["plan_order"][i]] for i in range(n_plans)]
 
 
 def render() -> None:
+    render_step_nav("post_study")
     render_progress(8, 9, "Step 8 of 8 — Compare all plans")
     seen = _seen_plans()
 
@@ -31,7 +32,8 @@ def render() -> None:
          f"<p style=\"font-family:{F};font-size:13px;color:{C['textMuted']};line-height:1.7;margin:0 0 14px\">"
          f"Rank the plans from best to worst, then answer a few final questions.</p>")
 
-    items = [{"label": f"Meal Plan {i + 1}", "desc": " · ".join(m["name"] for m in p["meals"])}
+    items = [{"label": f"Meal Plan {i + 1}",
+              "desc": " · ".join(r["name"] for r in p.get("recipes", []))}
              for i, p in enumerate(seen)]
     order = render_ranking(items, key="rank_order")
 

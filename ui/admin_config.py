@@ -18,6 +18,7 @@ import copy
 import streamlit as st
 
 from .mock_data import PERSONAS
+from .study_data import DEFAULT_STUDY_CONDITIONS
 
 # Questionnaire block catalogue (spec §6.3 table) — selectable when adding blocks
 BLOCK_CATALOG = {
@@ -62,6 +63,7 @@ def default_admin_config() -> dict:
         "pipeline_defaults": {
             "default_retriever": "hybrid",
             "validation_default": True,
+            "substitution_default": True,
             "explanation_default": True,
             "arena_available": True,
             "user_can_change_pipeline": True,
@@ -72,6 +74,15 @@ def default_admin_config() -> dict:
         # Persona management (spec §6.2): display order + active flag per persona
         "personas": [{"id": p["id"], "name": p["name"], "active": True} for p in PERSONAS],
         "imported_personas": [],
+        # Flow A recommender: which 3 evaluation profiles (profiles.json ids) seed the
+        # persona cards; the 4th card is always the user-defined custom builder.
+        "flow_a_profiles": ["P1", "P3", "P4"],
+        # Flow B study design (admin-editable): the within-subjects CONDITIONS (each
+        # mapped to an already-run eval result file) and the PROFILES (each an eval
+        # question). Empty ``study_profiles`` falls through to the generated
+        # profiles.json default (see ``study_data.get_study_profiles``).
+        "study_conditions": copy.deepcopy(DEFAULT_STUDY_CONDITIONS),
+        "study_profiles": [],
     }
 
 
@@ -81,6 +92,24 @@ def get_admin_config() -> dict:
 
 def pipeline_defaults() -> dict:
     return get_admin_config()["pipeline_defaults"]
+
+
+def study_conditions() -> list[dict]:
+    """The admin-configured Flow B conditions (falls back to the default axis)."""
+    return get_admin_config().get("study_conditions") or copy.deepcopy(DEFAULT_STUDY_CONDITIONS)
+
+
+def study_profiles_cfg() -> list[dict]:
+    """The admin-configured Flow B profiles (may be empty → generated default is used)."""
+    return get_admin_config().get("study_profiles") or []
+
+
+def flow_a_profile_ids() -> list[str]:
+    """The evaluation-profile ids seeding the Flow A recommender persona cards."""
+    try:
+        return get_admin_config().get("flow_a_profiles") or ["P1", "P3", "P4"]
+    except (KeyError, AttributeError):  # session not yet initialised
+        return ["P1", "P3", "P4"]
 
 
 def _persona_index() -> dict:

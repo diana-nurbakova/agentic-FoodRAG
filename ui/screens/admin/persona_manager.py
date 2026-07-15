@@ -13,6 +13,7 @@ import json
 import streamlit as st
 
 from ...admin_config import _persona_index, get_admin_config
+from ...study_data import load_all_profiles
 from ...theme import C, F, html
 
 
@@ -23,10 +24,34 @@ def _move(personas: list[dict], pos: int, delta: int) -> None:
         st.rerun()
 
 
+def _flow_a_profile_picker(cfg: dict) -> None:
+    """Choose which evaluation profiles seed the Flow A recommender persona cards."""
+    st.subheader("Flow A recommender profiles")
+    st.caption("Pick the real evaluation profiles (from profiles.json) shown as persona cards "
+               "in the interactive recommender. A 4th user-defined (custom) card is always added.")
+    all_profiles = load_all_profiles()
+    if not all_profiles:
+        st.info("No profiles.json found (run scripts/build_study_plans.py --select).")
+        return
+    labels = {p["id"]: f"{p['id']} — {p.get('desc', p.get('name', ''))[:80]}" for p in all_profiles}
+    current = [pid for pid in (cfg.get("flow_a_profiles") or []) if pid in labels]
+    chosen = st.multiselect(
+        "Profiles shown in Flow A", options=list(labels), default=current,
+        format_func=lambda pid: labels[pid], key="flow_a_profiles_pick",
+    )
+    if chosen != current:
+        cfg["flow_a_profiles"] = chosen
+    if len(chosen) != 3:
+        st.caption(f"⚠ {len(chosen)} selected — 3 recommended (the 4th slot is the custom builder).")
+    st.divider()
+
+
 def render() -> None:
     cfg = get_admin_config()
     personas = cfg["personas"]
     idx = _persona_index()
+
+    _flow_a_profile_picker(cfg)
 
     st.subheader("Active study personas")
     st.caption("Browse profiles (demo: predefined set ≈ live HUMMUS query), toggle and reorder. "

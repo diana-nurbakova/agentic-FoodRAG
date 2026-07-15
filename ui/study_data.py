@@ -14,6 +14,9 @@ config (spec §6.3) so the admin can edit them without redeployment.
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 # ── Study configuration (spec §6.3 JSON; hard-coded defaults for now) ──────
 STUDY_CONFIG = {
     "study_id": "recsys2026-review",
@@ -238,6 +241,125 @@ STUDY_PLANS = {
     ],
 }
 
+# ── Study conditions (C1/C2/C3) → real system configuration ───────────────
+# Each participant rates ``plans_per_profile`` plans; these are the within-subjects
+# CONDITIONS. Every condition maps to a real pipeline configuration that the offline
+# build script (``scripts/build_study_plans.py``) selects to produce the plan. The
+# ``config`` is recorded with each plan and logged with every rating, but NOT shown
+# in the GUI. ``retriever`` ∈ {text-to-pandas, dense, sparse, hybrid, fusion};
+# ``hypothesis`` ∈ {H1 = full agentic pipeline, H2 = recommend-only}.
+#
+# Each condition maps to an **already-run** full-day evaluation result file (the
+# recommendations were computed offline; the study selects plans from them — it does
+# not re-run the pipeline). ``config_id`` is the evaluation config; ``result_file`` is
+# the per-question results holding ``{meal: food.com URL}`` plans + explanations.
+#
+# This is only the DEFAULT axis. The **effective** conditions are edited by the admin
+# in the "🧪 Study (Flow B)" tab and persisted in the study config (spec §6.3);
+# resolve them via ``get_study_conditions()`` — never read this constant directly.
+DEFAULT_STUDY_CONDITIONS = [
+    {"cond": "C1", "label": "Plan 1",
+     "config": {"config_id": "foodrag_h1_dense_fullday", "hypothesis": "H1", "retriever": "dense",
+                "result_file": "eval_results/foodrag_h1_dense_fullday_per_question.parquet"}},
+    {"cond": "C2", "label": "Plan 2",
+     "config": {"config_id": "foodrag_h2_fullday", "hypothesis": "H2", "retriever": "dense",
+                "result_file": "eval_results/foodrag_h2_fullday_per_question.pkl"}},
+    {"cond": "C3", "label": "Plan 3",
+     "config": {"config_id": "foodrag_h2_t2p_fullday", "hypothesis": "H2", "retriever": "text-to-pandas",
+                "result_file": "eval_results/foodrag_h2_t2p_fullday_per_question.pkl"}},
+]
+
+
+def get_study_conditions() -> list[dict]:
+    """Effective study conditions, resolved in priority order:
+
+    1. the live admin session (``st.session_state['admin_config']`` — reflects
+       unsaved edits in the Conditions tab),
+    2. the persisted study config (``config_service.effective_config()`` — used by
+       the offline generator, which has no Streamlit session), then
+    3. :data:`DEFAULT_STUDY_CONDITIONS`.
+    """
+    try:  # 1. live session (admin edits, most current) — no-op outside Streamlit
+        import streamlit as st
+
+        conds = (st.session_state.get("admin_config") or {}).get("study_conditions")
+        if conds:
+            return conds
+    except Exception:  # noqa: BLE001
+        pass
+    try:  # 2. persisted config (offline generator / fresh process)
+        from .services import config_service
+
+        conds = config_service.effective_config().get("study_conditions")
+        if conds:
+            return conds
+    except Exception:  # noqa: BLE001
+        pass
+    return DEFAULT_STUDY_CONDITIONS  # 3. module default
+
+# Pre-generated real-plan artifacts (one JSON per profile) produced offline by
+# ``scripts/build_study_plans.py``. When present they replace the mock STUDY_PLANS;
+# when absent the study flow falls back to the mock so the UI still runs.
+STUDY_PLANS_DIR = Path(__file__).parent / "study_plans"
+
+
+def _config_for(cond: str) -> dict:
+    for c in get_study_conditions():
+        if c["cond"] == cond:
+            return c["config"]
+    return {}
+
+
+def _mock_plan_to_unified(plan: dict) -> dict:
+    """Adapt a hand-authored mock ``STUDY_PLANS`` entry to the unified plan shape
+    (real artifacts already use this shape). Ingredients/steps/food.com link are
+    empty for the mock — the real generator fills them from the dataset."""
+    recipes = []
+    for m in plan.get("meals", []):
+        recipes.append({
+            "meal": m.get("type", ""),
+            "img": m.get("icon", "🍽"),
+            "name": m.get("name", ""),
+            "time": m.get("time", "—"),
+            "cal": m.get("kcal", 0),
+            "nutriscore": m.get("nutri", "C"),
+            "protein": 0, "carbs": 0, "fat": 0, "fiber": 0, "sugar": 0, "sodium": 0,
+            "serving_size_g": None, "who": 5, "fsa": 5, "skill": "Easy",
+            "servings": 2, "tags": [], "ingredients": [], "steps": [],
+            "recipe_url": "", "recipe_id": None, "substitutions": [],
+        })
+    return {
+        "cond": plan.get("cond", ""),
+        "label": plan.get("label", ""),
+        "config": _config_for(plan.get("cond", "")),
+        "explanation": plan.get("explanation", {}),
+        "recipes": recipes,
+        "total_kcal": sum(r["cal"] for r in recipes),
+        "source": "mock",
+    }
+
+
+def load_study_plans(profile_id: str, n_plans: int | None = None) -> list[dict]:
+    """Unified plan list for a profile, in condition order (C1, C2, C3, …).
+
+    Prefers the real pre-generated artifact ``study_plans/{profile_id}.json``; falls
+    back to the hand-authored ``STUDY_PLANS`` mock (adapted to the same shape) when no
+    artifact exists. Each plan carries a hidden ``config`` (the pipeline configuration
+    that produced it) and real recipe cards with ingredients, steps, per-serving
+    nutrition and a food.com link."""
+    limit = n_plans if n_plans is not None else STUDY_CONFIG["plans_per_profile"]
+    artifact = STUDY_PLANS_DIR / f"{profile_id}.json"
+    if artifact.exists():
+        try:
+            data = json.loads(artifact.read_text(encoding="utf-8"))
+            plans = data.get("plans", data) if isinstance(data, dict) else data
+            if plans:
+                return plans[:limit]
+        except (json.JSONDecodeError, OSError, KeyError):
+            pass  # fall back to mock on any read/parse failure
+    return [_mock_plan_to_unified(p) for p in STUDY_PLANS.get(profile_id, [])][:limit]
+
+
 # ── Per-plan questionnaire: 7 ResQue-based items (spec §5.4) ───────────────
 PLAN_EVAL_ITEMS = [
     {"id": "pq1", "construct": "Perceived Quality", "text": "The recommended meals are appealing to me."},
@@ -267,8 +389,117 @@ POST_STUDY_ITEMS = [
 ]
 
 
+STUDY_PROFILES_FILE = STUDY_PLANS_DIR / "profiles.json"
+
+
+def get_study_profiles() -> list[dict]:
+    """Effective study profiles (each maps to an evaluation ``question_id``), resolved:
+
+    1. the live admin session, 2. the persisted study config, 3. the generated
+    ``study_plans/profiles.json`` default (from ``scripts/build_study_plans.py --select``),
+    then 4. the legacy hand-authored :data:`STUDY_PROFILES`.
+    """
+    try:  # 1. live admin session
+        import streamlit as st
+
+        profs = (st.session_state.get("admin_config") or {}).get("study_profiles")
+        if profs:
+            return profs
+    except Exception:  # noqa: BLE001
+        pass
+    try:  # 2. persisted config
+        from .services import config_service
+
+        profs = config_service.effective_config().get("study_profiles")
+        if profs:
+            return profs
+    except Exception:  # noqa: BLE001
+        pass
+    try:  # 3. generated default artifact
+        if STUDY_PROFILES_FILE.exists():
+            data = json.loads(STUDY_PROFILES_FILE.read_text(encoding="utf-8"))
+            profs = data.get("profiles", data) if isinstance(data, dict) else data
+            if profs:
+                return profs
+    except (json.JSONDecodeError, OSError):
+        pass
+    return STUDY_PROFILES  # 4. legacy default
+
+
 def get_profile(profile_id: str) -> dict:
-    return next(p for p in STUDY_PROFILES if p["id"] == profile_id)
+    return next(p for p in get_study_profiles() if p["id"] == profile_id)
+
+
+# ── Flow A real profiles (spec §4.3) ──────────────────────────────────────
+# The interactive recommender's persona cards are drawn from the SAME evaluation
+# profiles used in the study (ui/study_plans/profiles.json) so live runs reproduce
+# evaluated behaviour. Three admin-selected profiles + one user-defined (custom) slot.
+def load_all_profiles() -> list[dict]:
+    """Every evaluation profile in profiles.json (with full constraints), or []."""
+    try:
+        data = json.loads(STUDY_PROFILES_FILE.read_text(encoding="utf-8"))
+        return data.get("profiles", data) if isinstance(data, dict) else data
+    except (json.JSONDecodeError, OSError):
+        return []
+
+
+def _nutrient_constraint(c: dict) -> str:
+    """Build a parseable nutrient-constraint string from a profile's STRUCTURED limits.
+
+    Uses the upper/lower bound explicitly (e.g. "totalFat ≤ 15g") rather than the
+    human-readable line ("totalFat: low (0–15 per 100 g)"), which the deterministic
+    parser would mis-read as "≤ 0" (it grabs the first number)."""
+    parts: list[str] = []
+    for col, spec in (c.get("relative_nutrients") or {}).items():
+        name = str(col).split("[")[0].strip()
+        limits = (spec or {}).get("limits") or {}
+        pref = (spec or {}).get("preference")
+        if pref == "low" and limits.get("upper") is not None:
+            parts.append(f"{name} ≤ {float(limits['upper']):g}g")
+        elif pref == "high" and limits.get("lower") is not None:
+            parts.append(f"{name} ≥ {float(limits['lower']):g}g")
+    for col, val in (c.get("total_nutrients") or {}).items():
+        name = str(col).split("[")[0].strip()
+        parts.append(f"{name} ≤ {float(val):g}")
+    for name, val in (c.get("nutrition_scores") or {}).items():
+        parts.append(f"{name} ≥ {float(val):g}")
+    return "; ".join(parts) or "None"
+
+
+def _profile_to_persona(p: dict) -> dict:
+    """Map an evaluation profile (constraints + prompt) to the recommender persona shape."""
+    c = p.get("constraints", {}) or {}
+    tags = c.get("tags", {}) or {}
+    ings = c.get("ingredients", {}) or {}
+    return {
+        "id": p["id"], "name": p.get("name", p["id"]), "age": None,
+        "emoji": p.get("icon", "🍽"), "condition": "None",
+        "allergies": [],
+        "likedTags": tags.get("likes", []) or [],
+        "dislikedTags": tags.get("dislikes", []) or [],
+        "likedIng": ings.get("likes", []) or [],
+        "dislikedIng": ings.get("dislikes", []) or [],
+        "nutrientConstraint": _nutrient_constraint(c),
+        "cs": "—", "fs": "—",
+        # Real-profile extras (used by the card + live query prefill)
+        "prompt": p.get("prompt", ""),
+        "desc": p.get("desc", ""),
+        "constraint_lines": p.get("constraint_lines", []),
+        "real_profile": True,
+    }
+
+
+def flow_a_personas() -> list[dict]:
+    """The Flow A persona cards: the admin-selected real profiles + the custom slot."""
+    from .admin_config import flow_a_profile_ids
+    from .mock_data import PERSONAS
+
+    by_id = {p["id"]: p for p in load_all_profiles()}
+    personas = [_profile_to_persona(by_id[i]) for i in flow_a_profile_ids() if i in by_id]
+    custom = next((p for p in PERSONAS if p["id"] == 4), None)  # user-defined builder card
+    if custom:
+        personas.append(custom)
+    return personas
 
 
 def plan_eval_items_for(plan_index: int) -> list[dict]:

@@ -13,7 +13,7 @@ import streamlit as st
 
 from ...components.study_common import render_progress
 from ...state import log_event
-from ...study_data import STUDY_CONFIG, STUDY_PLANS, get_profile
+from ...study_data import STUDY_CONFIG, get_profile, load_study_plans
 from ...theme import C, F, html
 
 
@@ -25,7 +25,7 @@ def render() -> None:
     ss = st.session_state
     profile = get_profile(ss["assigned_profile_id"])
     n_plans = STUDY_CONFIG["plans_per_profile"]
-    plans = STUDY_PLANS[ss["assigned_profile_id"]][:n_plans]
+    plans = load_study_plans(ss["assigned_profile_id"], n_plans)
     seen = [plans[ss["plan_order"][i]] for i in range(n_plans)]
     plan_answers = ss.get("plan_answers", [])
     passed = sum(1 for x in ss.get("attention_results", []) if x)
@@ -104,6 +104,7 @@ def render() -> None:
             "profile_id": ss["assigned_profile_id"],
             "latin_square_group": ss.get("latin_square_group"),
             "plan_order_conds": [s["cond"] for s in seen],
+            "plan_order_configs": [s.get("config") for s in seen],
             "plan_answers": plan_answers,
             "post_study": ss.get("post_study_answers"),
             "ranking": ss.get("ranking_result"),

@@ -8,13 +8,14 @@ from __future__ import annotations
 
 import streamlit as st
 
-from ...components.study_common import render_progress
+from ...components.study_common import render_progress, render_step_nav
 from ...state import goto, log_event
 from ...study_data import DEMO_AGE, DEMO_COOK_FREQ, DEMO_COOK_SKILL, DEMO_COUNTRIES, DEMO_EMPLOYMENT
 from ...theme import C, F, html
 
 
 def render() -> None:
+    render_step_nav("consent")
     render_progress(2, 9, "Step 2 of 8 — About you")
     html(f"<h2>A few quick questions</h2>"
          f"<p style=\"font-family:{F};font-size:13px;color:{C['textMuted']};line-height:1.7;margin:0 0 14px\">"

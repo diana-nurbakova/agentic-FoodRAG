@@ -1,0 +1,602 @@
+{
+  "profile_id": "P2",
+  "question_id": "q_00453",
+  "profile_prompt": "What recipes can be suggested with the exclusion of chicken-breasts and moroccan tags, inclusion of wax pepper, exclusion of fruit yogurt and sugar-free caramel topping, a minimum nutri_score of 0.0, and a maximum of 640.59 calories from fat?",
+  "plans": [
+    {
+      "cond": "C1",
+      "label": "Plan 1",
+      "config": {
+        "config_id": "foodrag_h1_dense_fullday",
+        "hypothesis": "H1",
+        "retriever": "dense",
+        "result_file": "eval_results/foodrag_h1_dense_fullday_per_question.parquet"
+      },
+      "question_id": "q_00453",
+      "explanation": {
+        "summary": "The recommended meal plan includes a selection of dishes that meet your specific dietary needs and preferences. Each meal avoids ingredients you dislike, such as chicken-breasts, moroccan dishes, fruit yogurt, sugar, and free caramel topping. The plan also ensures that the nutritional scores and limits are respected, with a minimum nutri_score of 0.0 and a maximum of 640.59 kcal from fat. Although the plan does not include wax pepper, an ingredient you like, it focuses on providing healthy and balanced options. The breakfast, lunch, dinner, and snack options are designed to be enjoyable and nutritionally balanced, making this meal plan a suitable choice for your daily needs.",
+        "reasons": []
+      },
+      "recipes": [
+        {
+          "meal": "Breakfast",
+          "name": "Lower Carb Healthy Breakfast Parfait",
+          "recipe_id": 199541,
+          "time": "5min",
+          "nutriscore": "E",
+          "who": 2,
+          "fsa": 6,
+          "cal": 1079,
+          "protein": 77,
+          "carbs": 84,
+          "fat": 52,
+          "fiber": 21,
+          "sugar": 46,
+          "sodium": 1723,
+          "serving_size_g": 330,
+          "img": "🥣",
+          "skill": "Easy",
+          "servings": 1,
+          "tags": [
+            "preparation",
+            "main-ingredient",
+            "for-1-or-2"
+          ],
+          "ingredients": [
+            "0.5 cup of low fat cottage cheese",
+            "0.5 cup of unsweetened plain yogurt",
+            "0.5 1/2 cup of or 1/2 cup",
+            "2 tablespoons of textured vegetable protein (textured vegetable protein",
+            "crunchy soy protein)",
+            "2 tablespoons of flax seed meal",
+            "1 tablespoon of dried unsweetened flaked coconut",
+            "2 teaspoons of Splenda sugar substitute (artificial sweetener)"
+          ],
+          "steps": [
+            "Layer the berries with the yogurt and cottage cheese.",
+            "Mix the dry ingredients and add to the layered fruit and dairy just before serving.,Notes:,We mix up the dry ingredients and keep them in a cannister.",
+            "Vary this by using other fruits."
+          ],
+          "recipe_url": "https://www.food.com/recipe/lower-carb-healthy-breakfast-parfait-246597",
+          "substitutions": []
+        },
+        {
+          "meal": "Lunch",
+          "name": "My Everyday Lunch (Puffed Wheat and Yogurt)",
+          "recipe_id": 76156,
+          "time": "3min",
+          "nutriscore": "B",
+          "who": 5,
+          "fsa": 0,
+          "cal": 12,
+          "protein": 0,
+          "carbs": 3,
+          "fat": 0,
+          "fiber": 0,
+          "sugar": 0,
+          "sodium": 0,
+          "serving_size_g": 18,
+          "img": "🥗",
+          "skill": "Easy",
+          "servings": 1,
+          "tags": [
+            "preparation",
+            "technique",
+            "for-1-or-2"
+          ],
+          "ingredients": [
+            "1 1/2 cups of puffed wheat cereal",
+            "1/2-1 cup of light vanilla yogurt"
+          ],
+          "steps": [
+            "Mix!,I add granola sometimes are other random food like Teddy Grahams or Special K --  some fruit sometimes --  ice cream, whatever!"
+          ],
+          "recipe_url": "https://www.food.com/recipe/my-everyday-lunch-puffed-wheat-and-yogurt-195928",
+          "substitutions": []
+        },
+        {
+          "meal": "Dinner",
+          "name": "Low Carb Mediterranean Stuffed Bell Peppers",
+          "recipe_id": 6017,
+          "time": "45min",
+          "nutriscore": "E",
+          "who": 2,
+          "fsa": 5,
+          "cal": 515,
+          "protein": 50,
+          "carbs": 23,
+          "fat": 26,
+          "fiber": 5,
+          "sugar": 14,
+          "sodium": 1222,
+          "serving_size_g": 239,
+          "img": "🍽",
+          "skill": "Hard",
+          "servings": 6,
+          "tags": [
+            "preparation",
+            "peppers",
+            "main-ingredient"
+          ],
+          "ingredients": [
+            "4 -6 bell peppers (depending of on size)",
+            "1 1 lb of or 1 lb",
+            "small onion",
+            "minced",
+            "1 tablespoon of macadamia nut oil or 1 tablespoon olive oil",
+            "0.5 teaspoon of salt",
+            "0.25 teaspoon of pepper",
+            "2 of garlic cloves",
+            "minced",
+            "0.5 teaspoon of ground cumin",
+            "0.5 teaspoon of turmeric",
+            "1 teaspoon of cinnamon",
+            "0.5 teaspoon of saffron",
+            "medium ripe tomatoes",
+            "chopped",
+            "5 ounces of plain nonfat yogurt (I like thick Greek yogurt)",
+            "1 tablespoon of fresh lemon juice",
+            "4 ounces of feta cheese",
+            "crumbled",
+            "2 tablespoons of grated parmesan cheese"
+          ],
+          "steps": [
+            "Cut tops out of the green peppers and remove any seeds or membranes.",
+            "Blanch peppers for 5 minutes in salted boiling water, or you may place these in a microwave-safe pan, add 1/4 cup water, cover and cook for 5 minutes on high until softened.",
+            "Meanwhile, brown ground meat and onion in oil, add spices.",
+            "When meat is almost cooked through, add chopped tomato.",
+            "When meat is cooked through, allow to cool slightly then mix in the yogurt and lemon juice.",
+            "Place peppers in a baking pan and fill peppers with mixture and top peppers with feta and parmesan cheeses.",
+            "Cover baking pan with lid or foil and bake at 350F for about 15 minutes.",
+            "Remove lid or foil and cook about 10 minutes more."
+          ],
+          "recipe_url": "https://www.food.com/recipe/low-carb-mediterranean-stuffed-bell-peppers-118994",
+          "substitutions": []
+        },
+        {
+          "meal": "Snack",
+          "name": "Healthy Coconut Parve Soy-Free \"Milk\"-Shake",
+          "recipe_id": 200192,
+          "time": "3min",
+          "nutriscore": "E",
+          "who": 2,
+          "fsa": 8,
+          "cal": 1380,
+          "protein": 18,
+          "carbs": 145,
+          "fat": 91,
+          "fiber": 26,
+          "sugar": 103,
+          "sodium": 259,
+          "serving_size_g": 344,
+          "img": "🍎",
+          "skill": "Easy",
+          "servings": 2,
+          "tags": [
+            "3-steps-or-less",
+            "kosher",
+            "vegan"
+          ],
+          "ingredients": [
+            "1 cup of coconut cream",
+            "very ripe banana",
+            "peach (optional)",
+            "dates (for sweeter taste)",
+            "1/2-1 cup of frozen raspberries"
+          ],
+          "steps": [
+            "Mix everything except the frozen raspberries until blended.",
+            "Add the frozen raspberries and let blend.",
+            "Serve out of the blender, or put in the freezer."
+          ],
+          "recipe_url": "https://www.food.com/recipe/healthy-coconut-parve-soy-free-milk-shake-108233",
+          "substitutions": []
+        }
+      ],
+      "total_kcal": 2986,
+      "source": "eval_results"
+    },
+    {
+      "cond": "C2",
+      "label": "Plan 2",
+      "config": {
+        "config_id": "foodrag_h2_fullday",
+        "hypothesis": "H2",
+        "retriever": "dense",
+        "result_file": "eval_results/foodrag_h2_fullday_per_question.pkl"
+      },
+      "question_id": "q_00453",
+      "explanation": {
+        "summary": "No explanation was recorded for this plan.",
+        "reasons": []
+      },
+      "recipes": [
+        {
+          "meal": "Breakfast",
+          "name": "Lower Carb Healthy Breakfast Parfait",
+          "recipe_id": 199541,
+          "time": "5min",
+          "nutriscore": "E",
+          "who": 2,
+          "fsa": 6,
+          "cal": 1079,
+          "protein": 77,
+          "carbs": 84,
+          "fat": 52,
+          "fiber": 21,
+          "sugar": 46,
+          "sodium": 1723,
+          "serving_size_g": 330,
+          "img": "🥣",
+          "skill": "Easy",
+          "servings": 1,
+          "tags": [
+            "preparation",
+            "main-ingredient",
+            "for-1-or-2"
+          ],
+          "ingredients": [
+            "0.5 cup of low fat cottage cheese",
+            "0.5 cup of unsweetened plain yogurt",
+            "0.5 1/2 cup of or 1/2 cup",
+            "2 tablespoons of textured vegetable protein (textured vegetable protein",
+            "crunchy soy protein)",
+            "2 tablespoons of flax seed meal",
+            "1 tablespoon of dried unsweetened flaked coconut",
+            "2 teaspoons of Splenda sugar substitute (artificial sweetener)"
+          ],
+          "steps": [
+            "Layer the berries with the yogurt and cottage cheese.",
+            "Mix the dry ingredients and add to the layered fruit and dairy just before serving.,Notes:,We mix up the dry ingredients and keep them in a cannister.",
+            "Vary this by using other fruits."
+          ],
+          "recipe_url": "https://www.food.com/recipe/lower-carb-healthy-breakfast-parfait-246597",
+          "substitutions": []
+        },
+        {
+          "meal": "Lunch",
+          "name": "My Everyday Lunch (Puffed Wheat and Yogurt)",
+          "recipe_id": 76156,
+          "time": "3min",
+          "nutriscore": "B",
+          "who": 5,
+          "fsa": 0,
+          "cal": 12,
+          "protein": 0,
+          "carbs": 3,
+          "fat": 0,
+          "fiber": 0,
+          "sugar": 0,
+          "sodium": 0,
+          "serving_size_g": 18,
+          "img": "🥗",
+          "skill": "Easy",
+          "servings": 1,
+          "tags": [
+            "preparation",
+            "technique",
+            "for-1-or-2"
+          ],
+          "ingredients": [
+            "1 1/2 cups of puffed wheat cereal",
+            "1/2-1 cup of light vanilla yogurt"
+          ],
+          "steps": [
+            "Mix!,I add granola sometimes are other random food like Teddy Grahams or Special K --  some fruit sometimes --  ice cream, whatever!"
+          ],
+          "recipe_url": "https://www.food.com/recipe/my-everyday-lunch-puffed-wheat-and-yogurt-195928",
+          "substitutions": []
+        },
+        {
+          "meal": "Dinner",
+          "name": "Low Carb Mediterranean Stuffed Bell Peppers",
+          "recipe_id": 6017,
+          "time": "45min",
+          "nutriscore": "E",
+          "who": 2,
+          "fsa": 5,
+          "cal": 515,
+          "protein": 50,
+          "carbs": 23,
+          "fat": 26,
+          "fiber": 5,
+          "sugar": 14,
+          "sodium": 1222,
+          "serving_size_g": 239,
+          "img": "🍽",
+          "skill": "Hard",
+          "servings": 6,
+          "tags": [
+            "preparation",
+            "peppers",
+            "main-ingredient"
+          ],
+          "ingredients": [
+            "4 -6 bell peppers (depending of on size)",
+            "1 1 lb of or 1 lb",
+            "small onion",
+            "minced",
+            "1 tablespoon of macadamia nut oil or 1 tablespoon olive oil",
+            "0.5 teaspoon of salt",
+            "0.25 teaspoon of pepper",
+            "2 of garlic cloves",
+            "minced",
+            "0.5 teaspoon of ground cumin",
+            "0.5 teaspoon of turmeric",
+            "1 teaspoon of cinnamon",
+            "0.5 teaspoon of saffron",
+            "medium ripe tomatoes",
+            "chopped",
+            "5 ounces of plain nonfat yogurt (I like thick Greek yogurt)",
+            "1 tablespoon of fresh lemon juice",
+            "4 ounces of feta cheese",
+            "crumbled",
+            "2 tablespoons of grated parmesan cheese"
+          ],
+          "steps": [
+            "Cut tops out of the green peppers and remove any seeds or membranes.",
+            "Blanch peppers for 5 minutes in salted boiling water, or you may place these in a microwave-safe pan, add 1/4 cup water, cover and cook for 5 minutes on high until softened.",
+            "Meanwhile, brown ground meat and onion in oil, add spices.",
+            "When meat is almost cooked through, add chopped tomato.",
+            "When meat is cooked through, allow to cool slightly then mix in the yogurt and lemon juice.",
+            "Place peppers in a baking pan and fill peppers with mixture and top peppers with feta and parmesan cheeses.",
+            "Cover baking pan with lid or foil and bake at 350F for about 15 minutes.",
+            "Remove lid or foil and cook about 10 minutes more."
+          ],
+          "recipe_url": "https://www.food.com/recipe/low-carb-mediterranean-stuffed-bell-peppers-118994",
+          "substitutions": []
+        },
+        {
+          "meal": "Snack",
+          "name": "My Guilt Free Caramel Hot Chocolate",
+          "recipe_id": 42122,
+          "time": "2min",
+          "nutriscore": "C",
+          "who": 3,
+          "fsa": 0,
+          "cal": 180,
+          "protein": 11,
+          "carbs": 25,
+          "fat": 4,
+          "fiber": 3,
+          "sugar": 22,
+          "sodium": 197,
+          "serving_size_g": 306,
+          "img": "🍎",
+          "skill": "Easy",
+          "servings": 1,
+          "tags": [
+            "chocolate",
+            "number-of-servings",
+            "course"
+          ],
+          "ingredients": [
+            "1 cup of water",
+            "1 (8 g) of packet sugar-free hot cocoa mix (I prefer diet Swiss Miss or Nestle 1 carb)",
+            "0.25 cup of slender chocolate soymilk (or other chocolate milk)",
+            "1 tablespoon of sugar-free caramel syrup (Torani or Da Vinci)"
+          ],
+          "steps": [
+            "Boil water.",
+            "Add all ingredients and stir.,Enjoy."
+          ],
+          "recipe_url": "https://www.food.com/recipe/my-guilt-free-caramel-hot-chocolate-186480",
+          "substitutions": []
+        }
+      ],
+      "total_kcal": 1786,
+      "source": "eval_results"
+    },
+    {
+      "cond": "C3",
+      "label": "Plan 3",
+      "config": {
+        "config_id": "foodrag_h2_t2p_fullday",
+        "hypothesis": "H2",
+        "retriever": "text-to-pandas",
+        "result_file": "eval_results/foodrag_h2_t2p_fullday_per_question.pkl"
+      },
+      "question_id": "q_00453",
+      "explanation": {
+        "summary": "No explanation was recorded for this plan.",
+        "reasons": []
+      },
+      "recipes": [
+        {
+          "meal": "Breakfast",
+          "name": "Tomato Nut Pasta Sauce",
+          "recipe_id": 9144,
+          "time": "25min",
+          "nutriscore": "E",
+          "who": 2,
+          "fsa": 5,
+          "cal": 1323,
+          "protein": 40,
+          "carbs": 184,
+          "fat": 51,
+          "fiber": 14,
+          "sugar": 17,
+          "sodium": 551,
+          "serving_size_g": 231,
+          "img": "🥣",
+          "skill": "Medium",
+          "servings": 4,
+          "tags": [
+            "3-steps-or-less",
+            "free-of-something",
+            "european"
+          ],
+          "ingredients": [
+            "16 ounces of canned tomatoes",
+            "0.5 teaspoon italian seasoning or 1/2 teaspoon you can of use the italian flavored tomatoes and no italian seasoning",
+            "0.3333333333333333 cup of walnuts",
+            "onion",
+            "chopped in large pieces",
+            "2 of garlic cloves",
+            "minced",
+            "wax pepper",
+            "chopped",
+            "2 tablespoons of olive oil",
+            "10 10 ounces of or 10 ounces",
+            "parmesan cheese",
+            "if desired"
+          ],
+          "steps": [
+            "While you are preparing pasta according to package directions, make sauce.",
+            "Heat oil in sauce pan and add onion, garlic, wax pepper (pepperochini), walnuts and Italian seasoning.",
+            "Saute for a few minutes until onion is slightly tender.",
+            "Add tomatoes and crush with fork just slightly, leaving them in chunks.",
+            "Bring sauce to a boil and simmer for 10 minutes while pasta is boiling.",
+            "Drain pasta.",
+            "Place pasta in center of large serving bowl and top with sauce.",
+            "Serve with parmesan cheese if desired and Italian bread."
+          ],
+          "recipe_url": "https://www.food.com/recipe/tomato-nut-pasta-sauce-129149",
+          "substitutions": []
+        },
+        {
+          "meal": "Lunch",
+          "name": "Sugar Snap Peas With Pine Nuts",
+          "recipe_id": 45879,
+          "time": "22min",
+          "nutriscore": "B",
+          "who": 3,
+          "fsa": 1,
+          "cal": 59,
+          "protein": 2,
+          "carbs": 6,
+          "fat": 4,
+          "fiber": 2,
+          "sugar": 1,
+          "sodium": 1,
+          "serving_size_g": 77,
+          "img": "🥗",
+          "skill": "Medium",
+          "servings": 12,
+          "tags": [
+            "30-minutes-or-less",
+            "preparation",
+            "easy"
+          ],
+          "ingredients": [
+            "1 tablespoon of olive oil",
+            "0.5 cup of sliced shallot",
+            "4 of garlic cloves",
+            "minced",
+            "1 hungarian wax peppers (yellow banana pepper) of or 1 small jalapeno",
+            "diced",
+            "6 cups of sugar snap peas",
+            "washed and rough chopped",
+            "0.5 cup of pine nuts",
+            "0.25 cup of fresh basil",
+            "rough chopped",
+            "salt and pepper"
+          ],
+          "steps": [
+            "Heat oil in a large pan.",
+            "Add shallots and stir fry for 3 minutes.",
+            "Add garlic and pepper toss then add sugar snap peas with the pine nuts.",
+            "stir fry for 3 minutes.",
+            "Stir in the basil.",
+            "Season with salt and pepper."
+          ],
+          "recipe_url": "https://www.food.com/recipe/sugar-snap-peas-with-pine-nuts-326253",
+          "substitutions": []
+        },
+        {
+          "meal": "Dinner",
+          "name": "Cheese Stuffed Cubanelle Peppers",
+          "recipe_id": 60387,
+          "time": "45min",
+          "nutriscore": "E",
+          "who": 2,
+          "fsa": 6,
+          "cal": 576,
+          "protein": 36,
+          "carbs": 18,
+          "fat": 41,
+          "fiber": 6,
+          "sugar": 9,
+          "sodium": 733,
+          "serving_size_g": 224,
+          "img": "🍽",
+          "skill": "Hard",
+          "servings": 4,
+          "tags": [
+            "peppers",
+            "high-in-something",
+            "low-carb"
+          ],
+          "ingredients": [
+            "4 large cubanelle peppers (also. mild Italian frying of peppers",
+            "Hungarian hot wax peppers) or 8 medium (i.e. poblanos)",
+            "8 ounces of monterey jack cheese",
+            "grated"
+          ],
+          "steps": [
+            "On a medium-hot grill, roast the peppers or chiles, turning occasionally, until completely charred (about 10 minutes).",
+            "Place charred peppers in a paper or plastic bag to steam for a further 10 minutes to loosen the skins.",
+            "Peel peppers, then cut a slit down the length of each and remove the seeds & membranes.",
+            "Stuff each pepper with the cheese.",
+            "Secure with toothpicks to hold the peppers closed.",
+            "Using heavy foil, wrap the peppers so that a packet is formed that will hold in any juices.",
+            "Grill the packet until heated through (about 10 minutes).",
+            "Allow packet to cool for 5 minutes.",
+            "This will give the cheese time to harden us and make the peppers easier to handle.",
+            "Remove toothpicks and serve warm."
+          ],
+          "recipe_url": "https://www.food.com/recipe/cheese-stuffed-cubanelle-peppers-316247",
+          "substitutions": []
+        },
+        {
+          "meal": "Snack",
+          "name": "Stuffed Banana Peppers (2)",
+          "recipe_id": 94081,
+          "time": "40min",
+          "nutriscore": "E",
+          "who": 3,
+          "fsa": 5,
+          "cal": 33,
+          "protein": 2,
+          "carbs": 1,
+          "fat": 2,
+          "fiber": 1,
+          "sugar": 0,
+          "sodium": 54,
+          "serving_size_g": 53,
+          "img": "🍎",
+          "skill": "Hard",
+          "servings": 18,
+          "tags": [
+            "preparation",
+            "peppers",
+            "main-ingredient"
+          ],
+          "ingredients": [
+            "18 of small sweet banana peppers or 18 small yellow wax peppers",
+            "if you like a bit of spice",
+            "4 ounces of soft fresh goat cheese",
+            "room temperature",
+            "0.5 cup of sliced green onion",
+            "0.25 teaspoon of black pepper",
+            "1 uncooked pork sausage or 5 ounces of",
+            "1 cup of mozzarella cheese",
+            "0.5 teaspoon of gf dried basil leaves"
+          ],
+          "steps": [
+            "Preheat oven to 375&deg;F In a medium size bowl add sausage, goat cheese, mozzarella, green onion, basil, black pepper and mix well.",
+            "To prepare peppers, cut the end where the stem is and remove all the seeds.",
+            "Stuff peppers only to the end of the pepper do not go over.",
+            "Place on a baking sheet lined with parchment paper and bake at 375 for 20 minutes.",
+            "Serve hot.",
+            "Another option is you can cut peppers lengthwise in half if you want smaller appetizers, generously stuffing only half of each pepper."
+          ],
+          "recipe_url": "https://www.food.com/recipe/stuffed-banana-peppers-517609",
+          "substitutions": []
+        }
+      ],
+      "total_kcal": 1991,
+      "source": "eval_results"
+    }
+  ]
+}

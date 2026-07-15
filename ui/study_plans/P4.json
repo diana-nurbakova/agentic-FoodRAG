@@ -1,0 +1,582 @@
+{
+  "profile_id": "P4",
+  "question_id": "q_01637",
+  "profile_prompt": "What recipes are suitable given the following constraints: microwave-friendly, exclusion of Iranian-Persian and roast beef comfort food, inclusion of white chocolate chips, exclusion of tomato & basil flavored tuna and mini raspberry chips, and a minimum FSA score of 0.2?",
+  "plans": [
+    {
+      "cond": "C1",
+      "label": "Plan 1",
+      "config": {
+        "config_id": "foodrag_h1_dense_fullday",
+        "hypothesis": "H1",
+        "retriever": "dense",
+        "result_file": "eval_results/foodrag_h1_dense_fullday_per_question.parquet"
+      },
+      "question_id": "q_01637",
+      "explanation": {
+        "summary": "The recommended meal plan is designed to meet your specific dietary needs and preferences. Each meal, including 'Ironman Breakfast', 'Two Tin Lunch', 'Tuna Dinner', and 'White Trash Snack Mix (Microwave)', has been carefully selected to ensure that it aligns with your requirements. \n\nThe plan excludes ingredients you dislike, such as tomato & basil flavored tuna and mini raspberry chips, and avoids tags like iranian-persian and roast-beef-comfort-food. Although the plan does not include white chocolate chips as an ingredient, it does incorporate other liked tags, notably the use of the microwave in two of the recipes.\n\nAll the meals have a nutrition score (fsa_score) that meets or exceeds the minimum requirement of 0.2, with the exception of the snack, which has a score of 0.0. However, this snack recipe is still considered valid due to its compliance with other criteria, including the presence of a liked tag (microwave) and the absence of disliked ingredients and tags.\n\nThis meal plan is tailored to provide a balance of nutritional value and taste, ensuring that your dietary preferences are respected while offering a variety of flavors and cooking methods. It's a well-rounded plan that aims to make mealtime enjoyable and satisfying.",
+        "reasons": []
+      },
+      "recipes": [
+        {
+          "meal": "Breakfast",
+          "name": "Ironman Breakfast",
+          "recipe_id": 9752,
+          "time": "10min",
+          "nutriscore": "E",
+          "who": 2,
+          "fsa": 5,
+          "cal": 1816,
+          "protein": 50,
+          "carbs": 400,
+          "fat": 14,
+          "fiber": 37,
+          "sugar": 138,
+          "sodium": 1128,
+          "serving_size_g": 376,
+          "img": "🥣",
+          "skill": "Easy",
+          "servings": 1,
+          "tags": [
+            "low-cholesterol",
+            "low-in-something",
+            "equipment"
+          ],
+          "ingredients": [
+            "0.5 cup of rolled oats",
+            "1 cup of water",
+            "0.5 cup of Grape-nuts cereal",
+            "2 -3 tablespoons of raisins",
+            "1 -2 tablespoon of honey"
+          ],
+          "steps": [
+            "Combine oats and water in a very deep microwaveable bowl.",
+            "Microwave for 3-5 minutes, depending on your microwave wattage.",
+            "(Alternatively, oats can be cooked on the stove).",
+            "Remove oatmeal from microwave (careful, it's hot!) and stir in remaining ingredients.",
+            "Can be made with more raisins, really it's up to your own raisin tolerance :).",
+            "Sometimes I add slivered almonds or walnuts, depending on my mood and their availability."
+          ],
+          "recipe_url": "https://www.food.com/recipe/ironman-breakfast-288066",
+          "substitutions": []
+        },
+        {
+          "meal": "Lunch",
+          "name": "Two Tin Lunch",
+          "recipe_id": 1257,
+          "time": "10min",
+          "nutriscore": "C",
+          "who": 3,
+          "fsa": 0,
+          "cal": 1964,
+          "protein": 140,
+          "carbs": 220,
+          "fat": 64,
+          "fiber": 31,
+          "sugar": 20,
+          "sodium": 1284,
+          "serving_size_g": 1250,
+          "img": "🥗",
+          "skill": "Easy",
+          "servings": 2,
+          "tags": [
+            "preparation",
+            "easy",
+            "time-to-make"
+          ],
+          "ingredients": [
+            "400 g of tuna",
+            "drained",
+            "300 g of corn",
+            "drained",
+            "0.3333333333333333 cup of kraft* classic mayonnaise",
+            "salt and pepper",
+            "to taste",
+            "10 of crispbread (KRAFT Premium Crispbreads)",
+            "parsley sprig",
+            "to garnish"
+          ],
+          "steps": [
+            "Mix the tuna, corn and mayonnaise together.",
+            "Season to taste.",
+            "Serve on crispbreads.",
+            "Garnish with parsley if desired."
+          ],
+          "recipe_url": "https://www.food.com/recipe/two-tin-lunch-295041",
+          "substitutions": []
+        },
+        {
+          "meal": "Dinner",
+          "name": "Tuna Dinner",
+          "recipe_id": 118271,
+          "time": "40min",
+          "nutriscore": "E",
+          "who": 2,
+          "fsa": 2,
+          "cal": 1059,
+          "protein": 57,
+          "carbs": 136,
+          "fat": 30,
+          "fiber": 2,
+          "sugar": 5,
+          "sodium": 1697,
+          "serving_size_g": 320,
+          "img": "🍽",
+          "skill": "Hard",
+          "servings": 4,
+          "tags": [
+            "dinner",
+            "low-cholesterol",
+            "low-in-something"
+          ],
+          "ingredients": [
+            "1 (7 ounce) can of tuna",
+            "0.25 cup of chopped onion",
+            "1 cup of milk",
+            "0.25 cup of chopped green pepper",
+            "1 (10 1/2 ounce) can of cream of mushroom soup",
+            "2 1/2 cups of cooked rice"
+          ],
+          "steps": [
+            "Drain oil/water from tuna.",
+            "In a saucepan, saute green pepper & onions.",
+            "Blend in soup.",
+            "Add milk & beat.",
+            "Place rice in greased 1 1/2 quart casserole dish.",
+            "Arrange tuna over rice & pour saucee on top.",
+            "Bake at 350F for 25 minute."
+          ],
+          "recipe_url": "https://www.food.com/recipe/tuna-dinner-273936",
+          "substitutions": []
+        },
+        {
+          "meal": "Snack",
+          "name": "White Trash Snack Mix (Microwave)",
+          "recipe_id": 269735,
+          "time": "4min",
+          "nutriscore": "E",
+          "who": 2,
+          "fsa": 10,
+          "cal": 369,
+          "protein": 6,
+          "carbs": 54,
+          "fat": 16,
+          "fiber": 2,
+          "sugar": 31,
+          "sodium": 373,
+          "serving_size_g": 90,
+          "img": "🍎",
+          "skill": "Easy",
+          "servings": 9,
+          "tags": [
+            "preparation",
+            "easy",
+            "time-to-make"
+          ],
+          "ingredients": [
+            "1 cup of semi-sweet chocolate chips",
+            "0.5 cup of creamy peanut butter",
+            "0.25 cup of margarine",
+            "1 teaspoon of vanilla",
+            "9 cups of Corn Chex",
+            "1 1/2 cups of powdered sugar"
+          ],
+          "steps": [
+            "Melt chocolate chips, peanut butter, margarine and vanilla in microwave 1-1.5 minutes.",
+            "Pour over chex.",
+            "Stir to coat.",
+            "Toss in bag with powdered sugar."
+          ],
+          "recipe_url": "https://www.food.com/recipe/white-trash-snack-mix-microwave-334567",
+          "substitutions": []
+        }
+      ],
+      "total_kcal": 5208,
+      "source": "eval_results"
+    },
+    {
+      "cond": "C2",
+      "label": "Plan 2",
+      "config": {
+        "config_id": "foodrag_h2_fullday",
+        "hypothesis": "H2",
+        "retriever": "dense",
+        "result_file": "eval_results/foodrag_h2_fullday_per_question.pkl"
+      },
+      "question_id": "q_01637",
+      "explanation": {
+        "summary": "No explanation was recorded for this plan.",
+        "reasons": []
+      },
+      "recipes": [
+        {
+          "meal": "Breakfast",
+          "name": "Super Healthy Grain Breakfast",
+          "recipe_id": 241690,
+          "time": "7min",
+          "nutriscore": "B",
+          "who": 3,
+          "fsa": 0,
+          "cal": 1337,
+          "protein": 43,
+          "carbs": 269,
+          "fat": 16,
+          "fiber": 36,
+          "sugar": 63,
+          "sodium": 34,
+          "serving_size_g": 412,
+          "img": "🥣",
+          "skill": "Easy",
+          "servings": 1,
+          "tags": [
+            "european",
+            "low-cholesterol",
+            "low-in-something"
+          ],
+          "ingredients": [
+            "2 ounces of porridge oats",
+            "1 cup of water",
+            "sliced banana (plus 1 peeled and chopped pear",
+            "optional)"
+          ],
+          "steps": [
+            "Mix all together in a microwave bowl.",
+            "Cook for 5 minutes on High."
+          ],
+          "recipe_url": "https://www.food.com/recipe/super-healthy-grain-breakfast-55118",
+          "substitutions": []
+        },
+        {
+          "meal": "Lunch",
+          "name": "Cheesy No-Bake Tuna Casserole (For One)",
+          "recipe_id": 230953,
+          "time": "5min",
+          "nutriscore": "E",
+          "who": 2,
+          "fsa": 2,
+          "cal": 911,
+          "protein": 113,
+          "carbs": 70,
+          "fat": 22,
+          "fiber": 26,
+          "sugar": 12,
+          "sodium": 1956,
+          "serving_size_g": 368,
+          "img": "🥗",
+          "skill": "Easy",
+          "servings": 1,
+          "tags": [
+            "3-steps-or-less",
+            "free-of-something",
+            "low-cholesterol"
+          ],
+          "ingredients": [
+            "0.5 (3 ounce) can of tuna (drained)",
+            "0.5 (14 1/2 ounce) can of green beans (drained",
+            "or frozen broccoli",
+            "about 1 cup chopped or 1.5 cups of the big spears)",
+            "0.5 cup of low fat cottage cheese",
+            "1 tablespoon of part-skim shredded mozzarella cheese",
+            "salt and pepper (to taste) of (optional)"
+          ],
+          "steps": [
+            "Put all ingredients in a tupperware container and put in the refrigerator until you are ready to eat it.",
+            "Microwave on high for 2 minutes, stir it up and enjoy!",
+            "(Updated: If you substitute the frozen broccoli for the green beans, be sure to thaw it a bit first in the microwave and discard the resulting water to avoid it being too watery)."
+          ],
+          "recipe_url": "https://www.food.com/recipe/cheesy-no-bake-tuna-casserole-for-one-260181",
+          "substitutions": []
+        },
+        {
+          "meal": "Dinner",
+          "name": "Clipper Ship Casserole",
+          "recipe_id": 105938,
+          "time": "50min",
+          "nutriscore": "E",
+          "who": 2,
+          "fsa": 8,
+          "cal": 985,
+          "protein": 68,
+          "carbs": 58,
+          "fat": 54,
+          "fiber": 6,
+          "sugar": 15,
+          "sodium": 2277,
+          "serving_size_g": 251,
+          "img": "🍽",
+          "skill": "Hard",
+          "servings": 6,
+          "tags": [
+            "preparation",
+            "easy",
+            "time-to-make"
+          ],
+          "ingredients": [
+            "0.5 cup of finely chopped onion",
+            "0.5 cup of finely chopped celery",
+            "0.25 cup of chopped green pepper",
+            "2 tablespoons of vegetable oil",
+            "1 (15 ounce) can of tomato sauce",
+            "1 (4 ounce) can of mushrooms",
+            "0.5 cup of mayonnaise",
+            "2 (6 1/2-7 ounce) cans of chunk tuna",
+            "drained",
+            "0.5 teaspoon of garlic powder",
+            "1 1/2 teaspoons of Old Bay Seasoning",
+            "6 ounces of shredded sharp cheddar cheese",
+            "8 ounces of shell macaroni",
+            "cooked and drained",
+            "2 cups of crushed corn chips"
+          ],
+          "steps": [
+            "In skillet, cook onion, celery and green pepper in oil until tender.",
+            "Stir in tomato sauce, mayo, tuna and seasonings; simmer 5 minutes.",
+            "In a 2 quart casserole, layer half the macaroni, half the tuna, half the cheese and.",
+            "half the corn chips.",
+            "Repeat layers.",
+            "Bake at 350* for 30 minute  Serves 6."
+          ],
+          "recipe_url": "https://www.food.com/recipe/clipper-ship-casserole-271772",
+          "substitutions": []
+        },
+        {
+          "meal": "Snack",
+          "name": "White Trash Snack Mix (Microwave)",
+          "recipe_id": 269735,
+          "time": "4min",
+          "nutriscore": "E",
+          "who": 2,
+          "fsa": 10,
+          "cal": 369,
+          "protein": 6,
+          "carbs": 54,
+          "fat": 16,
+          "fiber": 2,
+          "sugar": 31,
+          "sodium": 373,
+          "serving_size_g": 90,
+          "img": "🍎",
+          "skill": "Easy",
+          "servings": 9,
+          "tags": [
+            "preparation",
+            "easy",
+            "time-to-make"
+          ],
+          "ingredients": [
+            "1 cup of semi-sweet chocolate chips",
+            "0.5 cup of creamy peanut butter",
+            "0.25 cup of margarine",
+            "1 teaspoon of vanilla",
+            "9 cups of Corn Chex",
+            "1 1/2 cups of powdered sugar"
+          ],
+          "steps": [
+            "Melt chocolate chips, peanut butter, margarine and vanilla in microwave 1-1.5 minutes.",
+            "Pour over chex.",
+            "Stir to coat.",
+            "Toss in bag with powdered sugar."
+          ],
+          "recipe_url": "https://www.food.com/recipe/white-trash-snack-mix-microwave-334567",
+          "substitutions": []
+        }
+      ],
+      "total_kcal": 3602,
+      "source": "eval_results"
+    },
+    {
+      "cond": "C3",
+      "label": "Plan 3",
+      "config": {
+        "config_id": "foodrag_h2_t2p_fullday",
+        "hypothesis": "H2",
+        "retriever": "text-to-pandas",
+        "result_file": "eval_results/foodrag_h2_t2p_fullday_per_question.pkl"
+      },
+      "question_id": "q_01637",
+      "explanation": {
+        "summary": "No explanation was recorded for this plan.",
+        "reasons": []
+      },
+      "recipes": [
+        {
+          "meal": "Breakfast",
+          "name": "White Chocolate Mocha Supreme",
+          "recipe_id": 11996,
+          "time": "12min",
+          "nutriscore": "E",
+          "who": 2,
+          "fsa": 5,
+          "cal": 369,
+          "protein": 6,
+          "carbs": 26,
+          "fat": 27,
+          "fiber": 0,
+          "sugar": 20,
+          "sodium": 92,
+          "serving_size_g": 178,
+          "img": "🥣",
+          "skill": "Easy",
+          "servings": 6,
+          "tags": [
+            "holiday-event",
+            "chocolate",
+            "low-carb"
+          ],
+          "ingredients": [
+            "4 ounces of white chocolate chips",
+            "2 cups of half-and-half cream",
+            "2 cups of hot fresh brewed coffee or 2 cups espresso",
+            "whipped cream"
+          ],
+          "steps": [
+            "In a microwave-safe bowl, add chocolate morsels and half-n-half.",
+            "Cook on HIGH for 2 minutes, stirring after 1 minute.",
+            "Stir until chocolate is melted and the mixture is smooth.",
+            "Add hot coffee; mix until blended.",
+            "Ladle into coffee mugs.",
+            "Top with whipped cream."
+          ],
+          "recipe_url": "https://www.food.com/recipe/white-chocolate-mocha-supreme-41396",
+          "substitutions": []
+        },
+        {
+          "meal": "Lunch",
+          "name": "Candy Cups",
+          "recipe_id": 12015,
+          "time": "5min",
+          "nutriscore": "C",
+          "who": 3,
+          "fsa": 1,
+          "cal": 417,
+          "protein": 5,
+          "carbs": 35,
+          "fat": 30,
+          "fiber": 1,
+          "sugar": 34,
+          "sodium": 51,
+          "serving_size_g": 294,
+          "img": "🥗",
+          "skill": "Easy",
+          "servings": 2,
+          "tags": [
+            "chocolate",
+            "low-in-something",
+            "equipment"
+          ],
+          "ingredients": [
+            "1 1/3 cups of hershey's premier white chocolate chips",
+            "0.5 cup of macadamia nuts",
+            "Pieces"
+          ],
+          "steps": [
+            "Place chip and nut mixture in medium microwave-safe bowl.",
+            "Microwave at MEDIUM (50%) 30 seconds; stir.",
+            "If necessary, microwave at MEDIUM an additional 15 seconds at a time, stirring after each heating, until chips are melted and mixture is blended when stirred.",
+            "Drop by rounded teaspoons into small paper candy cups.",
+            "(Mixture may also be dropped onto wax paper-lined cookie sheet.) Cool until set.",
+            "Store in cool, dry place.",
+            "About 1 dozen candies."
+          ],
+          "recipe_url": "https://www.food.com/recipe/candy-cups-166214",
+          "substitutions": []
+        },
+        {
+          "meal": "Dinner",
+          "name": "Nutella Stix-N-Stones",
+          "recipe_id": 22538,
+          "time": "45min",
+          "nutriscore": "C",
+          "who": 3,
+          "fsa": 0,
+          "cal": 1552,
+          "protein": 34,
+          "carbs": 129,
+          "fat": 105,
+          "fiber": 15,
+          "sugar": 95,
+          "sodium": 312,
+          "serving_size_g": 1005,
+          "img": "🍽",
+          "skill": "Hard",
+          "servings": 2,
+          "tags": [
+            "preparation",
+            "cookies-and-brownies",
+            "main-ingredient"
+          ],
+          "ingredients": [
+            "1 cup of white chocolate chips",
+            "1 cup of peanut butter chips",
+            "1 cup of nutella",
+            "1 cup of hazelnuts",
+            "toasted & chopped (see instructions)",
+            "1 cup of cocktail peanuts",
+            "2 cups of chow mein noodles"
+          ],
+          "steps": [
+            "Line 2 baking sheets with aluminum foil.",
+            "(I believe 1 sheet is for toasting the nuts& the second sheet is for the candy.) In a bowl, melt the white chocolate chips& PB chips in microwave on medium power for 2 minutes.",
+            "(Also can be melted in a double boiler) Add Nutella& stir until smooth to the melted chips.",
+            "Gently fold in nuts& noodles until completely combined.",
+            "Drop by heaping tablespoons onto prepared sheet and allow to set for 30 minutes.",
+            "Store in airtight container.",
+            "-----Totoast hazelnuts----.",
+            "Preheat oven to 325 degrees.",
+            "Spread hazelnuts on baking sheet& toast until lightly brown, about 10-15 minutes.",
+            "Allow nuts to cool completely before handling.",
+            "If using hazelnuts with skin on, rub them together in kitchen towel after cooling to remove skins."
+          ],
+          "recipe_url": "https://www.food.com/recipe/nutella-stix-n-stones-63016",
+          "substitutions": []
+        },
+        {
+          "meal": "Snack",
+          "name": "Banana Ghouls",
+          "recipe_id": 22785,
+          "time": "5min",
+          "nutriscore": "E",
+          "who": 2,
+          "fsa": 8,
+          "cal": 321,
+          "protein": 4,
+          "carbs": 45,
+          "fat": 15,
+          "fiber": 2,
+          "sugar": 37,
+          "sodium": 43,
+          "serving_size_g": 111,
+          "img": "🍎",
+          "skill": "Easy",
+          "servings": 6,
+          "tags": [
+            "holiday-event",
+            "kid-friendly",
+            "tropical-fruit"
+          ],
+          "ingredients": [
+            "3 of large firm bananas",
+            "peeled",
+            "6 of pop cycle sticks",
+            "1 1/2 cups of white chocolate chips",
+            "18 of Fruit Loops cereal"
+          ],
+          "steps": [
+            "Cut the bananas in half crosswise.",
+            "Insert a pop cycle stick about 2 inches into cut end of one half.",
+            "Repeat with remaining halves.",
+            "Place on waxed paper and freeze for about one hour.",
+            "Microwave white-chocolate chips on high for about 2 minutes, or until completely melted.",
+            "Spoon over bananas covering them completely.",
+            "While chocolate is still soft, press in 2 Fruit Loops for eyes and 1 for the mouth.",
+            "Freeze banana again until chocolate is hard."
+          ],
+          "recipe_url": "https://www.food.com/recipe/banana-ghouls-75003",
+          "substitutions": []
+        }
+      ],
+      "total_kcal": 2659,
+      "source": "eval_results"
+    }
+  ]
+}

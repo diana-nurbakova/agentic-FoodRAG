@@ -9,10 +9,10 @@ from __future__ import annotations
 
 import streamlit as st
 
-from ...components.study_common import render_progress
+from ...components.study_common import render_progress, render_step_nav
 from ...counterbalancing import assign_profile_index, get_plan_order, latin_square_group
 from ...state import goto, log_event
-from ...study_data import STUDY_CONFIG, STUDY_PROFILES, get_profile
+from ...study_data import STUDY_CONFIG, get_profile, get_study_profiles
 from ...theme import C, F, html
 
 
@@ -20,9 +20,10 @@ def _ensure_assignment() -> dict:
     """Assign a profile + plan order once per session (idempotent)."""
     ss = st.session_state
     if ss.get("assigned_profile_id") is None:
+        profiles = get_study_profiles()
         pnum = ss["participant_number"]
-        idx = assign_profile_index(pnum, len(STUDY_PROFILES))
-        ss["assigned_profile_id"] = STUDY_PROFILES[idx]["id"]
+        idx = assign_profile_index(pnum, len(profiles))
+        ss["assigned_profile_id"] = profiles[idx]["id"]
         n_plans = STUDY_CONFIG["plans_per_profile"]
         ss["plan_order"] = get_plan_order(pnum, n_plans)
         ss["latin_square_group"] = latin_square_group(pnum, n_plans)
@@ -31,6 +32,7 @@ def _ensure_assignment() -> dict:
 
 def render() -> None:
     profile = _ensure_assignment()
+    render_step_nav("demographics")
     render_progress(3, 9, "Step 3 of 8 — Your assigned profile")
 
     html(f"<h2>You've been assigned a profile</h2>"

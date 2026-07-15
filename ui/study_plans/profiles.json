@@ -1,0 +1,221 @@
+{
+  "profiles": [
+    {
+      "id": "P1",
+      "question_id": "q_00883",
+      "icon": "🍽",
+      "name": "Profile 1",
+      "goal": "Tags · Ingredients · Nutrient limits · Daily budget · Health score",
+      "desc": "Avoids tags: pasta, puerto-rican Wants ingredients: green cherries Avoids ingredients: hickory chips, French beans totalFat [g]: low (0–15 per 100 g) Daily dietaryFiber [g] ≤ 27 nutri_score ≥ 0.0",
+      "tags": [
+        "Tags",
+        "Ingredients",
+        "Nutrient limits",
+        "Daily budget",
+        "Health score"
+      ],
+      "prompt": "What recipes can be suggested with the constraint of avoiding pasta and Puerto-Rican cuisine, while incorporating green cherries, and omitting hickory chips and French beans, all within a nutritional profile that ensures a nutri-score of at least 0.0, total fat content between 0 and 15 grams, and a dietary fiber limit of 27.19 grams?",
+      "specificity": "specific",
+      "constraints": {
+        "tags": {
+          "likes": [],
+          "dislikes": [
+            "pasta",
+            "puerto-rican"
+          ]
+        },
+        "ingredients": {
+          "likes": [
+            "green cherries"
+          ],
+          "dislikes": [
+            "hickory chips",
+            "French beans"
+          ]
+        },
+        "relative_nutrients": {
+          "totalFat [g]": {
+            "preference": "low",
+            "limits": {
+              "lower": 0,
+              "upper": 15
+            }
+          }
+        },
+        "total_nutrients": {
+          "dietaryFiber [g]": 27.193604881998798
+        },
+        "nutrition_scores": {
+          "nutri_score": 0.0
+        }
+      },
+      "constraint_lines": [
+        "Avoids tags: pasta, puerto-rican",
+        "Wants ingredients: green cherries",
+        "Avoids ingredients: hickory chips, French beans",
+        "totalFat [g]: low (0–15 per 100 g)",
+        "Daily dietaryFiber [g] ≤ 27",
+        "nutri_score ≥ 0.0"
+      ],
+      "constraint_count": 8,
+      "answer_set_size": 3
+    },
+    {
+      "id": "P2",
+      "question_id": "q_00453",
+      "icon": "🍽",
+      "name": "Profile 2",
+      "goal": "Tags · Ingredients · Daily budget · Health score",
+      "desc": "Avoids tags: chicken-breasts, moroccan Wants ingredients: wax pepper Avoids ingredients: fruit yogurt, sugar-free caramel topping Daily caloriesFromFat [kcal] ≤ 641 nutri_score ≥ 0.0",
+      "tags": [
+        "Tags",
+        "Ingredients",
+        "Daily budget",
+        "Health score"
+      ],
+      "prompt": "What recipes can be suggested with the exclusion of chicken-breasts and moroccan tags, inclusion of wax pepper, exclusion of fruit yogurt and sugar-free caramel topping, a minimum nutri_score of 0.0, and a maximum of 640.59 calories from fat?",
+      "specificity": "specific",
+      "constraints": {
+        "tags": {
+          "likes": [],
+          "dislikes": [
+            "chicken-breasts",
+            "moroccan"
+          ]
+        },
+        "ingredients": {
+          "likes": [
+            "wax pepper"
+          ],
+          "dislikes": [
+            "fruit yogurt",
+            "sugar - free caramel topping"
+          ]
+        },
+        "relative_nutrients": {},
+        "total_nutrients": {
+          "caloriesFromFat [kcal]": 640.5852977962484
+        },
+        "nutrition_scores": {
+          "nutri_score": 0.0
+        }
+      },
+      "constraint_lines": [
+        "Avoids tags: chicken-breasts, moroccan",
+        "Wants ingredients: wax pepper",
+        "Avoids ingredients: fruit yogurt, sugar-free caramel topping",
+        "Daily caloriesFromFat [kcal] ≤ 641",
+        "nutri_score ≥ 0.0"
+      ],
+      "constraint_count": 7,
+      "answer_set_size": 1
+    },
+    {
+      "id": "P3",
+      "question_id": "q_00779",
+      "icon": "🍽",
+      "name": "Profile 3",
+      "goal": "Tags · Ingredients · Nutrient limits · Health score",
+      "desc": "Likes cuisine/tags: small-appliance Avoids tags: squid Wants ingredients: cake mix Avoids ingredients: lean ground pork, california black figs saturatedFat [g]: low (0–1.5 per 100 g) fsa_score ≥ 0.56",
+      "tags": [
+        "Tags",
+        "Ingredients",
+        "Nutrient limits",
+        "Health score"
+      ],
+      "prompt": "What recipes can be prepared using a small appliance, contain cake mix, and have a minimum fsa score of 0.56, while excluding squid, lean ground pork, and california black figs, and having a saturated fat content between 0 and 1.5 grams?",
+      "specificity": "specific",
+      "constraints": {
+        "tags": {
+          "likes": [
+            "small-appliance"
+          ],
+          "dislikes": [
+            "squid"
+          ]
+        },
+        "ingredients": {
+          "likes": [
+            "cake mix"
+          ],
+          "dislikes": [
+            "lean ground pork",
+            "california black figs"
+          ]
+        },
+        "relative_nutrients": {
+          "saturatedFat [g]": {
+            "preference": "low",
+            "limits": {
+              "lower": 0,
+              "upper": 1.5
+            }
+          }
+        },
+        "total_nutrients": {},
+        "nutrition_scores": {
+          "fsa_score": 0.555014024764523
+        }
+      },
+      "constraint_lines": [
+        "Likes cuisine/tags: small-appliance",
+        "Avoids tags: squid",
+        "Wants ingredients: cake mix",
+        "Avoids ingredients: lean ground pork, california black figs",
+        "saturatedFat [g]: low (0–1.5 per 100 g)",
+        "fsa_score ≥ 0.56"
+      ],
+      "constraint_count": 7,
+      "answer_set_size": 2
+    },
+    {
+      "id": "P4",
+      "question_id": "q_01637",
+      "icon": "🍽",
+      "name": "Profile 4",
+      "goal": "Tags · Ingredients · Health score",
+      "desc": "Likes cuisine/tags: microwave Avoids tags: iranian-persian, roast-beef-comfort-food Wants ingredients: white chocolate chips Avoids ingredients: tomato & basil flavored tuna, mini raspberry chips fsa_score ≥ 0.2",
+      "tags": [
+        "Tags",
+        "Ingredients",
+        "Health score"
+      ],
+      "prompt": "What recipes are suitable given the following constraints: microwave-friendly, exclusion of Iranian-Persian and roast beef comfort food, inclusion of white chocolate chips, exclusion of tomato & basil flavored tuna and mini raspberry chips, and a minimum FSA score of 0.2?",
+      "specificity": "specific",
+      "constraints": {
+        "tags": {
+          "likes": [
+            "microwave"
+          ],
+          "dislikes": [
+            "iranian-persian",
+            "roast-beef-comfort-food"
+          ]
+        },
+        "ingredients": {
+          "likes": [
+            "white chocolate chips"
+          ],
+          "dislikes": [
+            "tomato & basil flavored tuna",
+            "mini raspberry chips"
+          ]
+        },
+        "relative_nutrients": {},
+        "total_nutrients": {},
+        "nutrition_scores": {
+          "fsa_score": 0.203277438798947
+        }
+      },
+      "constraint_lines": [
+        "Likes cuisine/tags: microwave",
+        "Avoids tags: iranian-persian, roast-beef-comfort-food",
+        "Wants ingredients: white chocolate chips",
+        "Avoids ingredients: tomato & basil flavored tuna, mini raspberry chips",
+        "fsa_score ≥ 0.2"
+      ],
+      "constraint_count": 7,
+      "answer_set_size": 14
+    }
+  ]
+}
