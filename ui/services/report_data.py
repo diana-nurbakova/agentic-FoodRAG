@@ -46,6 +46,38 @@ def metric_label(m: str) -> str:
     return copy().get("metric_labels", {}).get(m, m)
 
 
+_JUDGE_SUFFIX = {"_judgeA": " (Judge A · Gemma-3-27B)", "_judgeB": " (Judge B · DeepSeek-V3)"}
+_DENOM_SUFFIX = {"_norm": " Slot-normalized denominator.", "_full": " Full-day (4-slot) denominator."}
+
+
+def metric_description(m: str) -> str:
+    """One-line, plain-language description of a metric (empty if none known).
+
+    Resolves normalized/full and judge-specific variants back to their base
+    metric, then annotates the sentence with the judge / denominator qualifier."""
+    descs = copy().get("metric_descriptions", {})
+    if m in descs:
+        return descs[m]
+    base, judge_note, denom_note = m, "", ""
+    for suf, note in _JUDGE_SUFFIX.items():
+        if base.endswith(suf):
+            base, judge_note = base[: -len(suf)], note
+            break
+    for suf, note in _DENOM_SUFFIX.items():
+        if base.endswith(suf):
+            base, denom_note = base[: -len(suf)], note
+            break
+    # Per-nutrient guideline metrics collapse to the generic guideline description.
+    if base.startswith("guideline_adherence_") and base not in descs:
+        base = "guideline_adherence"
+    text = descs.get(base, "")
+    if not text:
+        return ""
+    if judge_note:
+        text = text.rstrip(".") + judge_note + "."
+    return (text + denom_note).strip()
+
+
 def exp_meta(exp: str) -> dict:
     """Descriptive {title, sub, desc} for an experiment id (falls back to id)."""
     return copy().get("experiments", {}).get(exp, {"title": exp, "sub": exp, "desc": ""})
@@ -61,8 +93,28 @@ def load_aggregate() -> Optional[pd.DataFrame]:
     return eval_results.load_aggregate()
 
 
+@lru_cache(maxsize=1)
+def _pairwise_fullday() -> Optional[pd.DataFrame]:
+    """Pairwise significance for the dedicated full-day runs (pairwise_fullday.csv)."""
+    path = eval_results.results_dir() / "pairwise_fullday.csv"
+    if not path.exists():
+        return None
+    try:
+        return pd.read_csv(path)
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def load_pairwise() -> Optional[pd.DataFrame]:
-    return eval_results.load_pairwise()
+    """Pairwise significance markers, merging the partial-day (pairwise.csv) and
+    the full-day (pairwise_fullday.csv) comparisons so the Agentic panel shows
+    significance for the ``*_fullday`` configs too."""
+    frames = [f for f in (eval_results.load_pairwise(), _pairwise_fullday())
+              if f is not None and not f.empty]
+    if not frames:
+        return None
+    return pd.concat(frames, ignore_index=True).drop_duplicates(
+        subset=["experiment_id", "metric", "stratum", "config_a", "config_b"])
 
 
 def cell(agg: pd.DataFrame, experiment: str, config: str, metric: str,
@@ -97,16 +149,27 @@ SYS_CONFIGS = {
     "foodrag_h2_t2p": "foodrag_h2_t2p_per_question.parquet",
     "foodrag_h2": "foodrag_h2_per_question.parquet",
 }
+# Dedicated full-day runs (all 4 meal slots requested). H1 configs ship as parquet,
+# H2 as pickle. Included in the derived taxonomy/judge frames so the partial-day
+# artifact resolution (structural validity ~0.17 → ~1.0) is directly visible.
+FULLDAY_CONFIGS = {
+    "foodrag_h1_dense_fullday": "foodrag_h1_dense_fullday_per_question.parquet",
+    "foodrag_h1_t2p_fullday": "foodrag_h1_t2p_fullday_per_question.parquet",
+    "foodrag_h2_fullday": "foodrag_h2_fullday_per_question.pkl",
+    "foodrag_h2_t2p_fullday": "foodrag_h2_t2p_fullday_per_question.pkl",
+}
+ALL_SYS_CONFIGS = {**SYS_CONFIGS, **FULLDAY_CONFIGS}
 
 
 @lru_cache(maxsize=16)
 def _per_question(fname: str) -> Optional[pd.DataFrame]:
-    """Load one per-question parquet with the ``metrics`` dict expanded to columns."""
+    """Load one per-question record file (parquet or pickle) with the ``metrics``
+    dict expanded to columns."""
     path = eval_results.results_dir() / fname
     if not path.exists() or path.stat().st_size == 0:
         return None
     try:
-        df = pd.read_parquet(path)
+        df = pd.read_pickle(path) if path.suffix == ".pkl" else pd.read_parquet(path)
     except Exception:  # noqa: BLE001
         return None
     if "metrics" in df.columns:
@@ -133,10 +196,11 @@ def error_taxonomy() -> Optional[pd.DataFrame]:
       hard_violation     any hard-constraint violation
       low_correctness    correctness (Judge A) < 0.5
       unfaithful         faithfulness (Judge A) < 0.5
-      structural_invalid full-day structural validity == 0  (ARTIFACT — partial-day, see §5)
+      structural_invalid full-day structural validity == 0  (ARTIFACT for the
+                         partial-day configs; ~0 for the dedicated *_fullday runs)
     """
     rows = []
-    for cid, fname in SYS_CONFIGS.items():
+    for cid, fname in ALL_SYS_CONFIGS.items():
         df = _per_question(fname)
         if df is None or df.empty:
             continue
@@ -175,7 +239,7 @@ def judge_agreement() -> Optional[pd.DataFrame]:
     Returns long rows: config_id, metric, pearson, mean_a, mean_b, mean_abs_diff, n.
     Pearson is NaN when a judge column is constant (undefined correlation)."""
     rows = []
-    for cid, fname in SYS_CONFIGS.items():
+    for cid, fname in ALL_SYS_CONFIGS.items():
         df = _per_question(fname)
         if df is None or df.empty:
             continue

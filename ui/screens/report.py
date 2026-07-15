@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import math
 
+import altair as alt
 import pandas as pd
 import streamlit as st
 
@@ -26,7 +27,7 @@ from .. import eval_results
 from ..components.pareto_chart import render_pareto
 from ..services import report_data as rd
 from ..state import goto
-from ..theme import C, F, html
+from ..theme import C, F, NUTRI_C, html
 
 _STRATA = ["aggregate", "tight", "medium", "broad"]
 
@@ -67,6 +68,116 @@ def _pivot(df: pd.DataFrame, index: str, columns: str, value: str = "mean") -> p
     return p
 
 
+_SERIES_COLORS = [C["primary"], C["primaryLight"], C["accent"], C["nutC"], C["sub"]]
+
+
+def _hbar(df: pd.DataFrame, grouped: bool = False, value_title: str = "") -> None:
+    """Horizontal bar chart with **un-truncated** category labels.
+
+    ``df`` is indexed by category label; each column is a data series. Native
+    ``st.bar_chart`` truncates long y-axis labels at ~180px, so we render an
+    Altair bar chart with the axis ``labelLimit`` lifted. With one column it's a
+    simple bar; with several, bars are grouped side-by-side (``grouped``) or
+    stacked (default)."""
+    d = df.copy()
+    d.index = [str(x) for x in d.index]
+    order = list(d.index)
+    d.index.name = "category"
+    long = d.reset_index().melt(id_vars="category", var_name="series", value_name="value")
+    n = d.shape[1]
+    # Enough height for every band (Altair truncates to a fixed height otherwise).
+    height = max(120, len(order) * (26 if n == 1 else 20 + 12 * n))
+    y = alt.Y("category:N", sort=order, title=None,
+              axis=alt.Axis(labelLimit=1000, labelFontSize=11))
+    x = alt.X("value:Q", title=value_title or None)
+    enc = {"y": y, "x": x}
+    if n > 1:
+        enc["color"] = alt.Color("series:N", title=None,
+                                 scale=alt.Scale(range=_SERIES_COLORS[:n]),
+                                 sort=list(d.columns))
+        if grouped:
+            enc["yOffset"] = alt.YOffset("series:N", sort=list(d.columns))
+    else:
+        enc["color"] = alt.value(C["primary"])
+    chart = alt.Chart(long).mark_bar().encode(**enc).properties(height=height)
+    st.altair_chart(chart, use_container_width=True)
+
+
+# ── Nutri-Score: normalized [0,1] ⇄ categorical A–E ────────────────────────
+# The pipeline scores each recipe's Nutri-Score letter, then normalizes it to
+# [0,1] as letter→{A:4,B:3,C:2,D:1,E:0} ÷ 4 (see src/foodrag/utils/score_util.py).
+# So A=1.00, B=0.75, C=0.50, D=0.25, E=0.00; ``avg_nutri_at_10`` is the mean of
+# those normalized values over the top-10 recipes.
+_NUTRI_INT = {"A": 4, "B": 3, "C": 2, "D": 1, "E": 0}
+_INT_NUTRI = {v: k for k, v in _NUTRI_INT.items()}
+_NUTRI_METRICS = {"avg_nutri_at_10"}
+# Decision bands for mapping a normalized mean back to a letter: the grade is the
+# one whose anchor (A=1.0 … E=0.0) is closest, i.e. round(value×4). The cutoffs are
+# the midpoints between adjacent anchors — 0.125 / 0.375 / 0.625 / 0.875.
+_NUTRI_BANDS = [("E", 0.0, 0.125), ("D", 0.125, 0.375), ("C", 0.375, 0.625),
+                ("B", 0.625, 0.875), ("A", 0.875, 1.0)]
+_NUTRI_RULE = ("Nutri-Score is originally categorical (**A** best … **E** worst). It is normalised "
+               "to [0,1] as A=1.00, B=0.75, C=0.50, D=0.25, E=0.00 (letter→{4,3,2,1,0} ÷ 4). The "
+               "bars above are the mean of those normalised values over the top-10 recipes; the "
+               "grade plot maps each mean to the **nearest** band — cutoffs at 0.125 / 0.375 / "
+               "0.625 / 0.875 (the midpoints between grades), shown as the coloured background.")
+
+
+def _nutri_letter(value) -> str | None:
+    """Nearest Nutri-Score band (A–E) for a normalized [0,1] mean (None if NaN)."""
+    if _isnan(value):
+        return None
+    idx = int(round(max(0.0, min(1.0, float(value))) * 4))
+    return _INT_NUTRI.get(idx)
+
+
+def _nutri_grade_chart(labels, values) -> None:
+    """Companion plot: each config's mean NutriScore over a coloured A–E background
+    (official Nutri-Score palette). The band a bar reaches into is its grade, also
+    labelled at the bar end."""
+    rows = [{"category": str(lab), "value": float(val), "letter": _nutri_letter(val)}
+            for lab, val in zip(labels, values) if not _isnan(val)]
+    if not rows:
+        return
+    df = pd.DataFrame(rows)
+    order = list(df["category"])
+    domain = list("ABCDE")
+    color_scale = alt.Scale(domain=domain, range=[NUTRI_C[l] for l in domain])
+
+    # Background decision bands (full height, coloured by grade zone).
+    bands = pd.DataFrame([{"letter": l, "lo": lo, "hi": hi} for l, lo, hi in _NUTRI_BANDS])
+    band_layer = alt.Chart(bands).mark_rect(opacity=0.22).encode(
+        x=alt.X("lo:Q", title="Avg NutriScore (0–1)", scale=alt.Scale(domain=[0, 1], nice=False)),
+        x2="hi:Q",
+        color=alt.Color("letter:N", scale=color_scale, sort=domain,
+                        legend=alt.Legend(title="Nutri-Score band")),
+    )
+    base = alt.Chart(df).encode(
+        y=alt.Y("category:N", sort=order, title=None,
+                axis=alt.Axis(labelLimit=1000, labelFontSize=11)),
+        x=alt.X("value:Q", scale=alt.Scale(domain=[0, 1], nice=False)),
+    )
+    bars = base.mark_bar(color=C["primary"], size=14)
+    text = base.mark_text(align="left", dx=4, fontWeight="bold", color=C["text"]).encode(text="letter:N")
+    chart = (band_layer + bars + text).properties(height=max(120, len(order) * 30))
+    st.altair_chart(chart, use_container_width=True)
+
+
+def _maybe_nutri_grades(metric: str, labels, values) -> None:
+    """If ``metric`` is a Nutri-Score metric, render the A–E grade companion plot."""
+    if metric not in _NUTRI_METRICS:
+        return
+    _section_label("As Nutri-Score grades (A–E)")
+    _nutri_grade_chart(labels, values)
+    st.caption(_NUTRI_RULE)
+
+
+def _section_label(text: str) -> None:
+    """Small bold sub-heading used above an individual chart."""
+    html(f"<div style=\"font-family:{F};font-weight:700;font-size:12px;color:{C['text']};"
+         f"margin:8px 0 4px\">{text}</div>")
+
+
 def _stat_card(col, label: str, value: str, note: str = "", tone: str = "neutral") -> None:
     color = {"good": C["nutA"], "bad": C["nutE"], "warn": C["warn"]}.get(tone, C["primary"])
     col.markdown(
@@ -78,6 +189,24 @@ def _stat_card(col, label: str, value: str, note: str = "", tone: str = "neutral
         f"</div>",
         unsafe_allow_html=True,
     )
+
+
+def _distinct_strata(df: pd.DataFrame, metric: str) -> list[str]:
+    """Strata (in canonical order) whose per-config means for ``metric`` actually
+    differ. Collapses strata that are verbatim duplicates of one already kept —
+    e.g. EXP-7's ``aggregate`` is a copy of ``tight`` — so a stratum toggle is
+    only shown when it changes something."""
+    present = [s for s in _STRATA if s in set(df["stratum"])]
+    kept: list[str] = []
+    seen: list[pd.Series] = []
+    for s in present:
+        vec = (df[(df["metric"] == metric) & (df["stratum"] == s)]
+               .set_index("config_id")["mean"].sort_index())
+        if any(vec.equals(prev) for prev in seen):
+            continue
+        kept.append(s)
+        seen.append(vec)
+    return kept or present[:1]
 
 
 def _exp_select(agg: pd.DataFrame, key: str, only=None) -> str:
@@ -125,7 +254,7 @@ def _overview(agg: pd.DataFrame) -> None:
 def _retriever_comparison(agg: pd.DataFrame) -> None:
     exp1 = agg[agg["experiment_id"] == _EXP_RETRIEVER]
     if exp1.empty:
-        st.info("Retriever comparison (EXP-ret-tight) results not available.")
+        st.info("Retriever comparison results not available.")
         return
     m = rd.exp_meta(_EXP_RETRIEVER)
     html(f"<div style=\"font-family:{F};font-size:11px;color:{C['textMuted']};margin-bottom:4px\">"
@@ -139,10 +268,20 @@ def _retriever_comparison(agg: pd.DataFrame) -> None:
         st.caption("Pick at least one metric.")
         return
     sub = exp1[(exp1["metric"].isin(chosen)) & (exp1["stratum"] == "aggregate")]
-    st.bar_chart(_pivot(sub, "config_id", "metric"))
+    # One plot per selected metric — horizontal bars so the (long) retriever
+    # labels are never truncated.
+    for met in chosen:
+        msub = sub[sub["metric"] == met].sort_values("mean", ascending=False)
+        if msub.empty:
+            continue
+        _section_label(_mlabel(met))
+        chart = pd.DataFrame({_mlabel(met): msub["mean"].values},
+                             index=[_clabel(c) for c in msub["config_id"]])
+        _hbar(chart)
+        _maybe_nutri_grades(met, [_clabel(c) for c in msub["config_id"]], msub["mean"].values)
     st.caption("Lightweight symbolic retrieval (Text→Pandas) dominates dense/sparse embeddings — "
                "hit@10 0.43 (GPT-4o-mini) vs 0.055 (dense). Tight = 1–50 valid answers, where "
-               "health-aware recommendation matters most (§9.1).")
+               "health-aware recommendation matters most.")
     with st.expander("Full metric table"):
         table = _pivot(exp1[exp1["stratum"] == "aggregate"], "config_id", "metric").round(3)
         st.dataframe(table, use_container_width=True)
@@ -151,14 +290,14 @@ def _retriever_comparison(agg: pd.DataFrame) -> None:
 
 def _safety(agg: pd.DataFrame) -> None:
     st.caption("Deterministic, rule-based safety (target = 0). Allergen detection uses the FoodOn "
-               "hierarchy, not string matching (§4.3). Safety is a hard feasibility gate — never "
+               "hierarchy, not string matching. Safety is a hard feasibility gate — never "
                "slot-normalized, never a Pareto axis.")
 
     def allergen(exp, cfg):
         return rd.cell(agg, exp, cfg, "allergen_violation", "aggregate")
 
     # Before → after arc.
-    st.markdown("**Allergen violation — the grounding arc**")
+    st.markdown("**Allergen violation**")
     c1, c2, c3 = st.columns(3)
     _stat_card(c1, "Unconstrained LLM-only", _fmt(allergen("EXP-10k-tight", "llm_only"), "pct"),
                "invents recipes with no retrieval — breaks a hard allergen constraint ~9× in 10", "bad")
@@ -177,19 +316,18 @@ def _safety(agg: pd.DataFrame) -> None:
         sub = agg[(agg["metric"] == metric) & (agg["stratum"] == "aggregate")]
         if sub.empty:
             continue
-        html(f"<div style=\"font-family:{F};font-weight:700;font-size:12px;color:{C['text']};"
-             f"margin:8px 0 4px\">{_mlabel(metric)}</div>")
+        _section_label(_mlabel(metric))
         sub = sub.sort_values("mean")
-        chart = pd.DataFrame({"mean": sub["mean"].values},
+        chart = pd.DataFrame({_mlabel(metric): sub["mean"].values},
                              index=[_clabel(c) for c in sub["config_id"]])
-        st.bar_chart(chart)
+        _hbar(chart)
 
 
 # ═══ TIER 2 — ATTRIBUTION ═══════════════════════════════════════════════════
 def _agentic(agg: pd.DataFrame, pw: pd.DataFrame | None) -> None:
     sysm = agg[agg["experiment_id"] == _EXP_SYSTEM]
     if sysm.empty:
-        st.info("Full system matrix (EXP-7) results not available.")
+        st.info("Full system evaluation results not available.")
         return
     st.caption("H1 = agentic (Recommend + Correct + Enhance + Explain); H2 = recommend-only. "
                "Compare on a fixed retriever (dense / Text→Pandas). The agentic pipeline helps "
@@ -197,19 +335,39 @@ def _agentic(agg: pd.DataFrame, pw: pd.DataFrame | None) -> None:
                "correctness; on weak (dense) retrieval it has little to correct.")
     metric = st.selectbox("Metric", sorted(sysm["metric"].unique()),
                           format_func=_mlabel, key="rep_ag_metric")
-    strata = [s for s in _STRATA if s in set(sysm["stratum"])]
-    stratum = st.radio("Stratum", strata, horizontal=True, key="rep_ag_stratum")
+    desc = rd.metric_description(metric)
+    if desc:
+        st.caption(f"**{_mlabel(metric)}** — {desc}")
+
+    # The full system matrix (EXP-7) was run on the tight stratum only, so the
+    # "aggregate" rows are a verbatim copy of "tight" (identical means and n).
+    # Only offer strata that actually carry distinct numbers, so the control
+    # never looks like it's silently doing nothing.
+    strata = _distinct_strata(sysm, metric)
+    if len(strata) > 1:
+        stratum = st.radio("Stratum", strata, horizontal=True, key="rep_ag_stratum")
+    else:
+        stratum = strata[0]
+        st.caption("Tight stratum only (n=1,646) — the full system evaluation (FoodRAG "
+                   "configurations vs the baseline ladder) was not stratified further, so there is "
+                   "no separate aggregate view.")
     sub = sysm[(sysm["metric"] == metric) & (sysm["stratum"] == stratum)].sort_values("config_id")
     if sub.empty:
         st.info("No rows for this selection.")
         return
-    chart = pd.DataFrame({"mean": sub["mean"].values},
+    chart = pd.DataFrame({_mlabel(metric): sub["mean"].values},
                          index=[_clabel(c) for c in sub["config_id"]])
-    st.bar_chart(chart)
+    _hbar(chart)
+    _maybe_nutri_grades(metric, [_clabel(c) for c in sub["config_id"]], sub["mean"].values)
     show = sub[["config_id", "mean", "ci_low", "ci_high", "per_question_variance"]].copy()
     show["config_id"] = show["config_id"].map(_clabel)
-    st.dataframe(show.round(3).rename(columns={"config_id": "config"}),
-                 use_container_width=True, hide_index=True)
+    st.dataframe(
+        show.round(3).rename(columns={
+            "config_id": "config", "ci_low": "95% CI low", "ci_high": "95% CI high",
+            "per_question_variance": "per-question variance"}),
+        use_container_width=True, hide_index=True)
+    st.caption("Confidence intervals are 95% bootstrap intervals (10,000 resamples over "
+               "per-question means).")
 
     # Error decomposition callout (retriever-miss vs pipeline-dropped-gold).
     et = rd.error_taxonomy()
@@ -243,16 +401,36 @@ def _error_taxonomy(agg: pd.DataFrame) -> None:
         "hard_violation": "Hard-constraint viol.", "low_correctness": "Low correctness (<0.5)",
         "unfaithful": "Unfaithful (<0.5)", "structural_invalid": "Structural-invalid *",
     }
+    definitions = [
+        ("Retrieval miss", "no constraint-valid gold recipe reached the top-10 (hit@10 = 0), so "
+                           "the pipeline has nothing correct to build on."),
+        ("Empty plan", "the planner filled no meal slot — an honest no-recommendation rather than "
+                       "a hallucinated plan."),
+        ("Hard-constraint viol.", "the plan broke at least one hard dietary/health constraint "
+                                  "(e.g. an allergen)."),
+        ("Low correctness (<0.5)", "the recommendation scored below 0.5 on judged correctness "
+                                   "(Judge A · Gemma-3-27B)."),
+        ("Unfaithful (<0.5)", "the answer scored below 0.5 on judged faithfulness — it drifted "
+                              "from the retrieved evidence (Judge A · Gemma-3-27B)."),
+        ("Structural-invalid *", "the full-day structural-validity check returned 0 — an artifact "
+                                 "of the full-day denominator (see note below), not a real failure."),
+    ]
+    with st.expander("What each error type means"):
+        for name, meaning in definitions:
+            html(f"<div style=\"font-family:{F};font-size:12px;color:{C['text']};margin:2px 0\">"
+                 f"<b>{name}</b> — <span style=\"color:{C['textMuted']}\">{meaning}</span></div>")
     disp = et[buckets].rename(columns=labels).copy()
     disp.index = [_clabel(i) for i in disp.index]
     st.dataframe(
         disp.style.format("{:.1%}").background_gradient(cmap="Reds", vmin=0, vmax=1),
         use_container_width=True,
     )
-    st.caption("\\* **Structural-invalid is an artifact**, not a real failure: it is computed on a "
-               "full-day (4-slot) denominator, but the deployed planner is time-aware and returns "
-               "partial-day plans (mean 2.32 of 4 slots). Read the slot-normalized value in the "
-               "**Plan quality** panel instead (§5).")
+    st.caption("\\* **Structural-invalid is an artifact** for the deployed (partial-day) configs, "
+               "not a real failure: it uses a full-day (4-slot) denominator, but the time-aware "
+               "planner returns partial-day plans (mean 2.32 of 4 slots). The dedicated "
+               "**…full-day** rows above force all four slots and show structural-invalid collapsing "
+               "to ~0 — confirming it was a denominator artifact. Read the slot-normalized values in "
+               "the **Plan quality** panel.")
 
 
 def _retrieval_vs_pipeline(agg: pd.DataFrame) -> None:
@@ -305,7 +483,7 @@ def _domination_captions(result) -> None:
         if beaten:
             lines.append(f"**{_clabel(cfg)}** dominates " + ", ".join(_clabel(b) for b in beaten))
     if lines:
-        st.caption("Domination (§9.4): " + "; ".join(lines) + ".")
+        st.caption("Domination: " + "; ".join(lines) + ".")
     if result.excluded:
         st.caption("Excluded (missing metric): "
                    + ", ".join(f"{_clabel(c)} ({why})" for c, why in result.excluded.items()) + ".")
@@ -316,7 +494,7 @@ def _pareto(agg: pd.DataFrame) -> None:
 
     st.caption("Pareto-optimal (non-dominated) configs are highlighted and connected by the "
                "frontier; dominated configs are greyed. An **analysis lens** over feasible outputs "
-               "(§9.4) — safety is **never** a Pareto axis (hard constraints gate feasibility).")
+               "— safety is **never** a Pareto axis (hard constraints gate feasibility).")
     avail = set(agg["experiment_id"])
 
     st.markdown("**Health vs Relevance**")
@@ -338,7 +516,7 @@ def _pareto(agg: pd.DataFrame) -> None:
             render_pareto(df, "relevance", "health", f"{rel_lbl} (relevance)",
                           f"{_mlabel(health)} (health)", x_dir="max", y_dir="max", flag_col="frontier",
                           ideal="Ideal: top-right — relevant *and* healthy. Popularity/rating-sorted "
-                                "baselines sit high-relevance / low-health (§9.4 popularity bias).")
+                                "baselines sit high-relevance / low-health (popularity bias).")
             _domination_captions(res)
             _ceiling_captions(df["config_id"].unique())
 
@@ -361,7 +539,7 @@ def _pareto(agg: pd.DataFrame) -> None:
             render_pareto(df, "cost", "quality", f"{_mlabel(cost)} (cost ↓)",
                           "Correctness (quality)", x_dir="min", y_dir="max", flag_col="frontier",
                           ideal="Ideal: top-left — high quality at low cost. Frontier is the genuine "
-                                "trade-off {H2-t2p (cheap), H1-t2p (best quality)} (§9.4).")
+                                "trade-off {H2-t2p (cheap), H1-t2p (best quality)}.")
             _domination_captions(res)
 
     st.divider()
@@ -383,11 +561,11 @@ def _pareto(agg: pd.DataFrame) -> None:
             render_pareto(df, "strictness", "coverage", "Strictness (answer-set stratum, proxy)",
                           f"Coverage — {cov_lbl}", x_dir="max", y_dir="max", flag_col="frontier",
                           ideal="Relaxation level (strictness) vs fraction of personas with a full "
-                                "feasible plan (§9.4). Strictness uses answer-set-size strata as a "
+                                "feasible plan. Strictness uses answer-set-size strata as a "
                                 "documented PROXY (tight → high strictness).")
             st.caption("⚠ Documented proxy: answer-set-size strata stand in for a per-config "
-                       "relaxation axis (§9.1). Safety is never an axis — hard constraints gate "
-                       "feasibility upstream (§9.4).")
+                       "relaxation axis. Safety is never an axis — hard constraints gate "
+                       "feasibility upstream.")
             _domination_captions(res)
 
 
@@ -403,7 +581,7 @@ def _explainability(agg: pd.DataFrame) -> None:
     _stat_card(c2, "KG path coverage", _fmt(rd.cell(agg, _EXP_SYSTEM, cfg, "path_coverage"), "pct"),
                "share of plan items with a KG path", "neutral")
     _stat_card(c3, "NL claim grounding", _fmt(rd.cell(agg, _EXP_SYSTEM, cfg, "claim_grounding_rate"), "pct"),
-               "NL claims supported by evidence (§8.2)", "neutral")
+               "NL claims supported by evidence", "neutral")
     _stat_card(c4, "Unsupported claims", _fmt(rd.cell(agg, _EXP_SYSTEM, cfg, "unsupported_claim_rate"), "pct"),
                "NL claims with no support ↓", "warn")
     st.caption("The stronger retriever (t2p) yields better-grounded NL explanations (0.71 vs 0.55 "
@@ -430,53 +608,89 @@ def _judge_reliability(agg: pd.DataFrame) -> None:
 
 
 def _plan_quality(agg: pd.DataFrame) -> None:
-    st.warning("⚠ **Partial-day confound.** The deployed planner is time-aware and returns "
-               "partial-day plans (mean 2.32 of 4 meal slots), so full-day-denominated metrics read "
-               "as artifacts. The **slot-normalized** values below are the honest reading (§5); the "
-               "raw full-day values are in the toggle. See the **Time-of-day** panel for why.")
     sysm = agg[agg["experiment_id"] == _EXP_SYSTEM]
-    norm = ["meal_slot_completeness_norm", "calorie_adherence_norm", "intra_plan_diversity_norm",
-            "structural_validity_norm"]
-    norm = [m for m in norm if m in set(sysm["metric"])]
-    sub = sysm[(sysm["metric"].isin(norm)) & (sysm["stratum"] == "aggregate")]
-    if sub.empty:
-        st.info("Slot-normalized plan-quality metrics not available.")
-        return
-    st.markdown("**Slot-normalized (displayed)**")
-    st.dataframe(_pivot(sub, "config_id", "metric").round(3), use_container_width=True)
-    with st.expander("Show raw full-day values (strict reading — includes the partial-day artifact)"):
-        full = ["meal_slot_completeness_full", "calorie_adherence_full", "structural_validity_full"]
+    configs = list(sysm["config_id"].unique())
+    fullday = [c for c in configs if c.endswith("_fullday")]
+    partial = [c for c in configs if not c.endswith("_fullday")]
+
+    st.info("**Two honest readings of plan quality.** The *deployed* planner is time-aware and "
+            "returns partial-day plans (mean 2.32 of 4 slots), so full-day-denominated metrics "
+            "understate those configs — read them on the **slot-normalized** denominator. Separately, "
+            "dedicated **full-day runs** (…full-day) force all four slots; their raw full-day metrics "
+            "are the honest full-day reading, and they **confirm the artifact** — structural validity "
+            "rises from ~0.17 (partial-day, full denominator) to ~1.0 on the real full-day run. "
+            "See the **Time-of-day** panel for why partial-day plans are a feature.")
+
+    # Artifact-resolution contrast (H1-t2p): partial-day full-denominator → real full-day run.
+    sv_p = rd.cell(agg, _EXP_SYSTEM, "foodrag_h1_t2p", "structural_validity_full")
+    sv_f = rd.cell(agg, _EXP_SYSTEM, "foodrag_h1_t2p_fullday", "structural_validity_full")
+    cm_p = rd.cell(agg, _EXP_SYSTEM, "foodrag_h1_t2p", "meal_slot_completeness_full")
+    cm_f = rd.cell(agg, _EXP_SYSTEM, "foodrag_h1_t2p_fullday", "meal_slot_completeness_full")
+    if not _isnan(sv_f) or not _isnan(cm_f):
+        cA, cB = st.columns(2)
+        _stat_card(cA, "Structural validity (H1-t2p)", f"{_fmt(sv_p)} → {_fmt(sv_f)}",
+                   "partial-day (full denom.) → dedicated full-day run", "good")
+        _stat_card(cB, "Meal-slot completeness (H1-t2p)", f"{_fmt(cm_p)} → {_fmt(cm_f)}",
+                   "partial-day → dedicated full-day run", "good")
+
+    if partial:
+        _section_label("Deployed (partial-day) configs — slot-normalized reading")
+        norm = ["meal_slot_completeness_norm", "calorie_adherence_norm",
+                "intra_plan_diversity_norm", "structural_validity_norm"]
+        norm = [m for m in norm if m in set(sysm["metric"])]
+        psub = sysm[(sysm["config_id"].isin(partial)) & (sysm["metric"].isin(norm))
+                    & (sysm["stratum"] == "aggregate")]
+        if not psub.empty:
+            st.dataframe(_pivot(psub, "config_id", "metric").round(3), use_container_width=True)
+
+    if fullday:
+        _section_label("Dedicated full-day runs — real full-day metrics")
+        full = ["meal_slot_completeness_full", "calorie_adherence_full",
+                "structural_validity_full", "guideline_adherence_full"]
         full = [m for m in full if m in set(sysm["metric"])]
-        fsub = sysm[(sysm["metric"].isin(full)) & (sysm["stratum"] == "aggregate")]
-        if fsub.empty:
-            st.caption("Full-day values not available.")
-        else:
+        fsub = sysm[(sysm["config_id"].isin(fullday)) & (sysm["metric"].isin(full))
+                    & (sysm["stratum"] == "aggregate")]
+        if not fsub.empty:
             st.dataframe(_pivot(fsub, "config_id", "metric").round(3), use_container_width=True)
-            st.caption("These full-day numbers (e.g. structural validity ≈ 0.17) are conservative on "
-                       "partial-day plans — do not read them as failures.")
+            st.caption("Genuine full-day plans (all four slots requested), so the full-day "
+                       "denominator is appropriate here — these are real values, not artifacts.")
+
+    if not partial and not fullday:
+        st.info("Plan-quality metrics not available.")
 
 
 def _guideline_adherence(agg: pd.DataFrame) -> None:
-    st.warning("⚠ **Slot-normalized reading (§5).** Per-nutrient guideline adherence on the "
-               "slot-normalized denominator; raw full-day is in the toggle. Never read the bare "
-               "full-day bands.")
+    st.info("Per-nutrient guideline adherence on the **slot-normalized** denominator for the "
+            "deployed (partial-day) configs; the dedicated **…full-day** runs are a real full-day "
+            "reading. Low energy/carb bands on partial-day configs reflect the partial-day confound, "
+            "not a planner failure — see the **Time-of-day** and **Plan quality** panels.")
     sysm = agg[agg["experiment_id"] == _EXP_SYSTEM]
     cfg = st.selectbox("Config", sorted(sysm["config_id"].unique()), format_func=_clabel,
                        key="rep_gl_cfg")
+    is_full = cfg.endswith("_fullday")
+    # Per-nutrient bands are stored only on the slot-normalized denominator; for the
+    # dedicated full-day runs the normalized and full denominators coincide (all four
+    # slots requested), so these are the real full-day bands for those configs.
     nutrients = ["energy", "protein", "carb", "fat", "satfat", "fibre", "sodium", "sugar"]
+    col_label = "adherence (full-day)" if is_full else "adherence (slot-norm)"
     rows = []
     for n in nutrients:
         v = rd.cell(agg, _EXP_SYSTEM, cfg, f"guideline_adherence_norm_{n}")
         if not _isnan(v):
-            rows.append({"nutrient": n, "adherence (slot-norm)": v})
+            rows.append({"nutrient": n, col_label: v})
     if not rows:
-        st.info("Slot-normalized per-nutrient guideline metrics not available for this config.")
+        st.info("Per-nutrient guideline metrics not available for this config.")
         return
     df = pd.DataFrame(rows).set_index("nutrient")
-    st.bar_chart(df)
-    overall = rd.cell(agg, _EXP_SYSTEM, cfg, "guideline_adherence_norm")
-    st.caption(f"Overall (slot-norm): {_fmt(overall)}. Bands are per-nutrient; low energy/carb "
-               "reflect the partial-day confound, not a planner failure.")
+    _hbar(df)
+    overall = rd.cell(agg, _EXP_SYSTEM, cfg,
+                      "guideline_adherence_full" if is_full else "guideline_adherence_norm")
+    if is_full:
+        st.caption(f"Overall (full-day): {_fmt(overall)}. Dedicated full-day run — all four slots "
+                   "requested, so these bands are a real full-day reading.")
+    else:
+        st.caption(f"Overall (slot-norm): {_fmt(overall)}. Bands are per-nutrient; low energy/carb "
+                   "reflect the partial-day confound, not a planner failure.")
 
 
 def _time_of_day() -> None:
@@ -493,7 +707,7 @@ def _time_of_day() -> None:
     st.markdown("**Mean meals per plan by hour**")
     st.bar_chart(tod.set_index("hour")[["mean_meals"]])
     st.caption("Mornings → breakfast-dominant; evenings → dinner + snack. Mean 2.32 meals/plan "
-               "overall (not 4), which is why full-day completeness reads ~0.48 (§5).")
+               "overall (not 4), which is why full-day completeness reads ~0.48.")
 
 
 def _case_browser() -> None:
@@ -525,16 +739,16 @@ def _case_browser() -> None:
 def _volatility(agg: pd.DataFrame) -> None:
     vol = rd.volatility(agg, experiment=_EXP_SYSTEM)
     if vol is None:
-        st.info("No per-question variance recorded for EXP-7.")
+        st.info("No per-question variance recorded for the full system evaluation.")
         return
-    st.caption("Per-question variance by config (EXP-7, aggregate). Higher variance = noisier "
+    st.caption("Per-question variance by config (full system evaluation). Higher variance = noisier "
                "per-question behaviour for that metric.")
     metric = st.selectbox("Metric", sorted(vol["metric"].unique()), format_func=_mlabel,
                           key="rep_vol_metric")
-    sub = vol[vol["metric"] == metric].sort_values("per_question_variance", ascending=False)
+    sub = vol[vol["metric"] == metric].sort_values("per_question_variance", ascending=True)
     chart = pd.DataFrame({"variance": sub["per_question_variance"].values},
                          index=[_clabel(c) for c in sub["config_id"]])
-    st.bar_chart(chart)
+    _hbar(chart)
 
 
 def _stratified(agg: pd.DataFrame) -> None:
@@ -550,8 +764,15 @@ def _stratified(agg: pd.DataFrame) -> None:
         return
     chart = _pivot(sub, "config_id", "stratum")
     chart = chart[[s for s in _STRATA if s in chart.columns]]
-    st.bar_chart(chart)
-    st.caption("Aggregates are dominated by broad personas — read alongside the tight stratum (§3.4).")
+    # Annotate each stratum (legend) with the number of items (personas) it covers
+    # for this metric — the stratum's answer-set size.
+    nmap = sub.groupby("stratum")["n_questions"].max()
+    chart = chart.rename(columns={s: f"{s} (n={int(nmap[s]):,})"
+                                  for s in chart.columns if s in nmap.index and pd.notna(nmap[s])})
+    # Grouped (not stacked) horizontal bars: one bar per stratum, side by side,
+    # so per-stratum values are read directly and config labels are never cut off.
+    _hbar(chart, grouped=True)
+    st.caption("Aggregates are dominated by broad personas — read alongside the tight stratum.")
 
 
 # ── entry ────────────────────────────────────────────────────────────────
@@ -566,12 +787,11 @@ def render() -> None:
             goto("welcome")
 
     html(f"<p style=\"font-family:{F};font-size:13px;color:{C['textMuted']};margin:4px 0 10px;"
-         f"line-height:1.6\">Offline evaluation results (Evaluation Protocol §11). "
-         f"Pre-computed and read-only.</p>")
+         f"line-height:1.6\">Offline evaluation results. Pre-computed and read-only.</p>")
 
     if not eval_results.available():
         st.warning("No evaluation results found. Place `aggregate.csv` (+ optional `pairwise.csv`) "
-                   "in `eval_results/` (or set `FOODRAG_EVAL_RESULTS`). See Evaluation Protocol §13.")
+                   "in `eval_results/` (or set `FOODRAG_EVAL_RESULTS`).")
         return
 
     if eval_results.is_sample():
