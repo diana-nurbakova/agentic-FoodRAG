@@ -6,7 +6,7 @@ colorTo: blue
 sdk: docker
 app_port: 7860
 pinned: false
-short_description: Health-aware agentic meal-plan recommender over the HUMMUS KG
+short_description: Health-aware agentic meal-plan recommender on HUMMUS KG
 ---
 
 <!-- HF reads the YAML block above and renders the rest as the Space card.
@@ -29,8 +29,8 @@ The system has three faces:
 - an **evaluation framework** — deterministic + dual-LLM-judge metrics with a full baseline ladder
   (popularity, LLM-only, naive-RAG, ToG/RoG/TFS-KBQA, pFoodReq).
 
-This is a refactored, reproducible version of the original research prototype
-[gitlab.com/felix134/agentic-food-rag](https://gitlab.com/felix134/agentic-food-rag) — packaged with
+This is an app based on a refactored, reproducible version of the original research prototype
+[gitlab.com/felix134/agentic-food-rag](https://gitlab.com/felix134/agentic-food-rag) of the same team — packaged with
 `uv`, explicit data loading, configurable model providers, Dockerized stores, logging/retry/JSON
 recovery, resumable runs, deterministic safety guards, and a test suite.
 

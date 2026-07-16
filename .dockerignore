@@ -4,7 +4,13 @@
 data/
 .venv/
 venv/
-eval_results/
+
+# eval_results/ IS needed: the Report tab (Flow C) reads aggregate.csv,
+# pairwise.csv, manifest.json and the per-question parquets from it
+# (ui/eval_results.py, ui/services/report_data.py). Ship it -- but not the
+# 262 MB json/ export, which no app code reads, nor the llama variant.
+eval_results/json/
+eval_results/_garbage_h1_agentworkflow/
 eval_results_llama/
 error_analysis.txt
 

@@ -50,7 +50,11 @@ RUN pip install --upgrade pip \
 
 # ── app code + entrypoint ────────────────────────────────────────────────────
 COPY . ${APP_DIR}
-RUN chmod +x deploy/start.sh
+# Strip any CR from the entrypoint before running it. A Windows-authored file
+# arriving with CRLF makes sh parse `set -eu\r` as an illegal option and the boot
+# dies instantly. .gitattributes should prevent this; this is a belt-and-braces
+# guard so a line-ending regression can never break the Space again.
+RUN sed -i 's/\r$//' deploy/start.sh && chmod +x deploy/start.sh
 
 # HF mounts the persistent volume at /data and runs the container as uid 1000,
 # which must own /data and the Neo4j install. Create that user and hand over.
@@ -63,4 +67,6 @@ ENV PATH="/usr/lib/postgresql/16/bin:${NEO4J_HOME}/bin:${PATH}"
 
 # HF routes traffic to $PORT (7860 by default). Declare app_port: 7860 in README.
 EXPOSE 7860
-CMD ["bash", "deploy/start.sh"]
+# start.sh is POSIX sh (no bashisms) -- run it with sh so it behaves identically
+# regardless of which shell the platform uses to invoke it.
+CMD ["/bin/sh", "deploy/start.sh"]

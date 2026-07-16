@@ -31,21 +31,50 @@ from pathlib import Path
 
 
 def build_patterns(include_embeddings: bool, include_kg: bool) -> tuple[list[str], list[str]]:
+    # NOTE: huggingface_hub filters with fnmatch, where '*' also matches '/'.
+    # So "hummus/*.pkl" alone would ALSO pull hummus/food_kg/**, hummus_graph/**
+    # etc. (~34 GB of pipeline-only data). The ignore list below is what actually
+    # restricts us to the top-level hummus files that _load_hummus reads.
     allow = [
-        # hummus top-level files only (subdirs like food_kg/, hummus_data/ are
-        # pipeline inputs and are never read at serving time).
         "hummus/*.pkl",
         "hummus/*.csv",
         "hummus/*.json",
         "hummus/*.ttl",
     ]
-    ignore = ["hummus/reviews_df.csv"]  # loaded but unused at inference → skip
+    ignore = [
+        "hummus/reviews_df.csv",   # loaded into hummus_data but unused at inference
+        # Derived cold-start cache (backend._engine_cache_path). Keyed on the
+        # (size, mtime) of recipes_df.csv, and snapshot_download rewrites mtime —
+        # so a shipped cache is always invalidated on arrival. The Space rebuilds
+        # it once onto the persistent volume instead. Don't waste 1.3 GB on it.
+        "hummus/_ui_engine_cache.pkl",
+        # Pipeline/build inputs — never read at serving time (see docs/DEPLOY_HF.md).
+        "hummus/food_kg/*",
+        "hummus/hummus_data/*",
+        "hummus/hummus_graph/*",
+        "hummus/crawler_init/*",
+        "hummus/annotations/*",
+    ]
     if include_embeddings:
-        allow += ["embeddings/BAAI_bge-m3/recipe_documents/**",
-                  "embeddings/BAAI_bge-m3/food_product_documents/**"]
+        # Only recipe_documents is used — backend._recipe_embeddings_dir() globs
+        # data/embeddings/*/recipe_documents for the pgvector ingest.
+        allow += ["embeddings/BAAI_bge-m3/recipe_documents/*"]
     if include_kg:
-        allow += ["neo4j_kg/all/**", "neo4j_kg/nousda/**"]
+        allow += ["neo4j_kg/all/*", "neo4j_kg/nousda/*"]
     return allow, ignore
+
+
+def _resolve_token() -> str | None:
+    """Token from .env (HF_WRITE_TOKEN / HF_TOKEN), else the huggingface-cli login cache."""
+    try:
+        from dotenv import load_dotenv
+
+        load_dotenv(override=False)
+    except Exception:  # noqa: BLE001 — dotenv is optional
+        pass
+    import os
+
+    return os.environ.get("HF_WRITE_TOKEN") or os.environ.get("HF_TOKEN") or None
 
 
 def main() -> int:
@@ -65,13 +94,15 @@ def main() -> int:
 
     from huggingface_hub import HfApi, create_repo
 
-    create_repo(args.repo, repo_type="dataset", private=args.private, exist_ok=True)
+    token = _resolve_token()
+    create_repo(args.repo, repo_type="dataset", private=args.private,
+                exist_ok=True, token=token)
     allow, ignore = build_patterns(args.include_embeddings, args.include_kg)
 
-    print(f"Uploading {data_dir} → dataset {args.repo}")
+    print(f"Uploading {data_dir} -> dataset {args.repo}")
     print(f"  allow : {allow}")
     print(f"  ignore: {ignore}")
-    HfApi().upload_large_folder(
+    HfApi(token=token).upload_large_folder(
         repo_id=args.repo,
         repo_type="dataset",
         folder_path=str(data_dir),

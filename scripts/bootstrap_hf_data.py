@@ -37,7 +37,7 @@ def _data_dir() -> Path:
 def main() -> int:
     repo_id = os.environ.get("FOODRAG_DATA_REPO")
     if not repo_id:
-        print("[bootstrap] FOODRAG_DATA_REPO not set — skipping data download "
+        print("[bootstrap] FOODRAG_DATA_REPO not set - skipping data download "
               "(assuming data is already on the persistent volume).")
         return 0
 
@@ -55,7 +55,7 @@ def main() -> int:
     # Pull the dataset snapshot straight into <data_dir>. The dataset's internal
     # layout MUST mirror the repo's data/ layout (hummus/, embeddings/, neo4j_kg/)
     # so paths resolve unchanged. allow_patterns keeps us to the runtime slice.
-    print(f"[bootstrap] downloading {repo_id} → {data_dir} …")
+    print(f"[bootstrap] downloading {repo_id} -> {data_dir} ...")
     snapshot_download(
         repo_id=repo_id,
         repo_type="dataset",

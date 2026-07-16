@@ -54,13 +54,13 @@ def main() -> int:
             print(f"[seed-neo4j] KG import files not found under {kg_dir}; nothing to seed.")
             return 0
 
-        print(f"[seed-neo4j] importing KG from {kg_dir} (this runs once) …")
+        print(f"[seed-neo4j] importing KG from {kg_dir} (this runs once) ...")
         # use_absolute_paths=False: paths are emitted relative to the import root
         # (data/neo4j_kg), which is exactly what the Dockerfile sets as Neo4j's
         # server.directories.import.
         mgr.insert_data(data_path=data_path, mode=transform_kg.MODE_ALL,
                         batch_size=1000, verbose=True, use_absolute_paths=False)
-        print(f"[seed-neo4j] done — {_recipe_count(mgr)} Recipe nodes.")
+        print(f"[seed-neo4j] done - {_recipe_count(mgr)} Recipe nodes.")
         return 0
     finally:
         mgr.close()

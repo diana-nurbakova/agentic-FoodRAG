@@ -6,6 +6,12 @@
 *.yaml text eol=lf
 *.md text eol=lf
 *.lock text eol=lf
+# Shell scripts and the Dockerfile MUST be LF: they run under sh/dash in the
+# Linux container, where a trailing CR is parsed as part of the command
+# (`set -eu\r` -> "Illegal option -"). CRLF here breaks the HF Space boot.
+*.sh text eol=lf
+Dockerfile text eol=lf
+.dockerignore text eol=lf
 # Notebooks are JSON; keep LF and don't let them be treated oddly.
 *.ipynb text eol=lf
 # Binary / large assets
