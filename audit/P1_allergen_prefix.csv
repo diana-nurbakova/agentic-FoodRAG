@@ -1,0 +1,5 @@
+config_id,prefix_mean,postfix_mean,records_gt_zero,value_distribution,max_value,records_at_1.0
+foodrag_h1_t2p,0.00030998140111593303,0.0,3,3 x 0.5,0.5,0
+foodrag_h1_dense,0.0019686387291153106,0.0,27,11 x 0.25; 8 x 0.333333; 7 x 0.5; 1 x 0.666667,0.6666666666666666,0
+foodrag_h2,0.0034272015126958397,0.0,39,11 x 0.25; 8 x 0.333333; 17 x 0.5; 3 x 1.0,1.0,3
+foodrag_h2_t2p,0.0006075334143377885,0.0,3,3 x 1.0,1.0,3

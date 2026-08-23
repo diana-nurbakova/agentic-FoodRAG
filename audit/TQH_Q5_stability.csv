@@ -1,0 +1,11 @@
+config_id,empty_runs_for_question,n_questions
+ret_text2pandas@llama70b,0,1467
+ret_text2pandas@llama70b,1,46
+ret_text2pandas@llama70b,2,2
+ret_text2pandas@llama70b,3,4
+ret_text2pandas@llama70b,4,3
+ret_text2pandas@llama70b,5,124
+ret_text2pandas@gpt4o-mini,2,648
+ret_text2pandas@gpt4o-mini,3,876
+ret_text2pandas@gpt4o-mini,4,6
+ret_text2pandas@gpt4o-mini,5,116

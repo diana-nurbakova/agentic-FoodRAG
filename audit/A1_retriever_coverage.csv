@@ -1,0 +1,9 @@
+config_id,question_runs,empty_results,distinct_ids_returned,outside_corpus
+ret_text2pandas@llama70b,8230,694,7799,0
+ret_text2pandas@gpt4o-mini,8230,4528,7694,0
+ret_intersection,1646,1587,56,0
+ret_dense,1646,0,9601,0
+ret_sparse,1646,0,5132,0
+ret_hybrid,1646,0,9600,0
+ret_fulltext,1646,0,5132,0
+ret_random,1646,0,15961,0

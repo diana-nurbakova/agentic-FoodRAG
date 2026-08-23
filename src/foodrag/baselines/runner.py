@@ -128,14 +128,40 @@ def _resolve_rows(retrieved_ids: Sequence[str], indexed: pd.DataFrame,
 
 # ── aggregation ──────────────────────────────────────────────────────────────
 
-def _bootstrap_ci(values: np.ndarray, n_boot: int, seed: int) -> tuple[float, float]:
-    """95% percentile bootstrap CI of the mean; degenerate inputs return the mean."""
+def _bootstrap_ci(values: np.ndarray, n_boot: int, seed: int,
+                  block: int = 500) -> tuple[float, float]:
+    """95% percentile bootstrap CI of the mean; degenerate inputs return the mean.
+
+    The resample matrix is drawn in row blocks rather than as one
+    ``(n_boot, n)`` array. At n_boot = 10,000 the one-shot draw is 125 MB for a
+    1,646-question config and 763 MB for a 10,000-question one, which raises
+    ``MemoryError`` on a constrained box — it is why ``build_claim_registry.py``
+    and ``reaggregate_corrected.py`` could not run to completion.
+
+    ``Generator.choice`` fills row-major, so k blocks of ``(rows, n)`` consume
+    the stream in exactly the order one ``(n_boot, n)`` draw would: the
+    resamples, and therefore the interval, are **bit-identical**. Verified over
+    several (n_boot, n) shapes before this replaced the one-shot draw.
+    """
     if values.size == 0:
         return float("nan"), float("nan")
     if values.size == 1:
         return float(values[0]), float(values[0])
     rng = np.random.default_rng(seed)
-    means = rng.choice(values, size=(n_boot, values.size), replace=True).mean(axis=1)
+    means = np.empty(n_boot, dtype=float)
+    done = 0
+    while done < n_boot:
+        rows = min(block, n_boot - done)
+        while True:
+            try:
+                means[done:done + rows] = rng.choice(
+                    values, size=(rows, values.size), replace=True).mean(axis=1)
+                break
+            except MemoryError:
+                if rows == 1:
+                    raise
+                rows = max(1, rows // 4)   # same stream either way, so still exact
+        done += rows
     return float(np.percentile(means, 2.5)), float(np.percentile(means, 97.5))
 
 

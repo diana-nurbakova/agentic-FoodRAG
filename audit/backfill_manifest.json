@@ -1,0 +1,109 @@
+{
+  "sections": {
+    "t": {
+      "status": "ok",
+      "outputs": [
+        "T_column_census.csv",
+        "T_heuristic_labels.csv",
+        "T_field_support.csv",
+        "T_incidental_patterns.csv"
+      ],
+      "checks": [
+        {
+          "value": "corpus_rows",
+          "expected": 270284,
+          "derived": 270284.0,
+          "status": "match"
+        },
+        {
+          "value": "tags_non_empty",
+          "expected": 232777,
+          "derived": 232777.0,
+          "status": "match"
+        },
+        {
+          "value": "meal_types_non_empty",
+          "expected": 266726,
+          "derived": 266726.0,
+          "status": "match"
+        },
+        {
+          "value": "appended_tag_instances",
+          "expected": 20667,
+          "derived": 20667.0,
+          "status": "match"
+        },
+        {
+          "value": "appended_recipes",
+          "expected": 19058,
+          "derived": 19058.0,
+          "status": "match"
+        },
+        {
+          "value": "appended_breakfast",
+          "expected": 2412,
+          "derived": 2412.0,
+          "status": "match"
+        },
+        {
+          "value": "appended_lunch",
+          "expected": 2865,
+          "derived": 2865.0,
+          "status": "match"
+        },
+        {
+          "value": "appended_dinner",
+          "expected": 11012,
+          "derived": 11012.0,
+          "status": "match"
+        },
+        {
+          "value": "appended_snack",
+          "expected": 4378,
+          "derived": 4378.0,
+          "status": "match"
+        },
+        {
+          "value": "native_breakfast",
+          "expected": 13520,
+          "derived": 13520.0,
+          "status": "match"
+        },
+        {
+          "value": "native_lunch",
+          "expected": 23660,
+          "derived": 23660.0,
+          "status": "match"
+        },
+        {
+          "value": "native_dinner",
+          "expected": 0,
+          "derived": 0.0,
+          "status": "match"
+        },
+        {
+          "value": "native_snack",
+          "expected": 0,
+          "derived": 0.0,
+          "status": "match"
+        }
+      ],
+      "values": {
+        "appended_tag_instances": 20667,
+        "appended_recipes": 19058,
+        "appended_breakfast": 2412,
+        "appended_lunch": 2865,
+        "appended_dinner": 11012,
+        "appended_snack": 4378,
+        "native_breakfast": 13520,
+        "native_lunch": 23660,
+        "native_dinner": 0,
+        "native_snack": 0,
+        "corpus_rows": 270284,
+        "tags_non_empty": 232777,
+        "meal_types_non_empty": 266726
+      },
+      "note": "T_incidental_patterns.csv is a re-derivation, not a reproduction: T.6 does not publish the regexes behind its pattern shares and the original script is gone. Every other T output reproduces the report exactly."
+    }
+  }
+}

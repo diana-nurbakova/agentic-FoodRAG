@@ -1,0 +1,3 @@
+numerator_config,numerator_source,numerator_hit_at_10,denominator_config,denominator_hit_at_10,ratio
+ret_text2pandas@llama70b,eval_results_llama,0.8538274605103281,ret_dense,0.0552855407047387,15.443956043956062
+ret_text2pandas@gpt4o-mini,eval_results,0.4270959902794654,ret_dense,0.0552855407047387,7.725274725274734

@@ -1,0 +1,4 @@
+population,cardinality,evidence
+R_file (recipes_df.csv),270284,data/hummus/recipes_df.csv unique recipe_url
+R_HUMMUS (raw release),507335,data/hummus/hummus_data/raw/recipes.csv unique recipe_url
+Neo4j Recipe nodes,270284,data/neo4j_kg/all/node_Recipe.csv rows

@@ -1,0 +1,4 @@
+config_id,empty_plan_with_explanation,is_fixed_message,still_hallucinated
+foodrag_h1_t2p,421,421,0
+foodrag_h1_t2p_fullday,617,3,614
+foodrag_h1_dense_fullday,32,3,29
