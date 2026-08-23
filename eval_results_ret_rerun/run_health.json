@@ -1,0 +1,132 @@
+[
+  {
+    "n": 1646,
+    "empty": 66,
+    "empty_rate": 0.040097205346294046,
+    "config_id": "ret_text2pandas@llama70b",
+    "run": 1,
+    "classes": {
+      "ok": 1580,
+      "zero_rows": 25,
+      "code_error": 41
+    },
+    "wall_s": 2014.5
+  },
+  {
+    "n": 1646,
+    "empty": 80,
+    "empty_rate": 0.04860267314702309,
+    "config_id": "ret_text2pandas@llama70b",
+    "run": 2,
+    "classes": {
+      "ok": 1566,
+      "zero_rows": 30,
+      "code_error": 50
+    },
+    "wall_s": 1623.0
+  },
+  {
+    "n": 1646,
+    "empty": 62,
+    "empty_rate": 0.03766707168894289,
+    "config_id": "ret_text2pandas@llama70b",
+    "run": 3,
+    "classes": {
+      "ok": 1584,
+      "zero_rows": 28,
+      "code_error": 34
+    },
+    "wall_s": 1625.9
+  },
+  {
+    "n": 1646,
+    "empty": 71,
+    "empty_rate": 0.043134872417982986,
+    "config_id": "ret_text2pandas@llama70b",
+    "run": 4,
+    "classes": {
+      "code_error": 46,
+      "ok": 1575,
+      "zero_rows": 25
+    },
+    "wall_s": 2039.2
+  },
+  {
+    "n": 1646,
+    "empty": 68,
+    "empty_rate": 0.041312272174969626,
+    "config_id": "ret_text2pandas@llama70b",
+    "run": 5,
+    "classes": {
+      "code_error": 44,
+      "ok": 1578,
+      "zero_rows": 24
+    },
+    "wall_s": 1782.7
+  },
+  {
+    "n": 1646,
+    "empty": 42,
+    "empty_rate": 0.02551640340218712,
+    "config_id": "ret_text2pandas@gpt4o-mini",
+    "run": 1,
+    "classes": {
+      "ok": 1604,
+      "zero_rows": 40,
+      "code_error": 2
+    },
+    "wall_s": 1711.2
+  },
+  {
+    "n": 1646,
+    "empty": 37,
+    "empty_rate": 0.022478736330498177,
+    "config_id": "ret_text2pandas@gpt4o-mini",
+    "run": 2,
+    "classes": {
+      "ok": 1609,
+      "zero_rows": 36,
+      "code_error": 1
+    },
+    "wall_s": 1762.2
+  },
+  {
+    "n": 1646,
+    "empty": 40,
+    "empty_rate": 0.024301336573511544,
+    "config_id": "ret_text2pandas@gpt4o-mini",
+    "run": 3,
+    "classes": {
+      "ok": 1606,
+      "zero_rows": 39,
+      "code_error": 1
+    },
+    "wall_s": 1677.5
+  },
+  {
+    "n": 1646,
+    "empty": 36,
+    "empty_rate": 0.02187120291616039,
+    "config_id": "ret_text2pandas@gpt4o-mini",
+    "run": 4,
+    "classes": {
+      "ok": 1610,
+      "zero_rows": 35,
+      "code_error": 1
+    },
+    "wall_s": 1782.0
+  },
+  {
+    "n": 1646,
+    "empty": 41,
+    "empty_rate": 0.02490886998784933,
+    "config_id": "ret_text2pandas@gpt4o-mini",
+    "run": 5,
+    "classes": {
+      "ok": 1605,
+      "zero_rows": 40,
+      "code_error": 1
+    },
+    "wall_s": 1602.7
+  }
+]

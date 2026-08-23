@@ -1,0 +1,15 @@
+config_id,R_healthy,runs,n_questions,has_latency,base_empty_rate
+foodrag_h2,1,2,1646,True,0.0122
+foodrag_h2_fullday,3,"1,2,3",1646,True,0.0158
+foodrag_h2_t2p,3,"1,2,3",1646,True,0.0814
+foodrag_h2_t2p_fullday,3,"1,2,3",1646,True,0.0808
+llm_only,5,"1,2,3,4,5",1646,False,0.0024
+naive_rag,1,1,1646,False,0.0
+popularity_raw,1,1,10000,False,0.0
+ret_dense,1,1,1646,True,0.0
+ret_fulltext,1,1,1646,True,0.0
+ret_hybrid,1,1,1646,True,0.0
+ret_sparse,1,1,1646,True,0.0
+ret_text2pandas@gpt4o-mini,2,"1,2",1646,True,0.0717
+ret_text2pandas@llama70b,5,"1,2,3,4,5",1646,True,0.0808
+tog,3,"1,2,3",100,True,0.33

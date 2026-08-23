@@ -1,0 +1,36 @@
+{
+  "master_seed": 20260823,
+  "trials": 100,
+  "frozen_thresholds": {
+    "family": "ret_text2pandas@*",
+    "margin": 3.0,
+    "cv_threshold": 0.4034,
+    "max_latency_threshold": 79.13
+  },
+  "substrate_dirs": [
+    "eval_results",
+    "eval_results_llama"
+  ],
+  "partial_p": [
+    0.1,
+    0.2,
+    0.4,
+    0.6,
+    0.8
+  ],
+  "latency_w": [
+    0.05,
+    0.1,
+    0.2
+  ],
+  "healthy_pairs": 31,
+  "rules": [
+    "VOID_empty",
+    "VOID_allzero",
+    "DEG_abs",
+    "DEG_peer",
+    "LAT_peer",
+    "LAT_fam",
+    "CONV"
+  ]
+}

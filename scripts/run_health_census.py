@@ -36,7 +36,25 @@ CONVENTION_SPLIT = "CONVENTION-SPLIT"
 HEALTHY = "HEALTHY"
 
 # Runs used to fit the latency thresholds. Known-bad from the T/Q/H findings.
-KNOWN_BAD = {("ret_text2pandas@gpt4o-mini", 4), ("ret_text2pandas@gpt4o-mini", 5)}
+# ⚠ Keyed by the *directory* as well as (config, run). ``config_id`` alone is not
+# unique across aggregate directories: the E-1' re-run in
+# ``eval_results_ret_rerun/`` writes a fresh ``ret_text2pandas@gpt4o-mini`` whose
+# runs 4 and 5 are healthy. Keying on (config, run) silently classed those as
+# known-bad, excluded them from the healthy fit, and moved ``cv_threshold`` from
+# 0.4034 to 0.3394.
+KNOWN_BAD = {("eval_results", "ret_text2pandas@gpt4o-mini", 4),
+             ("eval_results", "ret_text2pandas@gpt4o-mini", 5)}
+
+# S's published fit (specs/checks-S-R-findings.md S.3). ``--frozen`` applies
+# these instead of refitting, so a verdict issued today matches the one S
+# published. Refitting is the tool's default because that is what S did, but a
+# threshold that moves when new artefacts land is not a detection rule — see
+# ``specs/checks-PREV-FI-E1prime-spec.md`` FI.1.
+FROZEN_CV, FROZEN_MAX_LATENCY = 0.4034, 79.13
+
+
+def _key(r: dict) -> tuple:
+    return (Path(r["aggregate_file"]).parent.name, r["config_id"], r["run"])
 
 
 # ── loading ──────────────────────────────────────────────────────────────────
@@ -140,7 +158,7 @@ def run_rows(df: pd.DataFrame, config_id: str, agg_path: Path) -> list[dict]:
 
 # ── pre-registered rules (S.3) ───────────────────────────────────────────────
 
-def fit_latency_thresholds(rows: list[dict]) -> dict:
+def fit_latency_thresholds(rows: list[dict], frozen: bool = False) -> dict:
     """Fit SUSPECT-LATENCY thresholds on the known-bad runs' OWN config family.
 
     A global fit across all configs is meaningless: ``ret_random`` answers in
@@ -156,15 +174,18 @@ def fit_latency_thresholds(rows: list[dict]) -> dict:
     fam = [r for r in rows if r["config_id"].startswith("ret_text2pandas@")
            and r.get("lat_cv") is not None
            and not math.isnan(r.get("lat_cv", float("nan")))]
-    healthy = [r for r in fam if (r["config_id"], r["run"]) not in KNOWN_BAD
+    healthy = [r for r in fam if _key(r) not in KNOWN_BAD
                and (r.get("empty_rate") or 0) < 1.0]
-    bad = [r for r in fam if (r["config_id"], r["run"]) in KNOWN_BAD]
+    bad = [r for r in fam if _key(r) in KNOWN_BAD]
     return {
         "family": "ret_text2pandas@*",
         "margin": 3.0,
+        "frozen": frozen,
         "healthy_runs_used": len(healthy),
-        "cv_threshold": min(r["lat_cv"] for r in healthy) if healthy else None,
-        "max_latency_threshold": min(r["lat_max"] for r in healthy) if healthy else None,
+        "cv_threshold": FROZEN_CV if frozen else (
+            min(r["lat_cv"] for r in healthy) if healthy else None),
+        "max_latency_threshold": FROZEN_MAX_LATENCY if frozen else (
+            min(r["lat_max"] for r in healthy) if healthy else None),
         "healthy_cv": sorted(round(r["lat_cv"], 4) for r in healthy),
         "known_bad_cv": [round(r["lat_cv"], 4) for r in bad],
         "known_bad_max": [round(r["lat_max"], 2) for r in bad],
@@ -217,6 +238,9 @@ def main(argv: Optional[list[str]] = None) -> int:
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--root", default=".")
     p.add_argument("--json", help="write the full census here")
+    p.add_argument("--frozen", action="store_true",
+                   help="apply S's published SUSPECT-LATENCY thresholds instead of "
+                        "refitting them on whatever artefacts are on disk")
     args = p.parse_args(argv)
     root = Path(args.root).resolve()
 
@@ -257,8 +281,9 @@ def main(argv: Optional[list[str]] = None) -> int:
         print(f"\n⚠ no per-question artefact for {len(missing)} config(s): {missing}")
 
     # ── S.3 fitted thresholds, printed BEFORE the verdicts ──
-    thr = fit_latency_thresholds(rows)
+    thr = fit_latency_thresholds(rows, frozen=args.frozen)
     print("\n## S.3 — fitted detection thresholds (stated before verdicts)\n")
+    print(f"  thresholds               : {'FROZEN (S.3 published)' if thr['frozen'] else 'refitted on artefacts present'}")
     print(f"  healthy runs used to fit : {thr['healthy_runs_used']}")
     print(f"  family used to fit       : {thr[chr(39)+chr(39)]}" if False else f"  family used to fit       : {thr['family']}")
     print(f"  latency CV threshold     : < {thr['cv_threshold']:.4f}"
