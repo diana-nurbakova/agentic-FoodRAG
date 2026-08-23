@@ -104,6 +104,517 @@
         "meal_types_non_empty": 266726
       },
       "note": "T_incidental_patterns.csv is a re-derivation, not a reproduction: T.6 does not publish the regexes behind its pattern shares and the original script is gone. Every other T output reproduces the report exactly."
+    },
+    "qh": {
+      "status": "ok",
+      "outputs": [
+        "TQH_Q_per_config.csv",
+        "TQH_Q_per_run.csv",
+        "TQH_Q5_stability.csv",
+        "TQH_Q6_d1_d3.csv",
+        "TQH_H3_b2_ratios.csv"
+      ],
+      "checks": [
+        {
+          "value": "llama70b_empty_question_runs",
+          "expected": 694,
+          "derived": 694.0,
+          "status": "match"
+        },
+        {
+          "value": "gpt4o_empty_question_runs",
+          "expected": 4528,
+          "derived": 4528.0,
+          "status": "match"
+        },
+        {
+          "value": "intersection_empty_question_runs",
+          "expected": 1587,
+          "derived": 1587.0,
+          "status": "match"
+        },
+        {
+          "value": "llama70b_hit_at_10",
+          "expected": 0.85382746051,
+          "derived": 0.8538274605103281,
+          "status": "match"
+        },
+        {
+          "value": "gpt4o_hit_at_10",
+          "expected": 0.427095990279,
+          "derived": 0.4270959902794654,
+          "status": "match"
+        },
+        {
+          "value": "llama70b_conditional_hit_at_10",
+          "expected": 0.932589,
+          "derived": 0.9325886990801577,
+          "status": "match"
+        },
+        {
+          "value": "gpt4o_conditional_hit_at_10",
+          "expected": 0.947059,
+          "derived": 0.9470588235294117,
+          "status": "match"
+        },
+        {
+          "value": "h1_t2p_conditional_hit_at_10",
+          "expected": 0.846196,
+          "derived": 0.8461961301671064,
+          "status": "match"
+        },
+        {
+          "value": "h1_dense_conditional_hit_at_10",
+          "expected": 0.02744,
+          "derived": 0.027440259214256784,
+          "status": "match"
+        },
+        {
+          "value": "B2_ratio_llama70b",
+          "expected": 15.444,
+          "derived": 15.443956043956062,
+          "status": "match"
+        },
+        {
+          "value": "B2_ratio_gpt4o",
+          "expected": 7.7253,
+          "derived": 7.725274725274734,
+          "status": "match"
+        }
+      ],
+      "values": {
+        "llama70b_empty_question_runs": "694",
+        "gpt4o_empty_question_runs": "4528",
+        "intersection_empty_question_runs": "1587",
+        "llama70b_hit_at_10": 0.8538274605103281,
+        "gpt4o_hit_at_10": 0.4270959902794654,
+        "llama70b_conditional_hit_at_10": 0.9325886990801577,
+        "gpt4o_conditional_hit_at_10": 0.9470588235294117,
+        "h1_t2p_conditional_hit_at_10": 0.8461961301671064,
+        "h1_dense_conditional_hit_at_10": 0.027440259214256784,
+        "B2_ratio_llama70b": 15.443956043956062,
+        "B2_ratio_gpt4o": 7.725274725274734
+      }
+    },
+    "a1": {
+      "status": "ok",
+      "outputs": [
+        "A1_populations.csv",
+        "A1_retriever_coverage.csv"
+      ],
+      "checks": [
+        {
+          "value": "ret_configs_outside_corpus",
+          "expected": 0,
+          "derived": 0.0,
+          "status": "match"
+        },
+        {
+          "value": "ids_ret_dense",
+          "expected": 9601,
+          "derived": 9601.0,
+          "status": "match"
+        },
+        {
+          "value": "ids_ret_sparse",
+          "expected": 5132,
+          "derived": 5132.0,
+          "status": "match"
+        },
+        {
+          "value": "ids_ret_fulltext",
+          "expected": 5132,
+          "derived": 5132.0,
+          "status": "match"
+        },
+        {
+          "value": "ids_ret_hybrid",
+          "expected": 9600,
+          "derived": 9600.0,
+          "status": "match"
+        },
+        {
+          "value": "ids_ret_random",
+          "expected": 15961,
+          "derived": 15961.0,
+          "status": "match"
+        },
+        {
+          "value": "ids_ret_intersection",
+          "expected": 56,
+          "derived": 56.0,
+          "status": "match"
+        },
+        {
+          "value": "ids_ret_text2pandas@gpt4o-mini",
+          "expected": 7694,
+          "derived": 7694.0,
+          "status": "match"
+        },
+        {
+          "value": "ids_ret_text2pandas@llama70b",
+          "expected": 7799,
+          "derived": 7799.0,
+          "status": "match"
+        }
+      ],
+      "values": {
+        "ids_ret_text2pandas@llama70b": 7799,
+        "ids_ret_text2pandas@gpt4o-mini": 7694,
+        "ids_ret_intersection": 56,
+        "ids_ret_dense": 9601,
+        "ids_ret_sparse": 5132,
+        "ids_ret_hybrid": 9600,
+        "ids_ret_fulltext": 5132,
+        "ids_ret_random": 15961,
+        "ret_configs_outside_corpus": 0,
+        "corpus_rows": 270284
+      }
+    },
+    "p1": {
+      "status": "ok",
+      "outputs": [
+        "P1_fix_split.csv",
+        "P1_allergen_prefix.csv",
+        "P1_rejudge_deltas.csv",
+        "P1_fullday_hallucinations.csv"
+      ],
+      "checks": [
+        {
+          "value": "fix1_total",
+          "expected": 72,
+          "derived": 72.0,
+          "status": "match"
+        },
+        {
+          "value": "fix2_total",
+          "expected": 421,
+          "derived": 421.0,
+          "status": "match"
+        },
+        {
+          "value": "stamped_total",
+          "expected": 493,
+          "derived": 493.0,
+          "status": "match"
+        },
+        {
+          "value": "h1_t2p_prefix_allergen",
+          "expected": 0.00031,
+          "derived": 0.00030998140111593303,
+          "status": "match"
+        },
+        {
+          "value": "h1_dense_prefix_allergen",
+          "expected": 0.001969,
+          "derived": 0.0019686387291153106,
+          "status": "match"
+        },
+        {
+          "value": "h2_prefix_allergen",
+          "expected": 0.003427,
+          "derived": 0.0034272015126958397,
+          "status": "match"
+        },
+        {
+          "value": "h2_t2p_prefix_allergen",
+          "expected": 0.000608,
+          "derived": 0.0006075334143377885,
+          "status": "match"
+        },
+        {
+          "value": "fullday_hallucinated_total",
+          "expected": 643,
+          "derived": 643.0,
+          "status": "match"
+        },
+        {
+          "value": "h1_t2p_all_faithfulness_judgeB_changed",
+          "expected": 395,
+          "derived": 395.0,
+          "status": "match"
+        },
+        {
+          "value": "h1_t2p_all_faithfulness_judgeB_prefix",
+          "expected": 0.913412,
+          "derived": 0.9134118619549494,
+          "status": "match"
+        },
+        {
+          "value": "h1_t2p_all_faithfulness_judgeA_changed",
+          "expected": 371,
+          "derived": 371.0,
+          "status": "match"
+        },
+        {
+          "value": "h1_t2p_all_faithfulness_judgeA_prefix",
+          "expected": 0.920175,
+          "derived": 0.9201750729470612,
+          "status": "match"
+        },
+        {
+          "value": "h1_t2p_all_relevancy_judgeB_changed",
+          "expected": 407,
+          "derived": 407.0,
+          "status": "match"
+        },
+        {
+          "value": "h1_t2p_all_relevancy_judgeA_changed",
+          "expected": 398,
+          "derived": 398.0,
+          "status": "match"
+        },
+        {
+          "value": "h1_t2p_all_correctness_judgeA_changed",
+          "expected": 388,
+          "derived": 388.0,
+          "status": "match"
+        },
+        {
+          "value": "h1_t2p_all_correctness_judgeA_prefix",
+          "expected": 0.687396,
+          "derived": 0.6873955722639933,
+          "status": "match"
+        },
+        {
+          "value": "h1_t2p_all_claim_grounding_rate_changed",
+          "expected": 406,
+          "derived": 406.0,
+          "status": "match"
+        },
+        {
+          "value": "h1_t2p_all_explanation_quality_judgeB_changed",
+          "expected": 421,
+          "derived": 421.0,
+          "status": "match"
+        }
+      ],
+      "values": {
+        "fix1_total": 72,
+        "fix2_total": 421,
+        "stamped_total": 493,
+        "h1_t2p_prefix_allergen": 0.00030998140111593303,
+        "h1_dense_prefix_allergen": 0.0019686387291153106,
+        "h2_prefix_allergen": 0.0034272015126958397,
+        "h2_t2p_prefix_allergen": 0.0006075334143377885,
+        "h1_t2p_all_allergen_violation_changed": 3,
+        "h1_t2p_all_allergen_violation_prefix": 0.00030998140111593303,
+        "h1_t2p_all_calorie_adherence_changed": 3,
+        "h1_t2p_all_calorie_adherence_prefix": 0.8350585867211392,
+        "h1_t2p_all_claim_grounding_rate_changed": 406,
+        "h1_t2p_all_claim_grounding_rate_prefix": 0.6537800792523919,
+        "h1_t2p_all_constraint_satisfaction_changed": 3,
+        "h1_t2p_all_constraint_satisfaction_prefix": 0.6968726320865193,
+        "h1_t2p_all_correctness_judgeA_changed": 388,
+        "h1_t2p_all_correctness_judgeA_prefix": 0.6873955722639933,
+        "h1_t2p_all_correctness_judgeB_changed": 205,
+        "h1_t2p_all_correctness_judgeB_prefix": 0.7447303161810291,
+        "h1_t2p_all_explanation_quality_judgeA_changed": 410,
+        "h1_t2p_all_explanation_quality_judgeA_prefix": 0.715354825204103,
+        "h1_t2p_all_explanation_quality_judgeB_changed": 421,
+        "h1_t2p_all_explanation_quality_judgeB_prefix": 0.8376730729489564,
+        "h1_t2p_all_faithfulness_judgeA_changed": 371,
+        "h1_t2p_all_faithfulness_judgeA_prefix": 0.9201750729470612,
+        "h1_t2p_all_faithfulness_judgeB_changed": 395,
+        "h1_t2p_all_faithfulness_judgeB_prefix": 0.9134118619549494,
+        "h1_t2p_all_guideline_adherence_overall_changed": 3,
+        "h1_t2p_all_guideline_adherence_overall_prefix": 0.26626246600181325,
+        "h1_t2p_all_hard_constraint_sat_allornothing_changed": 3,
+        "h1_t2p_all_hard_constraint_sat_allornothing_prefix": 0.9301903898458749,
+        "h1_t2p_all_hard_constraint_sat_perconstraint_changed": 3,
+        "h1_t2p_all_hard_constraint_sat_perconstraint_prefix": 0.976541251133273,
+        "h1_t2p_all_hard_constraint_violation_changed": 3,
+        "h1_t2p_all_hard_constraint_violation_prefix": 0.22935179444788867,
+        "h1_t2p_all_intra_plan_diversity_changed": 3,
+        "h1_t2p_all_intra_plan_diversity_prefix": 0.6230402902556804,
+        "h1_t2p_all_meal_slot_completeness_changed": 3,
+        "h1_t2p_all_meal_slot_completeness_prefix": 0.480057863194875,
+        "h1_t2p_all_mrr_at_10_changed": 2,
+        "h1_t2p_all_mrr_at_10_prefix": 0.7374974168216574,
+        "h1_t2p_all_ndcg_at_10_changed": 2,
+        "h1_t2p_all_ndcg_at_10_prefix": 0.4493072926715795,
+        "h1_t2p_all_path_coverage_changed": 3,
+        "h1_t2p_all_path_coverage_prefix": 0.8817209380135606,
+        "h1_t2p_all_relevancy_judgeA_changed": 398,
+        "h1_t2p_all_relevancy_judgeA_prefix": 0.7868579746309003,
+        "h1_t2p_all_relevancy_judgeB_changed": 407,
+        "h1_t2p_all_relevancy_judgeB_prefix": 0.7009712750568299,
+        "h1_t2p_all_slot_appropriateness_changed": 3,
+        "h1_t2p_all_slot_appropriateness_prefix": 0.5195489573889392,
+        "h1_t2p_all_unsupported_claim_rate_changed": 406,
+        "h1_t2p_all_unsupported_claim_rate_prefix": 0.34621992074760805,
+        "fullday_hallucinated_total": 643
+      }
+    },
+    "d2": {
+      "status": "ok",
+      "outputs": [
+        "D2_pairwise_prefix_vs_published.csv",
+        "D2_5_explanation_sensitivity.csv"
+      ],
+      "checks": [
+        {
+          "value": "strong_correctness_prefix_a",
+          "expected": 0.688502,
+          "derived": 0.6885017244877256,
+          "status": "match"
+        },
+        {
+          "value": "strong_correctness_published_a",
+          "expected": 0.765216,
+          "derived": 0.7652160681679854,
+          "status": "match"
+        },
+        {
+          "value": "strong_correctness_prefix_b",
+          "expected": 0.586072,
+          "derived": 0.5860722256035708,
+          "status": "match"
+        },
+        {
+          "value": "strong_correctness_published_b",
+          "expected": 0.586022,
+          "derived": 0.5860215053763441,
+          "status": "match"
+        },
+        {
+          "value": "fix2_records",
+          "expected": 421,
+          "derived": 421.0,
+          "status": "match"
+        },
+        {
+          "value": "correctness_judgeA_changed",
+          "expected": 385,
+          "derived": 385.0,
+          "status": "match"
+        },
+        {
+          "value": "correctness_judgeB_changed",
+          "expected": 203,
+          "derived": 203.0,
+          "status": "match"
+        },
+        {
+          "value": "strong_correctness_prefix_ci_low",
+          "expected": 0.0906,
+          "derived": 0.09063641205112598,
+          "status": "match"
+        },
+        {
+          "value": "strong_correctness_prefix_ci_high",
+          "expected": 0.1141,
+          "derived": 0.11414713937918441,
+          "status": "match"
+        },
+        {
+          "value": "strong_correctness_prefix_median_diff",
+          "expected": 0.0833,
+          "derived": 0.08333333333333337,
+          "status": "match"
+        },
+        {
+          "value": "strong_correctness_published_median_diff",
+          "expected": 0.1667,
+          "derived": 0.16666666666666663,
+          "status": "match"
+        }
+      ],
+      "values": {
+        "strong_correctness_prefix_a": 0.6885017244877256,
+        "strong_correctness_prefix_b": 0.5860722256035708,
+        "strong_correctness_prefix_ci_low": 0.09063641205112598,
+        "strong_correctness_prefix_ci_high": 0.11414713937918441,
+        "strong_correctness_prefix_median_diff": 0.08333333333333337,
+        "strong_correctness_published_a": 0.7652160681679854,
+        "strong_correctness_published_b": 0.5860215053763441,
+        "strong_correctness_published_median_diff": 0.16666666666666663,
+        "fix2_records": 421,
+        "correctness_judgeA_changed": 385,
+        "correctness_judgeB_changed": 203
+      }
+    },
+    "e34": {
+      "status": "ok",
+      "outputs": [
+        "E3_E4_reaggregated.csv"
+      ],
+      "checks": [
+        {
+          "value": "rows_changed",
+          "expected": 13,
+          "derived": 13.0,
+          "status": "match"
+        },
+        {
+          "value": "coerced_nans_total",
+          "expected": 930,
+          "derived": 930.0,
+          "status": "match"
+        },
+        {
+          "value": "tog_hit_n_published",
+          "expected": 300,
+          "derived": 300.0,
+          "status": "match"
+        },
+        {
+          "value": "tog_hit_n_corrected",
+          "expected": 100,
+          "derived": 100.0,
+          "status": "match"
+        },
+        {
+          "value": "tog_hit_var_published",
+          "expected": 0.0,
+          "derived": 0.0,
+          "status": "match"
+        },
+        {
+          "value": "tog_hit_var_corrected",
+          "expected": 0.031111,
+          "derived": 0.0311111111111111,
+          "status": "match"
+        },
+        {
+          "value": "h1_t2p_hit_published",
+          "expected": 0.772875,
+          "derived": 0.7728748224792047,
+          "status": "match"
+        },
+        {
+          "value": "h1_t2p_hit_harmonised",
+          "expected": 0.756784,
+          "derived": 0.756784123126772,
+          "status": "match"
+        },
+        {
+          "value": "h1_t2p_fullday_hit_harmonised",
+          "expected": 0.765087,
+          "derived": 0.7650870797893884,
+          "status": "match"
+        },
+        {
+          "value": "D3_ratio_harmonised",
+          "expected": 28.1,
+          "derived": 28.097744360902354,
+          "status": "match"
+        }
+      ],
+      "values": {
+        "rows_compared": 593,
+        "rows_changed": 13,
+        "coerced_nans_total": 930,
+        "tog_hit_n_published": 300.0,
+        "tog_hit_n_corrected": 100.0,
+        "tog_hit_var_published": 0.0,
+        "tog_hit_var_corrected": 0.0311111111111111,
+        "h1_t2p_hit_published": 0.7728748224792047,
+        "h1_t2p_hit_harmonised": 0.756784123126772,
+        "h1_t2p_fullday_hit_harmonised": 0.7650870797893884,
+        "h1_dense_hit_harmonised": 0.0269339813689752,
+        "D3_ratio_harmonised": 28.097744360902354
+      }
     }
   }
 }

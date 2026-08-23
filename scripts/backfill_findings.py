@@ -965,7 +965,17 @@ def main(argv: Optional[list[str]] = None) -> int:
         p.error(f"unknown section(s): {unknown}; choose from {list(SECTIONS)}")
 
     print("# Backfill — machine-readable backing for specs/*-findings.md\n")
+    # Merge into any existing manifest rather than replacing it: a `--only qh`
+    # run must not erase the record of the five sections it did not touch.
     manifest: dict[str, Any] = {"sections": {}}
+    existing = OUT / "backfill_manifest.json"
+    if existing.exists():
+        try:
+            prior = json.loads(existing.read_text(encoding="utf-8"))
+            if isinstance(prior.get("sections"), dict):
+                manifest["sections"] = prior["sections"]
+        except json.JSONDecodeError:
+            pass                                  # unreadable manifest: start clean
     mismatches = 0
 
     for name in names:
