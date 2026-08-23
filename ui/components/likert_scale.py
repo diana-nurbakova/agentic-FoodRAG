@@ -1,4 +1,4 @@
-"""5-point labelled Likert item (ResQue-compatible, spec §5.4 / components/).
+"""5-point labelled Likert item (ResQue-compatible).
 
 All five points are labelled (1 = Strongly disagree … 5 = Strongly agree),
 matching ResQue's validated format. Returns the selected value (1–5) or None.

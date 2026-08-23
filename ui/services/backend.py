@@ -1,5 +1,4 @@
-"""Heavy backend singletons + retriever factory + agentic-workflow run
-(spec §2.2/§2.3, §11.5 services/).
+"""Heavy backend singletons + retriever factory + agentic-workflow run.
 
 Mirrors the canonical assembly in ``notebooks/food_RAG_agents.ipynb`` (data prep)
 and ``notebooks/eval_1.ipynb`` (the 5 retrievers). The engine (LLM + cleaned
@@ -7,12 +6,12 @@ HUMMUS dataframe + lazily-built pgvector index) is cached at module scope — th
 ~300 MB HUMMUS pickle load and the vector index are expensive, so they happen
 lazily on first use and are reused across reruns.
 
-Retrievers (spec §2.3):
+Retrievers:
   - dense / sparse / hybrid → ``RecipeRetriever`` over the pgvector index
   - text-to-pandas          → ``PandasQueryRetriever`` (dataframe only)
   - fusion                  → RRF over [dense, sparse, (KG if available)]
 KG (text-to-Cypher over Neo4j) is built best-effort and only contributes to
-fusion when it constructs cleanly — the protocol (§5.5) treats KG retrieval as
+fusion when it constructs cleanly — KG retrieval is treated as
 bounded/constraint-first, not a standalone competitor.
 """
 
@@ -246,7 +245,7 @@ def warm_engine_in_background() -> None:
     threading.Thread(target=_run, name="engine-warmup", daemon=True).start()
 
 
-# ── retriever factory (spec §2.3) ─────────────────────────────────────────
+# ── retriever factory ─────────────────────────────────────────────────────
 def _pg_table_count(table: str) -> int:
     """Row count of a pgvector table (0 if the DB/table is unreachable or absent)."""
     import psycopg2
@@ -336,7 +335,7 @@ def _recipe_retriever(engine: Engine, mode: str, top_k: int = 10):
 
 
 def _build_kg_retriever(engine: Engine, top_k: int = 10):
-    """Best-effort Text-to-Cypher retriever over Neo4j (spec §5.5). None on failure."""
+    """Best-effort Text-to-Cypher retriever over Neo4j. None on failure."""
     if engine.kg_attempted:
         return engine.kg_retriever
     engine.kg_attempted = True
@@ -630,11 +629,11 @@ def run_pipeline(question: str, retriever: str = "text-to-pandas",
     return state or {}
 
 
-# ── bounded KG path traversal (eval protocol §5.5/§8.1, richer paths) ──────
+# ── bounded KG path traversal (richer paths) ───────────────────────────────
 def ingredient_class_cypher(recipe_id: int, max_ingredients: int = 8, depth: int = 2) -> str:
     """Bounded Cypher: recipe → HAS_INGREDIENT → ingredient → IS_EQUIVALENT_TO →
     Food_on → SUB_CLASS_OF*1..depth → Food_on. Depth/ingredient caps keep the
-    traversal bounded (single already-recommended recipe → no hub fan-out, §5.5).
+    traversal bounded (single already-recommended recipe → no hub fan-out).
     Pure (string only) so it is unit-testable without a live database."""
     rid = int(recipe_id)
     n = max(1, min(int(max_ingredients), 25))

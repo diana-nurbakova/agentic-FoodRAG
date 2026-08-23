@@ -180,7 +180,8 @@ def _get_random_nutrition_scores(nutrition_config):
     return {score_name: score_value}
 
 
-def get_random_meal_plan_nutrients(persona_config, current_meal=None, today_intaken_kcal=None):
+def get_random_meal_plan_nutrients(persona_config, current_meal=None, today_intaken_kcal=None,
+                                   kcal_per_day=None, merge_snacks=False):
     """
     Generate a random meal plan for a persona based on the given persona configuration.
 
@@ -188,10 +189,18 @@ def get_random_meal_plan_nutrients(persona_config, current_meal=None, today_inta
     :param current_meal: The current meal for which the meal plan should be generated. Randomly generated if None.
     :param today_intaken_kcal: The total calories already intaken today. If None, it is assumed that no calories have
         been intaken yet. If also current_meal is None, some random calories are calculated.
+    :param kcal_per_day: The daily energy budget the per-meal caps are shares of. Pass the persona's own budget
+        (see ``guideline_adherence.resolve_daily_energy``) so the caps sum to the daily total the question states.
+        Falls back to the config value, then to a random draw — the historical behaviour, which is independent of
+        the persona and so can contradict the stated daily limit.
+    :param merge_snacks: Emit a single ``snack`` slot (the sum of the two snack shares) instead of ``snack 1`` /
+        ``snack 2``. Matches the four-slot ``MealType`` vocabulary that plans and the calorie-distribution metric
+        use; without it a four-slot plan can only ever fill one of the two snack caps.
     :return: A dictionary containing the meal plan for the persona.
     """
     # Get user configurations
-    kcal_per_day = persona_config.get('calories_per_day', np.random.randint(1600, 3000))
+    if kcal_per_day is None:
+        kcal_per_day = persona_config.get('calories_per_day', np.random.randint(1600, 3000))
     calories_distribution_dict = {
         'breakfast': persona_config['calories_per_meal_distribution'].get('breakfast', 0.22),
         'lunch': persona_config['calories_per_meal_distribution'].get('lunch', 0.32),
@@ -304,7 +313,31 @@ def get_random_meal_plan_nutrients(persona_config, current_meal=None, today_inta
     else:
         raise ValueError('Invalid meal name: {}'.format(current_meal))
 
+    if merge_snacks:
+        meal_plan = _merge_snack_slots(meal_plan)
+
     return meal_plan
+
+
+def _merge_snack_slots(meal_plan):
+    """Collapse ``snack 1``/``snack 2`` into one ``snack`` slot summing their caps.
+
+    Preserves key order so the remaining slots stay in meal order, and leaves a plan
+    with no snack slots untouched.
+    """
+    snack_keys = [k for k in meal_plan if k in ('snack 1', 'snack 2')]
+    if not snack_keys:
+        return meal_plan
+
+    merged = {}
+    for name, slot in meal_plan.items():
+        if name not in snack_keys:
+            merged[name] = slot
+            continue
+        target = merged.setdefault('snack', {'meal_type': 'snack', 'guidelines': {}})
+        for nutrient, value in slot['guidelines'].items():
+            target['guidelines'][nutrient] = target['guidelines'].get(nutrient, 0) + value
+    return merged
 
 
 def _get_cal_per_meal(calories_per_day, meal_name, calories_distribution_dict):

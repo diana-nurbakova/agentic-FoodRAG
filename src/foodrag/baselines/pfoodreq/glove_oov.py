@@ -1,7 +1,7 @@
 """GloVe out-of-vocabulary analysis over HUMMUS food vocabulary.
 
 pFoodReq is kept on its original **GloVe 840B.300d** embeddings as part of the
-faithful-reproduction commitment (Path A, §5.8). To keep the comparison honest we
+faithful-reproduction commitment (Path A). To keep the comparison honest we
 must be able to separate *"pFoodReq's method underperforms"* from *"GloVe simply
 couldn't represent HUMMUS's food vocabulary."* This module measures the latter.
 

@@ -8,8 +8,8 @@ are drawn from the corrected sources of truth: `eval_results/json/aggregate.json
 inter-judge statistics and the data statistics computed here), the paired-test
 records in `eval_results/pairwise.csv` / `eval_results/pairwise_fullday.csv`
 (Wilcoxon signed-rank, Holm-corrected — full tables in `docs/STATISTICAL_TESTS.md`),
-`eval_results/mealplan_time_of_day.csv`, and `specs/FoodRAG_Evaluation_Protocol.md`
-for metric/experiment definitions.*
+and `eval_results/mealplan_time_of_day.csv`. Metric and experiment definitions are
+given in [`docs/ARCHITECTURE.md`](ARCHITECTURE.md).*
 
 > **Provenance / freshness note.** Every aggregate in this report was re-verified
 > against the per-question parquets: for all 26 configs the aggregate-stratum means in
@@ -37,9 +37,9 @@ for metric/experiment definitions.*
 | Item | Value |
 |---|---|
 | Recipe corpus (ground-truth universe) | **HUMMUS** food KG — **310,228** recipes with tags, ingredient lists, per-100 g nutrients, serving sizes and NutriScore/FSA/WHO health scores |
-| QA set (headline stratum) | **Tight** — personas with 1–50 valid answers, **n = 1,646** (Protocol §9.1) |
+| QA set (headline stratum) | **Tight** — personas with 1–50 valid answers, **n = 1,646** |
 | Persona / QA generation | **rule-based personas** + deterministic constraint filtering; NL question surface reformulated by **Llama-3.3-70B** (via Groq / LiteLLM) |
-| Retrieval / list cutoff | **K = 10** (fixed; Protocol §4.1, §3-note) |
+| Retrieval / list cutoff | **K = 10** (fixed) |
 | Dual judge | **Judge A = Gemma-3-27B** (Google lineage, *cross-lineage* to the Meta generator — headline judge) · **Judge B = DeepSeek-V3** (reference) |
 | Judge scale | Correctness & explanation-quality ordinal on {0, .25, .5, .75, 1}; faithfulness & relevancy binary {0,1} (confirmed empirically from the per-question JSONs) |
 | Aggregate rows | **1,197** rows in `aggregate.json` (config × stratum × metric, each with mean, ci_low, ci_high, per-question variance, n_questions, n_runs, judge) |
@@ -457,7 +457,7 @@ binary → agreement reported.
 - **Cross-lineage caution is warranted, but does not overturn conclusions.** No config's
   qualitative ranking flips between judges on correctness. The report headlines Judge A
   (Gemma, cross-lineage) with Judge B alongside, as the protocol prescribes.
-- **Inter-judge κ as future work.** Faithfulness/relevancy Cohen's κ (Protocol §7.2) is not
+- **Inter-judge κ as future work.** Faithfulness/relevancy Cohen's κ is not
   computed here to keep the pass memory-light; the raw agreement + Pearson above are the
   reportable proxies, and the very high agreement on H1-t2p suggests κ would be substantial
   there. Full κ (and judge–human κ on a stratified sample) remains future work.
@@ -572,7 +572,7 @@ deterministic allergen post-filter (commit 54a62ae).
 
 Computed with `foodrag.analysis.pareto` over `eval_results/aggregate.csv`
 (FoodRAG configs, aggregate stratum). Safety is *not* a Pareto axis (hard constraints gate
-the feasible set, Protocol §9.4).
+the feasible set).
 
 ### 7.1 Quality (correctness_judgeA) vs Cost (llm_usage)
 
@@ -715,13 +715,13 @@ slot-count artifact (rises to ~0.98 for dense) while guideline adherence stays l
 6. **Judge caveats.** Headline is **Judge A** (Gemma-3-27B, cross-lineage); **Judge B**
    (DeepSeek-V3) is reported alongside. Correctness is judge-robust (|Δ| ≤ 0.025; no ranking
    flips), but binary faithfulness/relevancy diverge more (relevancy up to Δ = −0.34 on
-   H2-t2p). Full Cohen's κ (Protocol §7.2) and judge–human κ on a stratified sample are
+   H2-t2p). Full Cohen's κ and judge–human κ on a stratified sample are
    **future work**; raw agreement (0.65–0.99) and Pearson (0.25–0.76) are the interim proxies.
 7. **ToG sample.** ToG is evaluated on 100 items × 3 runs (n = 300 aggregate / 96 tight), far
    smaller than the 1,646 tight set, because of its ~15 min/item cost. Its numbers are
    directionally reliable but wider-CI than the other configs.
 8. **Guideline reference bands** are researcher-constructed from EFSA DRV + WHO (general-adult
-   class) without nutrition-specialist review (Protocol §4.5.1). All adherence numbers are
+   class) without nutrition-specialist review. All adherence numbers are
    "adherence to guideline-derived reference bands," *not* clinical validation, and are a
    single-day snapshot approximation of longer-horizon guidelines.
 
@@ -766,7 +766,7 @@ and 17.7 % on `h1_t2p`.
 | slot appropriateness | **0.831** | 0.716 | 0.445 | 0.507 |
 
 Because the full-day request set *is* all four slots, ρ(Q) = 1 and each `_norm` value is within 0.01
-of its `_full` counterpart (spec `FoodRAG_Slot_Normalized_Metrics.md`). `structural_validity_norm` is
+of its `_full` counterpart (see `foodrag.baselines.slot_normalized`). `structural_validity_norm` is
 strict all-or-nothing (all four requested slots filled *and* admissible), which is why the t2p configs
 — which cannot always fill four slots from their replay pool — read ~0.01–0.02 despite `_full` ≈ 0.999.
 
@@ -823,6 +823,6 @@ against the per-question parquets (zero drift):
 
 *Minor note (not a contradiction):* ToG appears at its **aggregate** stratum
 (hit@10 = 0.407, latency 902.8 s); its **tight** sub-stratum is higher (0.594, n = 96). Both
-are reported above with the stratum labeled. The `specs/` protocol names the judges as
-"Gemma 4 31B / Llama 3.3 70B", but the **corrected** `RESULTS_SUMMARY.md` (the designated
-source of truth) specifies **Gemma-3-27B / DeepSeek-V3**, which this report follows.
+are reported above with the stratum labeled. An earlier draft of the evaluation protocol named
+the judges as "Gemma 4 31B / Llama 3.3 70B", but the **corrected** `RESULTS_SUMMARY.md` (the
+designated source of truth) specifies **Gemma-3-27B / DeepSeek-V3**, which this report follows.

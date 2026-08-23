@@ -1,7 +1,7 @@
 """Stage: run the deterministic baseline rungs and write Results-Schema files.
 
-Runs the popularity rungs (0a raw, 0b health-aware) of the §5.7 baseline ladder
-over a QA set and writes §13 per-question + aggregate outputs under
+Runs the popularity rungs (0a raw, 0b health-aware) of the baseline ladder
+over a QA set and writes per-question + aggregate outputs under
 ``eval_results/`` — real numbers to replace the synthetic placeholders the Report
 tab currently ships with. These rungs need no LLM and no vector store.
 
@@ -12,7 +12,7 @@ tab currently ships with. These rungs need no LLM and no vector store.
 The LLM rungs (2 ``LLMOnly``, 3 ``NaiveRAG``) need a built LLM/retriever and are
 driven from the eval notebook via ``foodrag.baselines.run_baseline``.
 
-The external KBQA rungs (``tog``, ``rog``, ``tfs_kbqa`` — §5.8) additionally need a
+The external KBQA rungs (``tog``, ``rog``, ``tfs_kbqa`` —) additionally need a
 Neo4j graph; pass ``--neo4j`` to build them from env (with the main LLM as the
 generator), or drive them from the notebook via
 ``foodrag.baselines.kbqa.build_baseline``. Use ``--experiment-id EXP-1`` for the
@@ -53,11 +53,11 @@ def run(
     """Run the requested rungs; return a per-rung summary dict.
 
     Pass ``food_on`` (+ persona config) to enable FoodOn-hierarchy allergen
-    expansion (§4.3); without it, ingredient matching is verbatim Food.com names,
+    expansion; without it, ingredient matching is verbatim Food.com names,
     which matches the shipped QA set's generation config.
 
     Pass ``neo4j=True`` (and optionally a built ``llm`` + checkpoints) to enable the
-    external KBQA rungs ``tog`` / ``rog`` / ``tfs_kbqa`` (§5.8); they build a graph
+    external KBQA rungs ``tog`` / ``rog`` / ``tfs_kbqa``; they build a graph
     client from env and the main LLM as the generator unless one is supplied.
     """
     from foodrag.baselines import (PopularityHealthAware, PopularityRaw,
@@ -81,7 +81,7 @@ def run(
         "0b": lambda: PopularityHealthAware(recipes_df, expand),
     }
 
-    # External KBQA rungs (§5.8) are gated on a Neo4j graph being available.
+    # External KBQA rungs are gated on a Neo4j graph being available.
     if neo4j or any(r in {"tog", "rog", "tfs_kbqa"} for r in rungs):
         from foodrag.baselines.kbqa import KBQA_NAMES, build_baseline, build_kg
 

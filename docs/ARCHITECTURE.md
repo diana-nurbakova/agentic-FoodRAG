@@ -110,7 +110,7 @@ and byte size** — there are no content checksums.
 
 | Manifest id | Directory | Source (URL) | Key files (size, bytes) | Public? |
 |---|---|---|---|---|
-| `hummus_raw` | `data/hummus/hummus_data/raw` | HUMMUS *connected-recipe-data-set* (`gitlab.com/felix134/connected-recipe-data-set`) | `recipes.csv` (1,127,130,859) ← `recipes.zip`; `reviews.csv` (721,405,890); `members.csv` (53,958,595) | yes |
+| `hummus_raw` | `data/hummus/hummus_data/raw` | HUMMUS *connected-recipe-data-set* (`doi.org/10.1145/3604915.3609491`) | `recipes.csv` (1,127,130,859) ← `recipes.zip`; `reviews.csv` (721,405,890); `members.csv` (53,958,595) | yes |
 | `foodcom_tags` | `data/hummus/hummus_data/additional` | Food.com Recipes & Interactions (Kaggle) | `RAW_recipes.csv` (294,520,189) ← `archive.zip` | **no** (free Kaggle acct) |
 | `foodkg` | `data/hummus/food_kg` | FoodKG bundle (HUMMUS food_kg release) | `graph_ingredient_mapping.csv`, `graph_ingredient_labels.csv`, `food_kg_to_food_on.pkl`, `food_kg_to_usda.pkl` (optional), `foodon.owl` (auto-DL from `purl.obolibrary.org/obo/foodon.owl`) | yes |
 | `foodon_imports` | `data/hummus/food_kg/imports` | FoodOn import closure (`foodon.org`) | directory, ≥1 file | yes |
@@ -157,6 +157,83 @@ The FoodOn RDF ontology (`data/hummus/food_kg/foodon.owl` + FoodKG mappings) is 
   so allergen/blacklist checks match descendants, not only exact names. Note: the shipped QA set was
   generated with `include_food_on: false` (verbatim food.com names), so `identity_expand` is the
   runner default and FoodOn expansion is opt-in (`--food_on`).
+
+#### ⚠ Do not use FoodOn expansion for allergen safety
+
+`foodon_expander` is sound for **soft preference** expansion ("vegetable" → descendants), where a
+wrong answer costs a mediocre recommendation. It is **not** fit for allergen or blacklist safety.
+`identity_expand` (the shipped default, `include_food_on: false`) is the honest and safer choice, and
+it is what every enforcement call site uses. Two independent reasons, both verified against
+`data/hummus/food_on_ontology.ttl` (603k triples) and `data/hummus/food_on_mappings.pkl`.
+
+**Reason 1 — subsumption ≠ composition (structural).** The expander traverses `rdfs:subClassOf` only
+(`rdf_util._get_child_nodes`), so it resolves *is-a* and nothing else. "Wheat flour contains gluten"
+is a composition fact and FoodOn does not assert it:
+
+- There is **no "gluten-source" class**. `gluten` (`FOODON_03420177`) is a **childless leaf** whose
+  parents are *gluten refined food product* and *protein extract, concentrate or isolate* — FoodOn
+  models it as the isolated protein product (the bag of vital wheat gluten), not an allergen
+  super-class. No triple anywhere targets it.
+- The 15 `subClassOf` ancestors of `wheat flour` (`FOODON_03301116`) are *wheat food product*,
+  *flour food product*, *cereal grain food product*, … — **none gluten-bearing**.
+- So **`wheat flour ⊑ wheat ⊑ gluten-source` does not exist** and cannot be traversed. Blacklisting
+  "gluten" expands to the empty set: string matching misses `wheat flour`, and so does the ontology.
+- Consequently `get_ingredient_leaves` returns `[]` for `gluten`, so
+  `get_all_nodes(remove_unconnected=True)` drops it from the persona vocabulary entirely
+  (`persona_generator.py:58`) — under `include_food_on: true` a persona **cannot state "excludes
+  gluten"** in FoodOn terms.
+
+Gluten is, however, **not representative**: 12 of the EU-14 allergens *do* have usable classes with
+descendants and leaves (only *sulphites* and *lupin* have no class label at all). The dominant
+problem is reason 2.
+
+**Reason 2 — the food.com↔FoodOn bridge is unreliable (dominant).** `food_on_mappings.pkl` (16,647
+entries from FoodKG / `idea.rpi.edu/heals`, covering 91.3% of the 14,466 KG ingredients across only
+2,249 distinct classes) is a **lexical-similarity join**, and its errors are gross and
+safety-relevant in *both* directions:
+
+| food.com ingredient | mapped FoodOn class | matched on |
+|---|---|---|
+| `dry roasted peanuts` | **nonfat dry milk** | "dry" |
+| `baked tofu` | **trout baked** | "baked" |
+| `black sesame seeds` | **black bass** | "black" |
+| `Spanish peanuts` | **spanish vetch** | "spanish" |
+| `anchovies` | **green olive (stuffed with anchovies, canned)** | substring |
+| `aluminum foil` | **crab (deviled, shrimp added, in aluminum shell)** | "aluminum" |
+| `Reese's pieces` | **shrimp pieces (raw)** | "pieces" |
+
+So a peanut-allergic persona is **not** protected from `dry roasted peanuts` (it lives under
+*dairy*), while a dairy-allergic persona **is** wrongly blocked from it. Two further structural
+faults compound this: plain `crab` maps to `obsolete: crab` (zero ancestors, disconnected from
+everything), and `cooked shrimp` maps to the **organism** class `shrimp` (under *crustacean
+species* → *animal*) rather than the *food product* branch — FoodOn carries both hierarchies, and
+`get_all_nodes` roots at *food product*, so every organism-branch mapping is invisible to expansion.
+
+Measured recall against a naive substring baseline (indicative — the baseline has its own false
+positives, but the individual misses below are verified by hand):
+
+| allergen | recall | verified misses |
+|---|---|---|
+| egg | 16.8% | `bantam eggs` |
+| soy | 31.6% | `baked tofu`, `black soybeans`, `Kikkoman soy sauce` |
+| crustacean | 33.1% | `crab`, `cooked shrimp`, `blue crab meat`, `canned lobster` |
+| tree nuts | 42.9% | `Diamond walnuts`, `Dole Almonds`, `PLANTERS Walnuts` |
+| fish | 56.4% | `anchovies`, `albacore tuna`, `boneless skinless cod` |
+| sesame | 63.4% | `black sesame seeds`, `tahini sesame butter` |
+| peanut | 70.9% | `dry roasted peanuts`, `chocolate-covered peanuts` |
+| milk | 71.6% | `1% fat buttermilk` |
+| wheat | 82.2% | `bulgur wheat`, `cream of wheat`, `shredded wheat cereal` |
+
+Precision fails symmetrically: *crustacean* also returns `aluminum foil` and `blue curacao`, *fish*
+returns `Butterfinger bar` and `English muffins`, *peanut* returns `valencia oranges`, and — worst
+for the allergen framing — `wheat food product` returns **`gluten-free rice flour`**.
+
+**Bottom line for reporting.** FoodOn expansion is worse than substring matching for allergens on
+*both* precision and recall. Do not claim ontology-grounded allergen detection for any allergen, and
+do not enable `--food_on` for blacklist enforcement. Note the ontology itself is sound and the
+subclass traversal is correct — the defect is in the FoodKG mapping layer, which is inherited from
+the dataset, not built here. Real allergen support needs a curated allergen→ingredient expansion
+table (auditable, testable) or a re-derived mapping; **neither is implemented**.
 
 ### 2.4 Vector & graph stores
 
@@ -486,8 +563,9 @@ gets. Tractability knobs (`KBQAOptions`, `base.py:40`): `max_depth=3`, `beam_wid
   attention memory-network KBQA over a FoodKG-style graph. Pipeline: HUMMUS→recipe_kg.json →
   vendored QA generator → vectorize → embeddings (**GloVe 840B 300d** faithful, or `BAAI/bge-m3`
   ablation) → train `BAMnetAgent` → recall/precision/F1. BAMnet config: `vocab_embed_size 300`,
-  `hidden_size 128`, `mem_size 96`, `num_hops 1`, `lr 0.001`, `batch_size 32`, `num_epochs 100`. Run
-  via `scripts/run_pfoodreq_colab.py` (`--variant {glove,modernemb}`, tight-stratum bounded).
+  `hidden_size 128`, `mem_size 96`, `num_hops 1`, `lr 0.001`, `batch_size 32`, `num_epochs 100`.
+  Driven via `foodrag.baselines.pfoodreq.train_bamnet` / `run_pfoodreq`
+  (`--variant {glove,modernemb}`, tight-stratum bounded). Not yet run — no results shipped.
 
 **Dual-use adapters** (`kbqa/adapters.py`): `KBQABaseline` wraps a system as a ladder `Baseline`
 (rung-4 / EXP-1 retriever); `KBQARetriever` wraps it as a `DataFrameRetrieverBase` for the meal-plan
@@ -576,7 +654,7 @@ assemblers (`RagMealPlanAssembler` for H2, `WorkflowMealPlanAssembler` for H1).
 
 | Safeguard | Where | Guarantee |
 |---|---|---|
-| **Deterministic allergen post-filter** (commit 54a62ae) | `constraints.enforce_allergen_safety(plan, persona)` | Drops any slot whose recipe ingredients intersect the persona's disliked/allergen set → **allergen_violation = 0.000 on every config**, regardless of retrieval or LLM validation. A blacklist-violating recipe can never be gold, so hit@10 is unaffected. |
+| **Deterministic allergen post-filter** (commit 54a62ae) | `constraints.enforce_allergen_safety(plan, persona)` | Drops any slot whose recipe ingredients intersect the persona's disliked/allergen set → **allergen_violation = 0.000 on every config**, regardless of retrieval or LLM validation. A blacklist-violating recipe can never be gold, so hit@10 is unaffected. **Read this as exact-match safety, not ontology-grade safety:** both call sites (`full_pipeline.py:239`, `:360`) use the `identity_expand` default, so the filter and the `allergen_violation` metric are the *same function on the same verbatim names*. The number is a consistency guarantee w.r.t. the QA set's own definition of "disliked" — it is structurally incapable of detecting a hierarchy-level escape (persona dislikes `wheat` → recipe lists `whole wheat flour` passes both filter and metric). See §2.3 for the scope of the FoodOn upgrade. |
 | **Empty-plan explanation gate** (commit 54a62ae) | `ExplanationTool.explain()` | On an all-`None` plan, returns fixed `EMPTY_PLAN_MESSAGE` with **no LLM call** — eliminates fully-hallucinated empty-plan explanations (faithfulness 0.922→0.997, ucr=1.0 15.4%→7.3%). |
 | **`enforce_distinct_slots` guard** | `constraints.enforce_distinct_slots(plan)` (after allergen filter) | Keeps a recipe in its first slot (B→L→D→S) and drops any later slot re-using the same `recipe_url` — prevents degenerate same-dish-in-many-slots plans. Never mutates input; `None`/empty pass through. Covered by `tests/test_distinct_slots.py`. |
 | **`NonRepeatingReplayRetriever`** | driver (full-day t2p path) | Slices the replay pool forward per slot so no slot repeats; goes empty when exhausted. Second full-day degeneracy guard. |
@@ -670,7 +748,7 @@ Quality-vs-Cost, Safety-vs-Coverage.
 
 ## 11. Metric catalogue
 
-Every metric below is computed in code; definitions per the Evaluation Protocol §4/§8/§9.4.
+Every metric below is computed in code.
 
 **Retrieval** (`metrics.py`, over top-k `recipe_url` vs gold): `hit_at_{k}`, `mrr_at_{k}`,
 `ndcg_at_{k}` (binary-relevance). NaN when gold empty.
@@ -1040,7 +1118,7 @@ agentic-food-rag/
 │                                  #   STATISTICAL_TESTS.md · ERROR_ANALYSIS.md
 ├── eval_results/ · eval_results_llama/   # per-question parquets, aggregate.csv, pairwise*.csv
 ├── scripts/                       # bootstrap_hf_data · push_hf_data · seed_pgvector · seed_neo4j ·
-│                                  #   build_study_plans · run_pfoodreq_colab · create_embeddings · …
+│                                  #   build_study_plans · create_embeddings · …
 ├── src/foodrag/
 │   ├── baselines/                 # runner, full_pipeline, base, popularity, llm_only, naive_rag,
 │   │   ├── constraints.py · metrics.py · meal_plan_metrics.py · judge.py · guideline_adherence.py
@@ -1067,7 +1145,7 @@ agentic-food-rag/
 │   ├── components/ (pipeline_strip, recipe_detail, study_common, …)
 │   └── study_plans/ (P1..P4.json, profiles.json)
 ├── third_party/pfoodreq/          # vendored BAMnet (Apache-2.0)
-├── tests/ · notebooks/ · specs/ · thesis/
+├── tests/ · notebooks/
 └── pyproject.toml · uv.lock · frozen_requirements.txt · requirements.txt · .python-version
 ```
 

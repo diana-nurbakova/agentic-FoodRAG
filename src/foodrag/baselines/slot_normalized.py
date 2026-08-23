@@ -1,4 +1,4 @@
-"""Slot-normalized plan-level metrics (spec: FoodRAG_Slot_Normalized_Metrics.md).
+"""Slot-normalized plan-level metrics.
 
 The deployed meal-planner is time-driven: it plans only the *remaining* meals of the
 day, producing partial-day plans (mean ~2.3 of 4 slots). The full-day plan metrics in
@@ -7,13 +7,13 @@ day, producing partial-day plans (mean ~2.3 of 4 slots). The full-day plan metri
 each plan against the meals it was *asked* to produce (``requested_meal_types``), and
 scales full-day nutrient targets by the day-energy share those meals represent.
 
-Everything here is deterministic and recomputable OFFLINE from an existing §13.1 record
+Everything here is deterministic and recomputable OFFLINE from an existing per-question record
 plus ``recipes_df`` (for nutrients / meal_types) and ``guideline_reference_tables.json``
 (bands) — NO pipeline re-run, no LLM. The persona's guideline class is read from the
 record's stored ``guideline_class`` (the shipped QA set is always ``general_adult``), so
 the QA pickle is not needed.
 
-Design (spec §3):
+Design:
 - **Slot-set normalization** (completeness / structural): denominator is ``|Q|`` (requested
   slots), not 4.
 - **Energy-share normalization** (guideline / calorie): full-day bands/ceilings scaled by
@@ -26,7 +26,7 @@ Two ``Q`` sources are supported:
   the energy-share-scaled guideline/calorie metrics stay meaningful (scaled by the filled
   slots' day-share). Callers should surface ``requested_slots_source`` to flag this.
 
-IMPORTANT asymmetry (spec §3.4): scaling applies to the guideline *adherence-quality* score
+IMPORTANT asymmetry: scaling applies to the guideline *adherence-quality* score
 only. The hard *safety* ceiling (feeding ``hard_constraint_violation``) is NEVER scaled and
 is not touched here — a plan over the real sodium UL is unsafe regardless of slot count.
 """
@@ -39,10 +39,10 @@ from foodrag.baselines import meal_plan_metrics as _mpm
 
 Plan = Mapping[str, Optional[dict]]
 
-# §4.5 daily calorie-distribution weights (Protocol §4.5 / meal_plan_metrics.CALORIE_TARGETS).
+# daily calorie-distribution weights.
 DELTA = dict(_mpm.CALORIE_TARGETS)  # breakfast .22 / lunch .32 / dinner .32 / snack .14
 
-# spec §3.3 nutrient split. Band-target: "reach [l,h]" → scale BOTH edges by rho.
+# Nutrient split. Band-target: "reach [l,h]" → scale BOTH edges by rho.
 # Ceiling: "stay under kappa" → scale the (adherence-scoring) ceiling by rho.
 BAND_TARGET_NUTRIENTS = {"energy_kcal", "carbohydrate_g", "total_fat_g", "protein_g", "fibre_g"}
 CEILING_NUTRIENTS = {"saturated_fat_g", "sugars_g", "sodium_g"}
@@ -74,7 +74,7 @@ def rho(Q) -> float:
     return sum(DELTA[m] for m in Q if m in DELTA)
 
 
-# ── slot-set metrics (spec §3.1, §3.2) ────────────────────────────────────────
+# ── slot-set metrics ──────────────────────────────────────────────────────────
 
 def filled_requested(plan_rows: Plan, Q) -> list[str]:
     """Requested slots that are filled with a resolved recipe: ``F = {m in Q : P_m != ∅}``."""
@@ -91,7 +91,7 @@ def meal_slot_completeness_norm(plan_rows: Plan, Q) -> float:
 def structural_validity_norm(plan_rows: Plan, Q, *, parseable: bool = True) -> float:
     """1.0 iff parseable AND ``F == Q`` AND every filled recipe admits its slot.
 
-    "Admits its slot" (spec §3.2, ``m ∈ μ(P_m)``): the slot label appears in the recipe's
+    "Admits its slot" (``m ∈ μ(P_m)``): the slot label appears in the recipe's
     ``meal_types``. No full-4-slot requirement. NaN when ``Q`` is empty (undefined).
     """
     if not Q:
@@ -105,7 +105,7 @@ def structural_validity_norm(plan_rows: Plan, Q, *, parseable: bool = True) -> f
     return 1.0
 
 
-# ── energy-share-scaled guideline adherence (spec §3.3, §3.4) ─────────────────
+# ── energy-share-scaled guideline adherence ───────────────────────────────────
 
 def guideline_adherence_norm(totals: dict, bands: dict, rho_q: float, ref: dict) -> tuple[dict, float]:
     """Per-nutrient 0/1 (short keys) + overall mean, with bands/ceilings scaled by ``rho_q``.
@@ -113,7 +113,7 @@ def guideline_adherence_norm(totals: dict, bands: dict, rho_q: float, ref: dict)
     Band-target nutrients (energy/carb/fat/protein/fibre): in-band iff
     ``rho*l <= total <= rho*h``. Ceiling nutrients (satfat/sugar/sodium): adherent iff
     ``total <= rho*kappa`` where ``kappa`` is the band's upper edge (the *adherence-scoring*
-    ceiling — the safety hard-ceiling is untouched, spec §3.4). Returns ``({}, NaN)`` when the
+    ceiling — the safety hard-ceiling is untouched). Returns ``({}, NaN)`` when the
     plan has no nutrient totals (no resolved recipe).
     """
     if not totals:
@@ -142,7 +142,7 @@ def guideline_adherence_norm(totals: dict, bands: dict, rho_q: float, ref: dict)
     return per, overall
 
 
-# ── renormalized calorie-distribution adherence (spec §3.5) ───────────────────
+# ── renormalized calorie-distribution adherence ───────────────────────────────
 
 def calorie_adherence_norm(plan_rows: Plan, Q, rho_q: float) -> float:
     """``1 - mean_{m in Q} |eshare_m(P) - delta_m/rho(Q)|``.
@@ -213,7 +213,7 @@ def _class_label(record: dict) -> str:
 # ── top-level: compute all normalized metrics for one record ──────────────────
 
 def compute_record_norm(record: dict, indexed, ref: dict) -> dict:
-    """Compute the slot-normalized block for one §13.1 record (pure — no mutation).
+    """Compute the slot-normalized block for one per-question record (pure — no mutation).
 
     Returns a dict with the ``*_norm`` scalars, the per-nutrient norm vector, ``rho`` and
     ``requested_slots_source``. The caller merges these into the record (keeping the existing
@@ -233,7 +233,7 @@ def compute_record_norm(record: dict, indexed, ref: dict) -> dict:
         "guideline_adherence_norm": guide_overall,
         "guideline_adherence_norm_per_nutrient": per_nut,
         "calorie_adherence_norm": calorie_adherence_norm(plan_rows, Q, rho_q),
-        # spec §3.6: null (not 0) when < 2 filled slots — already the guard in this fn.
+        # null (not 0) when < 2 filled slots — already the guard in this fn.
         "intra_plan_diversity_norm": _mpm.intra_plan_diversity(plan_rows),
         "requested_day_energy_share": rho_q if Q else NAN,
         "requested_slots_source": source,

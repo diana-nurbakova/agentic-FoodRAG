@@ -1,4 +1,4 @@
-"""Logging-service unit tests (spec §9): HF push path (mocked) + status."""
+"""Logging-service unit tests: HF push path (mocked) + status."""
 import json
 import sys
 import types

@@ -1,7 +1,7 @@
-"""Step 2: Demographics (GDPR-compliant, spec §5.2).
+"""Step 2: Demographics (GDPR-compliant).
 
 Only non-sensitive, grouped fields. No gender, ethnicity, religion, health
-conditions, real dietary restrictions, or exact age (spec §7.2).
+conditions, real dietary restrictions, or exact age.
 """
 
 from __future__ import annotations

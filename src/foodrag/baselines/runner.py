@@ -1,10 +1,10 @@
-"""Run a baseline over a QA set and emit Results-Schema records (§13).
+"""Run a baseline over a QA set and emit Results-Schema records.
 
 Produces both halves of the schema:
 
-* :func:`run_baseline` → §13.1 per-question records (one per question × run),
-  each tagged with its §9 strata.
-* :func:`aggregate` → §13.2 per ``config × stratum × metric`` rows with mean,
+* :func:`run_baseline` →.1 per-question records (one per question × run),
+  each tagged with its strata.
+* :func:`aggregate` →.2 per ``config × stratum × metric`` rows with mean,
   bootstrap 95% CI, per-question (run-to-run) variance and counts.
 
 :func:`write_results` lands a per-question Parquet plus an ``aggregate.csv`` that
@@ -24,7 +24,7 @@ from foodrag.baselines.base import Baseline
 ID_COL = "recipe_url"
 DEFAULT_K = 10
 
-# §13.2 aggregate column order (matches eval_results/aggregate.csv).
+# aggregate column order (matches eval_results/aggregate.csv).
 AGG_COLUMNS = ["experiment_id", "config_id", "stratum", "metric", "mean",
                "ci_low", "ci_high", "per_question_variance", "n_questions", "n_runs", "judge"]
 
@@ -48,7 +48,7 @@ def run_baseline(baseline: Baseline, qa_set: Iterable[dict], recipes_df: pd.Data
                  *, k: int = DEFAULT_K, experiment_id: str = "EXP-7", run: int = 1,
                  expand: constraints.IngredientExpander = constraints.identity_expand,
                  id_prefix: str = "q", max_workers: int = 1) -> list[dict]:
-    """Score ``baseline`` on every QA item; return §13.1 per-question records.
+    """Score ``baseline`` on every QA item; return.1 per-question records.
 
     ``max_workers > 1`` runs the per-question ``baseline.recommend`` calls (the
     slow LLM step for rungs 2/ToG) concurrently in a thread pool, preserving
@@ -60,7 +60,7 @@ def run_baseline(baseline: Baseline, qa_set: Iterable[dict], recipes_df: pd.Data
     qa_list = list(qa_set)
 
     # Phase 1 — recommendations (parallelisable I/O-bound LLM calls). Each call is
-    # wall-clock timed so per-question latency (§4.6) is reported alongside the
+    # wall-clock timed so per-question latency is reported alongside the
     # quality metrics. Under threading the timing is the call's own duration.
     import time as _time
 
@@ -81,14 +81,14 @@ def run_baseline(baseline: Baseline, qa_set: Iterable[dict], recipes_df: pd.Data
     # Phase 2 — metrics + records (fast, ordered, deterministic).
     records: list[dict] = []
     for i, (qa_item, retrieved_ids) in enumerate(zip(qa_list, recs)):
-        gold = set(qa_item.get("answer") or [])
+        gold = base.gold_urls(qa_item)
         persona = qa_item["persona"]
 
         rows = _resolve_rows(retrieved_ids, indexed, needed)
 
         metric_block = metrics.deterministic_metrics(
             retrieved_ids, rows, gold, persona, k, expand)
-        metric_block["latency_s"] = latencies[i]  # §4.6 per-question execution time
+        metric_block["latency_s"] = latencies[i]  # per-question execution time
         if not gold:  # retrieval metrics are undefined without a gold set
             for m in (f"hit_at_{k}", f"mrr_at_{k}", f"ndcg_at_{k}"):
                 metric_block[m] = float("nan")
@@ -126,7 +126,7 @@ def _resolve_rows(retrieved_ids: Sequence[str], indexed: pd.DataFrame,
     return rows
 
 
-# ── aggregation (§13.2) ──────────────────────────────────────────────────────
+# ── aggregation ──────────────────────────────────────────────────────────────
 
 def _bootstrap_ci(values: np.ndarray, n_boot: int, seed: int) -> tuple[float, float]:
     """95% percentile bootstrap CI of the mean; degenerate inputs return the mean."""
@@ -142,10 +142,10 @@ def _bootstrap_ci(values: np.ndarray, n_boot: int, seed: int) -> tuple[float, fl
 def aggregate(records: Sequence[dict], *, experiment_id: Optional[str] = None,
               config_id: Optional[str] = None, judge: str = "",
               n_boot: int = 10_000, seed: int = 0) -> pd.DataFrame:
-    """Roll per-question records up to §13.2 ``config × stratum × metric`` rows.
+    """Roll per-question records up to.2 ``config × stratum × metric`` rows.
 
     ``per_question_variance`` is the mean over questions of each question's
-    variance across runs (§4.6) — 0 for single-run deterministic baselines.
+    variance across runs — 0 for single-run deterministic baselines.
     """
     if not records:
         return pd.DataFrame(columns=AGG_COLUMNS)
@@ -188,7 +188,7 @@ def _strata(records: Sequence[dict]) -> list[str]:
 def _asfloat(v) -> float:
     """Coerce a metric value to float; non-numeric (dict/str/None) → NaN.
 
-    Some §13.1 metric fields are non-scalar (e.g. ``guideline_adherence_per_nutrient``
+    Some.1 metric fields are non-scalar (e.g. ``guideline_adherence_per_nutrient``
     is a dict, ``guideline_class`` a string). Those are kept in the per-question
     record for fidelity but cannot be averaged — coercing them to NaN makes
     :func:`aggregate` skip them instead of raising, while their flattened scalar
@@ -211,7 +211,7 @@ def _per_question_means(records: Sequence[dict], metric: str) -> dict[str, float
 
 
 def _run_variance(records: Sequence[dict], metric: str) -> float:
-    """Mean over questions of the across-run variance of ``metric`` (§4.6)."""
+    """Mean over questions of the across-run variance of ``metric``."""
     by_q: dict[str, list[float]] = {}
     for r in records:
         by_q.setdefault(r["question_id"], []).append(_asfloat(r["metrics"].get(metric, float("nan"))))

@@ -1,4 +1,4 @@
-"""Wiring tests for the ported pFoodReq/BAMnet pipeline (§5.8 sub-task a).
+"""Wiring tests for the ported pFoodReq/BAMnet pipeline.
 
 Verifies the vendored tree is present and the driver's config plumbing works,
 without running the (heavy, CPU) training — that is exercised manually.

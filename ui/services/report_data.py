@@ -4,8 +4,7 @@ Loads the *real* pre-computed evaluation outputs (``eval_results/`` — aggregat
 pairwise.csv, per-question parquets) and derives the small frames the new
 result-driven panels need (error taxonomy, cross-judge agreement, time-of-day
 meal selection, volatility, illustrative cases). Read-only: nothing here re-runs
-the pipeline; the parquets are the source of truth (spec
-``FoodRAG_Report_Tab_Modifications`` §2).
+the pipeline; the parquets are the source of truth.
 
 All loaders are memoised (``lru_cache``) so the parquets are read/expanded once
 per process, not once per Streamlit rerun. Every function degrades gracefully
@@ -84,7 +83,7 @@ def exp_meta(exp: str) -> dict:
 
 
 def ceiling_note(cid: str) -> Optional[str]:
-    """Reference-ceiling / cost caveat for a config, if any (spec §7)."""
+    """Reference-ceiling / cost caveat for a config, if any."""
     return copy().get("reference_ceilings", {}).get(cid)
 
 
@@ -185,7 +184,7 @@ def _plan_empty(plan) -> bool:
     return True
 
 
-# ── derived frame: error taxonomy (spec §4 Tier 2, NEW) ────────────────────
+# ── derived frame: error taxonomy (Tier 2, NEW) ────────────────────────────
 @lru_cache(maxsize=1)
 def error_taxonomy() -> Optional[pd.DataFrame]:
     """Per-config failure-rate table over the four FoodRAG system configs.
@@ -228,7 +227,7 @@ def error_taxonomy() -> Optional[pd.DataFrame]:
     return pd.DataFrame(rows).set_index("config_id")
 
 
-# ── derived frame: cross-judge agreement (spec §4 Tier 3) ──────────────────
+# ── derived frame: cross-judge agreement (Tier 3) ──────────────────────────
 _JUDGE_METRICS = ["correctness", "faithfulness", "relevancy", "explanation_quality"]
 
 
@@ -262,7 +261,7 @@ def judge_agreement() -> Optional[pd.DataFrame]:
     return pd.DataFrame(rows)
 
 
-# ── derived frame: time-of-day meal selection (spec §4 Tier 3, NEW) ────────
+# ── derived frame: time-of-day meal selection (Tier 3, NEW) ────────────────
 @lru_cache(maxsize=1)
 def time_of_day() -> Optional[pd.DataFrame]:
     """Per-hour meal-type selection (eval_results/mealplan_time_of_day.csv)."""
@@ -288,7 +287,7 @@ def volatility(agg: pd.DataFrame, experiment: str = "EXP-7",
     return sub[["config_id", "metric", "per_question_variance", "n_questions"]].copy()
 
 
-# ── derived: illustrative cases (spec §4 Tier 3, Case browser) ─────────────
+# ── derived: illustrative cases (Tier 3, Case browser) ─────────────────────
 def _excerpt(text, n: int = 240) -> str:
     s = "" if text is None else str(text)
     return (s[:n] + "…") if len(s) > n else s

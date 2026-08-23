@@ -1,6 +1,6 @@
 """Fine-tuning support for the trained KBQA baselines (RoG planner, TFS parser).
 
-Two of the three systems are *trained*, not prompted (§5.8): RoG's planner (light
+Two of the three systems are *trained*, not prompted: RoG's planner (light
 fine-tuning) and TFS-KBQA's semantic parser (three-step fine-tuning). The QA set
 supplies the training data — exactly the protocol's plan for these systems.
 

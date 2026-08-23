@@ -1,11 +1,11 @@
-"""Pareto trade-off analysis over evaluation results (Evaluation Protocol §9.4).
+"""Pareto trade-off analysis over evaluation results.
 
 Several FoodRAG objectives compete (health vs relevance, quality vs cost, safety
 vs coverage). This module reports them as **Pareto frontiers** over configurations
 and baselines rather than isolated scalars, and exposes the *domination relation*
 explicitly so the UI/paper can state "config X dominates baseline Y".
 
-Design rules honoured from §9.4:
+Design rules honoured from:
 
 * **Domination:** config *A* dominates *B* iff *A* is at least as good as *B* on
   **every** axis (per that axis's ``"max"``/``"min"`` direction) AND strictly
@@ -20,7 +20,7 @@ Design rules honoured from §9.4:
 
 The core :func:`pareto_frontier` is generic (points = ``{config_id: {axis: val}}``);
 the three frontier builders pull the right metrics from an aggregate long-format
-DataFrame (§13.2: columns ``experiment_id, config_id, stratum, metric, mean``) and
+DataFrame and
 delegate to it. This module is pure/stdlib+pandas — no Streamlit, no backend, no
 HUMMUS — so it is unit-testable in isolation and memory-light.
 """
@@ -99,7 +99,7 @@ def _strictly_better(a: float, b: float, direction: str) -> bool:
 
 
 def _dominates(a: Point, b: Point, objectives: Objectives) -> bool:
-    """True iff point ``a`` dominates point ``b`` (§9.4).
+    """True iff point ``a`` dominates point ``b``.
 
     ``a`` must be at least as good as ``b`` on every axis and strictly better on
     at least one. Two identical points do NOT dominate each other (ties).
@@ -237,7 +237,7 @@ def _build_points(
     return points
 
 
-# ── §9.4 Frontier builders ─────────────────────────────────────────────────
+# ── Frontier builders ──────────────────────────────────────────────────────
 # Relevance axis: the protocol lists ``avg_rating_at_10`` first, but that column
 # is not in the current results; fall back to a relevance proxy in priority order.
 _RELEVANCE_CANDIDATES = ("avg_rating_at_10", "relevancy_judgeA", "relevancy", "ndcg_at_10")
@@ -251,7 +251,7 @@ def health_vs_relevance(
     experiment_id: Optional[str] = None,
     health_metric: str = "avg_nutri_at_10",
 ) -> ParetoResult:
-    """Health vs Relevance frontier (§9.4, §11.3).
+    """Health vs Relevance frontier.
 
     * x = relevance ("max"): ``avg_rating_at_10`` if present, else the best
       available proxy (``relevancy_judgeA`` → ``relevancy`` → ``ndcg_at_10``).
@@ -286,7 +286,7 @@ def quality_vs_cost(
     experiment_id: Optional[str] = None,
     cost_metric: str = "llm_usage",
 ) -> ParetoResult:
-    """Quality vs Cost frontier (§9.4, §11.3).
+    """Quality vs Cost frontier.
 
     * x = cost ("min"): ``llm_usage`` (pass ``cost_metric='latency_s'`` for the
       latency variant).
@@ -326,20 +326,20 @@ def safety_vs_coverage(
     coverage_metric: Optional[str] = None,
     config_id: Optional[str] = None,
 ) -> ParetoResult:
-    """Safety vs Coverage frontier (§9.4, §11.3).
+    """Safety vs Coverage frontier.
 
-    §9.4 axes are *relaxation level (strictness)* vs *fraction of personas with a
+.4 axes are *relaxation level (strictness)* vs *fraction of personas with a
     full feasible plan*. An explicit per-config "relaxation level" axis is NOT in
     the current results, so — per the task's documented-proxy option — we use the
     **answer-set-size stratum as a strictness proxy**: tight (1–50 valid answers)
-    → high strictness, medium, broad → low strictness (§9.1). Coverage is a
+    → high strictness, medium, broad → low strictness. Coverage is a
     config-level feasibility proxy: mean ``meal_slot_completeness`` (→
     ``structural_validity`` → ``constraint_satisfaction`` fallback) per stratum.
 
     Each *stratum* becomes one point (``strictness`` axis "max" = stricter,
     ``coverage`` axis "max"). The frontier then shows the trade-off between never
     relaxing safety (high strictness → fewer feasible plans) and coverage. Safety
-    itself is never an axis — hard constraints gate feasibility upstream (§9.4);
+    itself is never an axis — hard constraints gate feasibility upstream;
     here strictness is a stratum proxy and coverage is the feasible-plan fraction.
 
     Note: this is a documented PROXY (strata, not a genuine per-config relaxation

@@ -1,9 +1,9 @@
-"""Unit tests for the Use-2 full-pipeline driver (§5.7, §4.4–4.5, §7).
+"""Unit tests for the Use-2 full-pipeline driver.
 
 The assembly layer and judges need a live LLM/graph, so they are faked here: a
 ``FakeAssembler`` returns a fixed meal plan and a ``FakeJudge`` returns canned
 verdicts. That isolates and pins down the deterministic meal-plan metrics, the
-judge-metric shaping (dual-judge key naming + 1–5 → [0,1]) and the §13 record the
+judge-metric shaping (dual-judge key naming + 1–5 → [0,1]) and the record the
 orchestrator emits — none of which need real models.
 """
 from __future__ import annotations
@@ -21,7 +21,7 @@ from foodrag.baselines.judge import Judge, judge_plan
 pytestmark = pytest.mark.unit
 
 
-# ── deterministic meal-plan metrics (§4.4–4.5) ───────────────────────────────
+# ── deterministic meal-plan metrics ──────────────────────────────────────────
 
 def _recipe(ingredients, tags, cal, serving=100):
     return {"recipe_url": "u", "ingredient_names": ingredients, "tags": tags,
@@ -49,6 +49,75 @@ def test_calorie_adherence_perfect_split_scores_one():
     assert mpm.calorie_distribution_adherence(plan) == pytest.approx(1.0)
 
 
+def _restriction(breakfast=440, lunch=640, dinner=640, snack=280):
+    caps = {"breakfast": breakfast, "lunch": lunch, "dinner": dinner, "snack": snack}
+    return {slot: {"meal_type": slot, "guidelines": {"calories [kcal]": cap}}
+            for slot, cap in caps.items()}
+
+
+def test_budget_compliance_scores_plan_within_its_stated_caps():
+    plan = {"breakfast": _recipe([], [], 400), "lunch": _recipe([], [], 600),
+            "dinner": _recipe([], [], 600), "snack": _recipe([], [], 250)}
+    out = mpm.budget_compliance(plan, _restriction())
+    assert out["budget_slot_compliance"] == pytest.approx(1.0)
+    assert out["budget_total_compliance"] == 1.0
+    assert out["budget_plan_kcal"] == pytest.approx(1850)
+    assert out["budget_daily_kcal"] == pytest.approx(2000)
+    assert out["budget_overshoot_ratio"] == pytest.approx(0.925)
+
+
+def test_budget_compliance_flags_the_slots_that_blew_their_cap():
+    # breakfast and lunch over cap; dinner and snack fine → 2 of 4 comply.
+    plan = {"breakfast": _recipe([], [], 900), "lunch": _recipe([], [], 1200),
+            "dinner": _recipe([], [], 600), "snack": _recipe([], [], 250)}
+    out = mpm.budget_compliance(plan, _restriction())
+    assert out["budget_slot_compliance"] == pytest.approx(0.5)
+    assert out["budget_total_compliance"] == 0.0
+    assert out["budget_overshoot_ratio"] == pytest.approx(2950 / 2000)
+
+
+def test_budget_compliance_is_sensitive_to_magnitude_unlike_calorie_adherence():
+    """The gap this metric exists to close: a perfectly-shaped day at 3x the budget."""
+    plan = {"breakfast": _recipe([], [], 22 * 3 * 10), "lunch": _recipe([], [], 32 * 3 * 10),
+            "dinner": _recipe([], [], 32 * 3 * 10), "snack": _recipe([], [], 14 * 3 * 10)}
+    # Shape is a perfect 22/32/32/14 split, so the distribution metric is blind to it...
+    assert mpm.calorie_distribution_adherence(plan) == pytest.approx(1.0)
+    # ...but the day is 3000 kcal against a 2000 kcal budget.
+    out = mpm.budget_compliance(plan, _restriction())
+    assert out["budget_total_compliance"] == 0.0
+    assert out["budget_overshoot_ratio"] == pytest.approx(1.5)
+
+
+def test_budget_compliance_counts_uncapped_slots_against_the_daily_total():
+    # A slot the restriction never capped still contributes calories to the day.
+    plan = {"breakfast": _recipe([], [], 400), "lunch": _recipe([], [], 600),
+            "dinner": _recipe([], [], 600), "snack": _recipe([], [], 250),
+            "dessert": _recipe([], [], 900)}
+    out = mpm.budget_compliance(plan, _restriction())
+    assert out["budget_slot_compliance"] == pytest.approx(1.0)  # every capped slot complied
+    assert out["budget_plan_kcal"] == pytest.approx(2750)       # but the day is over
+    assert out["budget_total_compliance"] == 0.0
+
+
+def test_budget_compliance_absent_restriction_is_nan_not_compliant():
+    plan = {"breakfast": _recipe([], [], 400)}
+    for value in mpm.budget_compliance(plan, None).values():
+        assert math.isnan(value)
+    # Unfilled plan against a real restriction: nothing to judge, but the budget is known.
+    out = mpm.budget_compliance({"breakfast": None}, _restriction())
+    assert math.isnan(out["budget_total_compliance"])
+    assert out["budget_daily_kcal"] == pytest.approx(2000)
+
+
+def test_plan_quality_metrics_includes_budget_block():
+    plan = {"breakfast": _recipe([], [], 400), "lunch": _recipe([], [], 600),
+            "dinner": _recipe([], [], 600), "snack": _recipe([], [], 250)}
+    block = mpm.plan_quality_metrics(plan, restriction=_restriction())
+    assert block["budget_total_compliance"] == 1.0
+    # Recipe-type questions carry no restriction → the block is present but NaN.
+    assert math.isnan(mpm.plan_quality_metrics(plan)["budget_total_compliance"])
+
+
 def test_structural_validity_requires_slots_and_explanation():
     full = {s: _recipe([], [], 1) for s in mpm.STANDARD_SLOTS}
     assert mpm.structural_validity(full, has_explanation=False, require_explanation=False) == 1.0
@@ -56,7 +125,7 @@ def test_structural_validity_requires_slots_and_explanation():
     assert mpm.structural_validity({"breakfast": _recipe([], [], 1)}) == 0.0  # missing slots
 
 
-# ── dual-judge shaping (§7) ──────────────────────────────────────────────────
+# ── dual-judge shaping ───────────────────────────────────────────────────────
 
 class FakeJudgeLLM:
     """Returns a fixed completion text regardless of prompt."""
@@ -87,7 +156,7 @@ def test_judge_without_llm_is_nan():
     assert all(math.isnan(v) for v in out.values())
 
 
-# ── orchestrator: assemble → metrics → §13 record ────────────────────────────
+# ── orchestrator: assemble → metrics → record ────────────────────────────────
 
 class FakeAssembler(MealPlanAssembler):
     config_id = "tog"

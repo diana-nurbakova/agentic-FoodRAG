@@ -7,7 +7,7 @@ writing a checkpoint that the runtime loads via ``RoGPlanner.load_checkpoint`` /
 gradient checkpointing + small LoRA rank), the same execution pattern as the
 embedding notebook. All heavy deps are imported lazily.
 
-Faithfulness to the source methods (§5.8):
+Faithfulness to the source methods:
 * **RoG** uses *light* fine-tuning of the planner — a single LoRA pass
   (:func:`train`, ``--task rog``).
 * **TFS-KBQA** uses a *three-step* fine-tuning strategy — :func:`train_three_step`

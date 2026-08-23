@@ -1,13 +1,13 @@
-"""LLM-as-judge pass for the full-pipeline experiments (§4.4, §7).
+"""LLM-as-judge pass for the full-pipeline experiments.
 
 The Use-2 quality metrics on an assembled meal plan are LLM-judged, under the
-dual-judge protocol (§7.1): every metric is scored by **Judge A** (a cross-lineage
+dual-judge protocol: every metric is scored by **Judge A** (a cross-lineage
 model, e.g. Gemma) and **Judge B** (same family as the generator, e.g. Llama),
 emitted as ``<metric>_judgeA`` / ``<metric>_judgeB`` so inter-judge agreement and
 the same-family-bias delta can be computed downstream.
 
-Four metrics (§4.4), prompts adapted from the LlamaIndex evaluator templates the
-thesis used (§7.4), kept frozen here:
+Four metrics, prompts adapted from the LlamaIndex evaluator templates the
+thesis used, kept frozen here:
 
 * **Faithfulness** {0,1} — does the recommendation stay within the retrieved recipes?
 * **Relevancy** {0,1} — does it fit the question + retrieved recipes?
@@ -90,10 +90,10 @@ class Judge:
 
 def build_judges(judge_names: Sequence[tuple[str, Optional[str]]] = (("judgeA", "gemma"), ("judgeB", None)),
                  **overrides) -> list[Judge]:
-    """Build judges from the project's judge config (§7.1 dual-judge).
+    """Build judges from the project's judge config.
 
     ``judge_names`` pairs a logical label with a ``models.yml`` judge key. The
-    default makes **Judge A** the cross-lineage Gemma (the headline judge, §7.1)
+    default makes **Judge A** the cross-lineage Gemma (the headline judge)
     and **Judge B** the configured default judge (``None``); both differ from the
     Llama generator, so the same-family-bias delta is measurable. Imported lazily
     so this module has no config dependency when judges are injected (e.g. tests).
@@ -106,7 +106,7 @@ def build_judges(judge_names: Sequence[tuple[str, Optional[str]]] = (("judgeA", 
 def judge_plan(judges: Sequence[Judge], *, question: str, answer: str,
                contexts: Sequence[str], gold: Optional[Sequence[str]] = None,
                require_explanation: bool = False) -> dict:
-    """Score one assembled plan with every judge; return the §13 judge-metric block."""
+    """Score one assembled plan with every judge; return the judge-metric block."""
     ctx_text = "\n".join(contexts) if contexts else "No recipes were retrieved."
     gold_text = ", ".join(gold) if gold else "Not provided."
     metrics: dict = {}

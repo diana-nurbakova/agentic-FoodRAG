@@ -9,7 +9,7 @@ import streamlit as st
 from ..state import nav_to
 from ..theme import C, F, NUTRI_C, html
 
-# Flow B step labels (spec §5.1). Plan-evaluation steps are expanded by caller.
+# Flow B step labels. Plan-evaluation steps are expanded by caller.
 FLOW_B_STEPS = ["Consent", "About you", "Your profile", "Plan 1", "Plan 2", "Plan 3",
                 "Post-study", "Ranking", "Done"]
 
@@ -110,7 +110,7 @@ def meal_plan_html(plan: dict) -> str:
 
 
 def render_explanation(plan: dict) -> None:
-    """Collapsible 'why was this recommended' panel (spec §5.4)."""
+    """Collapsible 'why was this recommended' panel."""
     expl = plan.get("explanation")
     if not expl:
         return

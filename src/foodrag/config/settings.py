@@ -81,6 +81,7 @@ class ModelsConfig:
     embedding_candidates: list[dict[str, Any]] = field(default_factory=list)
     judges: dict[str, Any] = field(default_factory=dict)
     annotation: dict[str, Any] = field(default_factory=dict)
+    retriever_backbones: list[dict[str, Any]] = field(default_factory=list)
 
     def provider(self, name: str) -> ProviderSpec:
         if name not in self.providers:
@@ -103,6 +104,16 @@ class ModelsConfig:
             if c["name"] == name:
                 return c
         raise KeyError(f"Unknown embedding candidate {name!r}.")
+
+    def backbone(self, name: str) -> dict[str, Any]:
+        """The Text-to-Pandas code-generation LLM spec named ``name``."""
+        for b in self.retriever_backbones:
+            if b["name"] == name:
+                return b
+        raise KeyError(
+            f"Unknown retriever backbone {name!r}. "
+            f"Known: {[b['name'] for b in self.retriever_backbones]}"
+        )
 
 
 @lru_cache(maxsize=4)
@@ -128,6 +139,7 @@ def load_models_config(path: Optional[str] = None) -> ModelsConfig:
         embedding_candidates=raw.get("embedding_candidates") or [],
         judges=raw.get("judges") or {},
         annotation=raw.get("annotation") or {},
+        retriever_backbones=raw.get("retriever_backbones") or [],
     )
 
 

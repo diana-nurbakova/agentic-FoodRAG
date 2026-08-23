@@ -1,4 +1,4 @@
-"""Screen 3: Persona selection + custom builder (spec §4.3).
+"""Screen 3: Persona selection + custom builder.
 
 Predefined personas (admin-curated from HUMMUS) shown as cards with badges.
 The "No Profile" card opens a custom persona builder mapping to the

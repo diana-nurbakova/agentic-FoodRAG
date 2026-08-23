@@ -1,4 +1,4 @@
-"""Unit tests for the FULL-DAY meal-plan mode (§full-day).
+"""Unit tests for the FULL-DAY meal-plan mode.
 
 The default meal-plan tool reformulates the query into meal-plan questions for only
 the meal types "relevant to the current time" (partial-day, mean ~2.3 meals). When the

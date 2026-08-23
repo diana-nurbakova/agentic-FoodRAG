@@ -1,8 +1,8 @@
-"""TFS-KBQA — fine-tuned semantic parsing (2024), adapted to HUMMUS (§5.8).
+"""TFS-KBQA — fine-tuned semantic parsing (2024), adapted to HUMMUS.
 
 TFS-KBQA answers by *compiling the question to a structured query* with a model
 fine-tuned in three steps, then executing it — sidestepping the traversal fan-out
-that ToG/RoG fight (§5.8). Here the structured query is **Cypher** over HUMMUS.
+that ToG/RoG fight. Here the structured query is **Cypher** over HUMMUS.
 
 Three pieces:
 
@@ -10,7 +10,7 @@ Three pieces:
   ``constraints.filter_valid`` (the gold-answer definition) edge-for-edge, so the
   query it emits selects exactly the persona's valid recipes, ranked health-first.
   This serves three roles: the **gold target** for generating the fine-tuning data
-  (the QA set supplies training data, §5.8), the **fallback** when no model/LLM is
+  (the QA set supplies training data), the **fallback** when no model/LLM is
   available, and the **oracle** the trainer's outputs are checked against.
 * :class:`TFSParser` — produces Cypher from the question: a fine-tuned checkpoint
   (trained by ``kbqa/training/tfs_train.py``) if present, else the base LLM

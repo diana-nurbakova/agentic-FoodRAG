@@ -1,4 +1,4 @@
-"""Dual-use adapters that expose a :class:`KBQASystem` two ways (§5.7).
+"""Dual-use adapters that expose a :class:`KBQASystem` two ways.
 
 The whole point of the external-baseline design is that each KBQA system is used
 in two roles, answering two different questions:
@@ -7,14 +7,14 @@ in two roles, answering two different questions:
   its ranked list on the retrieval + health + safety metrics. Here that is just a
   ladder :class:`~foodrag.baselines.base.Baseline` tagged ``EXP-1`` so it flows
   through the same :func:`~foodrag.baselines.runner.run_baseline` harness as the
-  popularity/CF rungs and emits §13 records.
+  popularity/CF rungs and emits per-question records.
 * **Use 2 — full-pipeline (EXP-7 rung 4):** attach FoodRAG's meal-plan assembly
   layer on top of the system's retrieved recipes. The assembly layer consumes a
   ``DataFrameRetrieverBase``, so :class:`KBQARetriever` adapts the system to that
   interface (binding the current persona, which a bare query string lacks).
 
 Both wrap the *same* ``system.retrieve(qa_item, k)``, so Use-1 and Use-2 numbers
-are attributable to the same retrieval mechanism (the §5.7 decomposition).
+are attributable to the same retrieval mechanism (the.7 decomposition).
 """
 from __future__ import annotations
 

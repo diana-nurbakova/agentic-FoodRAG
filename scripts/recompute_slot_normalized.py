@@ -1,11 +1,11 @@
 """Offline recompute of the slot-normalized plan-level metrics over stored records.
 
-Implements spec ``specs/FoodRAG_Slot_Normalized_Metrics.md`` as a POST-PROCESSING pass:
-for each FoodRAG full-pipeline checkpoint record it adds the ``*_norm`` metrics (scored
-against the meals the plan was *requested* to produce, with nutrient bands energy-share
-scaled) while preserving the existing full-day values as ``*_full``. NO pipeline re-run,
-no LLM, no 7GB hummus — only ``recipes_df`` (nutrients / meal_types) + the stored records
-+ ``config/guideline_reference_tables.json`` (bands).
+Implements the metric definitions in :mod:`foodrag.baselines.slot_normalized` as a
+POST-PROCESSING pass: for each FoodRAG full-pipeline checkpoint record it adds the
+``*_norm`` metrics (scored against the meals the plan was *requested* to produce, with
+nutrient bands energy-share scaled) while preserving the existing full-day values as
+``*_full``. NO pipeline re-run, no LLM, no 7GB hummus — only ``recipes_df`` (nutrients /
+meal_types) + the stored records + ``config/guideline_reference_tables.json`` (bands).
 
 Q (requested slots) source, per record:
 - ``requested_meal_types`` present  → ``requested_slots_source = "persisted"``
@@ -53,7 +53,7 @@ CONFIG_RUNS = {
     "foodrag_h1_dense_fullday": [f"foodrag_h1_dense_fullday_run{r}.jsonl" for r in (1, 2, 3)],
 }
 
-# full-day metric key -> the backward-compat *_full key it is preserved under (spec §4).
+# full-day metric key -> the backward-compat *_full key it is preserved under.
 FULL_MAP = {
     "meal_slot_completeness": "meal_slot_completeness_full",
     "structural_validity": "structural_validity_full",

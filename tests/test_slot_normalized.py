@@ -1,4 +1,4 @@
-"""Unit tests for the slot-normalized plan-level metrics (spec §3).
+"""Unit tests for the slot-normalized plan-level metrics.
 
 Deterministic: hand-built recipe dicts / a tiny recipes_df + the real reference-tables
 JSON (bands). No LLM, no graph, no 7GB hummus.
@@ -47,7 +47,7 @@ def _recipe(*, meal_types=(), serving=100, **nutrients):
     return row
 
 
-# ── §3.1 completeness_norm ────────────────────────────────────────────────────
+# ── completeness_norm ─────────────────────────────────────────────────────────
 
 def test_completeness_norm_2_of_2_filled_is_one():
     plan = {"lunch": _recipe(meal_types=["lunch"]), "dinner": _recipe(meal_types=["dinner"])}
@@ -63,7 +63,7 @@ def test_completeness_norm_nan_when_nothing_requested():
     assert math.isnan(sn.meal_slot_completeness_norm({}, []))
 
 
-# ── §3.2 structural_validity_norm ─────────────────────────────────────────────
+# ── structural_validity_norm ──────────────────────────────────────────────────
 
 def test_structural_norm_valid_when_all_requested_filled_and_admissible():
     plan = {"lunch": _recipe(meal_types=["lunch"]), "dinner": _recipe(meal_types=["dinner"])}
@@ -81,7 +81,7 @@ def test_structural_norm_zero_when_requested_slot_missing():
     assert sn.structural_validity_norm(plan, ["lunch", "dinner"]) == 0.0
 
 
-# ── §3.3 rho ──────────────────────────────────────────────────────────────────
+# ── rho ───────────────────────────────────────────────────────────────────────
 
 def test_rho_lunch_dinner():
     assert sn.rho(["lunch", "dinner"]) == pytest.approx(0.64)
@@ -91,7 +91,7 @@ def test_rho_full_day_is_one():
     assert sn.rho(["breakfast", "lunch", "dinner", "snack"]) == pytest.approx(1.0)
 
 
-# ── §3.4 guideline_adherence_norm: band scaling by rho ────────────────────────
+# ── guideline_adherence_norm: band scaling by rho ─────────────────────────────
 
 def test_band_target_energy_in_scaled_band_but_out_of_full_band(ref):
     """1300 kcal over lunch+dinner: inside the rho-scaled energy band [1152,1408] (norm=1),
@@ -117,12 +117,12 @@ def test_band_scaling_degrades_to_full_at_rho_one(ref):
     assert per["energy"] == 1  # 2000 in [1800,2200]
 
 
-# ── §3.4 ceiling scaling for adherence but NOT for the safety flag ────────────
+# ── ceiling scaling for adherence but NOT for the safety flag ─────────────────
 
 def test_ceiling_scaled_for_adherence_but_safety_flag_unscaled(ref):
     """Sodium 3.0 g over lunch+dinner (rho=.64): scaled adherence ceiling = 2.24 g -> the
     adherence score marks it 0, yet 3.0 <= 3.5 g real UL so the safety hard-ceiling breach
-    stays False. The safety ceiling is never scaled (spec §3.4)."""
+    stays False. The safety ceiling is never scaled."""
     plan = {"lunch": _recipe(meal_types=["lunch"], sodium_mg=1500),
             "dinner": _recipe(meal_types=["dinner"], sodium_mg=1500)}  # 3000 mg = 3.0 g
     totals = ga.plan_daily_totals(plan)
@@ -145,7 +145,7 @@ def test_ceiling_adherent_at_full_day(ref):
     assert per["sodium"] == 1
 
 
-# ── §3.5 calorie_adherence_norm ───────────────────────────────────────────────
+# ── calorie_adherence_norm ────────────────────────────────────────────────────
 
 def test_calorie_norm_perfect_at_renormalized_split():
     """lunch/dinner target renormalizes to .41/.41... equal-calorie halves deviate a little
@@ -162,7 +162,7 @@ def test_calorie_norm_nan_without_calories():
     assert math.isnan(sn.calorie_adherence_norm(plan, ["lunch"], sn.rho(["lunch"])))
 
 
-# ── §3.6 diversity guard ──────────────────────────────────────────────────────
+# ── diversity guard ───────────────────────────────────────────────────────────
 
 def test_diversity_null_on_single_filled_slot(ref):
     single = _recipe(recipe_url="L", meal_types=["lunch"], cal=500, ingredient_names=["a", "b"])

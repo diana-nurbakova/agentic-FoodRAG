@@ -1,4 +1,4 @@
-"""pFoodReq / BAMnet adaptation (baseline ladder rung 4, §5.8).
+"""pFoodReq / BAMnet adaptation (baseline ladder rung 4).
 
 Currently implements the **data-adaptation layer** — the torch-independent half
 that maps HUMMUS into the FoodKG-style input pFoodReq expects, and validates it

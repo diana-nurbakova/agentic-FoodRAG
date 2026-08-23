@@ -1,7 +1,7 @@
 """Export evaluation results to JSON:
-  - eval_results/json/<config>_per_question.json : every per-question §13.1 record
+  - eval_results/json/<config>_per_question.json : every per-question.1 record
     for that config (each record tagged with its ``run``), for all configs.
-  - eval_results/json/aggregate.json : the §13.2 aggregate records
+  - eval_results/json/aggregate.json : the.2 aggregate records
     (config x stratum x metric) INCLUDING bootstrap 95% CIs (ci_low/ci_high),
     per-question variance, n_questions and n_runs.
 

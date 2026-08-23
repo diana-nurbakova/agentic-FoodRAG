@@ -1,7 +1,7 @@
-"""Deterministic evaluation metrics (Evaluation Protocol §4.3–4.5).
+"""Deterministic evaluation metrics.
 
 Pure, rule-based functions — NOT LLM-judged — over HUMMUS recipe dicts and meal
-plans. These are the demo-priority safety/quality metrics (protocol §12.1):
+plans. These are the demo-priority safety/quality metrics:
 allergen & hard-constraint violations, constraint satisfaction, calorie-distribution
 adherence, intra-plan diversity, meal-slot completeness, and structural validity.
 
@@ -9,7 +9,7 @@ A recipe is a dict with HUMMUS column names (``calories [kcal]``, ``sugars [g]``
 ``nutri_score`` 0–1, ``ingredients`` as a comma string or list, ``tags`` …). A
 meal plan is ``{meal_type: recipe}``. No Streamlit / backend imports, so unit-
 testable in isolation; the live path injects a FoodOn descendant lookup for
-ontology-aware allergen detection (protocol §4.3).
+ontology-aware allergen detection.
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ import re
 from itertools import combinations
 from typing import Callable, Iterable, Optional
 
-# Calorie split target (protocol §4.5; single-snack form of nutrition_config)
+# Calorie split target (single-snack form of nutrition_config)
 CALORIE_TARGETS = {"breakfast": 0.22, "lunch": 0.32, "dinner": 0.32, "snack": 0.14}
 REQUIRED_SLOTS = ("breakfast", "lunch", "dinner", "snack")
 _NUTRI_LETTER_SCORE = {"A": 1.0, "B": 0.75, "C": 0.5, "D": 0.25, "E": 0.0}
@@ -55,14 +55,18 @@ def nutri_to_unit(value) -> float:
 
 
 # An ``expand`` maps the blacklist terms to their FoodOn-descendant leaf
-# ingredient names (so a class like ``gluten`` yields ``wheat flour`` …), per the
-# real ``PreProcessedFoodOn.translate_ingredients`` API (protocol §4.3). It takes
-# the whole blacklist and returns the expanded name set — the same contract as
-# ``foodrag.baselines.constraints.IngredientExpander``.
+# ingredient names (so a class like ``wheat food product`` yields ``wheat flour``,
+# ``whole wheat flour`` …), per the real ``PreProcessedFoodOn.translate_ingredients``
+# API. It takes the whole blacklist and returns the expanded name set — the same
+# contract as ``foodrag.baselines.constraints.IngredientExpander``.
+#
+# This is ``rdfs:subClassOf`` expansion, so it covers is-a only: a class like
+# ``gluten`` is a childless leaf in FoodOn and expands to nothing. See
+# docs/ARCHITECTURE.md §2.3.
 Expander = Callable[[Iterable[str]], set[str]]
 
 
-# ── §4.3 Safety metrics (deterministic) ───────────────────────────────────
+# ── Safety metrics (deterministic) ────────────────────────────────────────
 def recipe_ingredient_tokens(recipe: dict) -> set[str]:
     """Lower-cased ingredient-name tokens present in a recipe."""
     return _tokens(recipe.get("ingredients")) | _tokens(recipe.get("ingredient_names"))
@@ -95,7 +99,7 @@ def recipe_violated_allergens(recipe: dict, blacklist: Iterable[str],
 def recipe_violates_allergen(recipe: dict, blacklist: Iterable[str],
                              expand: Optional[Expander] = None) -> bool:
     """True if the recipe contains a blacklisted ingredient OR a FoodOn descendant
-    of a blacklisted class (protocol §4.3)."""
+    of a blacklisted class."""
     return bool(recipe_violated_allergens(recipe, blacklist, expand))
 
 
@@ -116,7 +120,7 @@ _OPS = {
 
 
 def recipe_violates_constraint(recipe: dict, constraints: list[tuple]) -> bool:
-    """True if the recipe breaks any hard nutrient bound (protocol §4.3)."""
+    """True if the recipe breaks any hard nutrient bound."""
     return bool(recipe_violated_constraints(recipe, constraints))
 
 
@@ -140,7 +144,7 @@ def hard_constraint_violation_rate(recipes: list[dict], constraints: list[tuple]
 def constraint_satisfaction_rate(recipes: list[dict], blacklist: Iterable[str],
                                  constraints: list[tuple],
                                  expand: Optional[Callable[[str], set[str]]] = None) -> float:
-    """Fraction of recipes satisfying ALL stated requirements (protocol §4.3)."""
+    """Fraction of recipes satisfying ALL stated requirements."""
     if not recipes:
         return 0.0
     ok = sum(
@@ -150,7 +154,7 @@ def constraint_satisfaction_rate(recipes: list[dict], blacklist: Iterable[str],
     return ok / len(recipes)
 
 
-# ── §4.2 Health metrics ───────────────────────────────────────────────────
+# ── Health metrics ────────────────────────────────────────────────────────
 def avg_nutriscore(recipes: list[dict]) -> float:
     if not recipes:
         return 0.0
@@ -163,7 +167,7 @@ def avg_fsa(recipes: list[dict]) -> float:
     return sum(max(0.0, min(1.0, _num(r, "fsa_score", default=0.0))) for r in recipes) / len(recipes)
 
 
-# ── §4.5 Meal-plan quality (deterministic) ────────────────────────────────
+# ── Meal-plan quality (deterministic) ─────────────────────────────────────
 def meal_slot_completeness(plan: dict, required: Iterable[str] = REQUIRED_SLOTS) -> float:
     required = list(required)
     if not required:
@@ -173,7 +177,7 @@ def meal_slot_completeness(plan: dict, required: Iterable[str] = REQUIRED_SLOTS)
 
 
 def intra_plan_diversity(plan: dict) -> float:
-    """1 − mean pairwise ingredient/tag Jaccard across meals (protocol §4.5)."""
+    """1 − mean pairwise ingredient/tag Jaccard across meals."""
     sets = []
     for recipe in plan.values():
         if recipe:
@@ -189,7 +193,7 @@ def intra_plan_diversity(plan: dict) -> float:
 
 
 def calorie_distribution_adherence(plan: dict, targets: dict = CALORIE_TARGETS) -> float:
-    """1 − mean abs deviation from the target calorie split (protocol §4.5)."""
+    """1 − mean abs deviation from the target calorie split."""
     cals = {slot: _num(recipe, "calories [kcal]", "cal") for slot, recipe in plan.items()
             if recipe and slot in targets}
     total = sum(cals.values())
@@ -199,11 +203,11 @@ def calorie_distribution_adherence(plan: dict, targets: dict = CALORIE_TARGETS) 
     return max(0.0, 1.0 - sum(devs) / len(devs))
 
 
-# ── §4.4 Structural validity (deterministic) ──────────────────────────────
+# ── Structural validity (deterministic) ───────────────────────────────────
 def structural_validity(plan: dict, explanation: Optional[str] = None,
                         required: Iterable[str] = REQUIRED_SLOTS) -> bool:
     """Does the output parse as a valid meal plan: all required slots filled with
-    a titled recipe, plus a non-empty explanation field (protocol §4.4)?"""
+    a titled recipe, plus a non-empty explanation field?"""
     for slot in required:
         recipe = plan.get(slot)
         if not isinstance(recipe, dict) or not str(recipe.get("title", "")).strip():
@@ -263,7 +267,7 @@ def constraint_label(constraint: tuple) -> str:
 
 def safety_report(recipes: list[dict], blacklist: Iterable[str], constraints: list[tuple],
                   expand: Optional[Expander] = None) -> dict:
-    """Per-recipe + aggregate deterministic safety report (protocol §4.3).
+    """Per-recipe + aggregate deterministic safety report.
 
     Returns ``{allergen_rate, hard_rate, satisfaction_rate, any_violation, n,
     blacklist, constraints, per_recipe:[{title, allergens, constraints, ok}]}``.
@@ -303,11 +307,20 @@ def foodon_expander(hummus_data: dict) -> Optional[Expander]:
     """Build a blacklist→FoodOn-descendants expander from ``hummus_data['food_on']``.
 
     Uses the real ``PreProcessedFoodOn.translate_ingredients`` API
-    (``include_food_on=True`` → resolve a FoodOn class to its descendant Food.com
-    leaf ingredient names), which is the project's ontology bridge and what the
-    protocol-blessed ``baselines.constraints.foodon_expander`` uses (protocol §4.3,
-    §5.7). Results are cached per blacklist. Returns None (→ substring fallback)
-    when no FoodOn object / ``translate_ingredients`` is available."""
+    (``include_food_on=True`` → resolve a FoodOn class to its ``rdfs:subClassOf``
+    descendant Food.com leaf ingredient names), which is the project's ontology
+    bridge and what ``baselines.constraints.foodon_expander`` uses. Results are
+    cached per blacklist. Returns None (→ substring fallback) when no FoodOn
+    object / ``translate_ingredients`` is available.
+
+    WARNING — this is display-only enrichment, never a safety guarantee. It only
+    resolves a blacklisted term that is itself a FoodOn class *label* with
+    descendants; free-text terms and childless classes (e.g. ``gluten``) expand to
+    nothing. It covers is-a and never contains, and the underlying food.com↔FoodOn
+    mapping is a lexical join with verified gross errors (``dry roasted peanuts``
+    → *nonfat dry milk*, ``baked tofu`` → *trout baked*). Treat a hit as a hint and
+    a miss as meaningless; the substring net is what carries recall here. Measured
+    failures: docs/ARCHITECTURE.md §2.3."""
     food_on = (hummus_data or {}).get("food_on")
     if food_on is None or not callable(getattr(food_on, "translate_ingredients", None)):
         return None

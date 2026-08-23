@@ -1,7 +1,7 @@
 """Offline backfill of the new deterministic metrics onto already-computed records.
 
 The Evaluation-Protocol metrics added after the runs (hard/soft constraint split
-§4.3, avg_rating, slot_appropriateness §4.5, guideline adherence §4.5.1) are all
+, avg_rating, slot_appropriateness, guideline adherence) are all
 deterministic. Every full-pipeline record already stores ``retrieved_ids`` = the
 final plan's recipe_urls, so the plan reconstructs offline (``urls_to_plan``) and
 the new metrics are computed with ZERO LLM calls — no re-run needed.
@@ -111,14 +111,14 @@ def backfill_record(rec: dict, qa, indexed) -> dict:
     if g.get("guideline_hard_ceiling_breach"):
         m["hard_constraint_violation"] = max(m.get("hard_constraint_violation", 0.0) or 0.0, 1.0)
 
-    # §8.1 graph-path coverage/validity — from the reconstructed recipes (no explanation
-    # text needed, so populated on EVERY full-pipeline config). §8.2 claim grounding needs
+    # graph-path coverage/validity — from the reconstructed recipes (no explanation
+    # text needed, so populated on EVERY full-pipeline config)..2 claim grounding needs
     # record["explanation_text"] → only present on new-code runs (foodrag_h1_t2p); NaN otherwise.
     m.update(explainability.explainability_metrics(
         persona, rows, explanation_text=rec.get("explanation_text", ""),
         expand=constraints.identity_expand))
 
-    # non-scalar §13.1 fields live at top level (kept for fidelity; aggregate skips them)
+    # non-scalar.1 fields live at top level (kept for fidelity; aggregate skips them)
     rec["guideline_adherence_per_nutrient"] = g["guideline_adherence_per_nutrient"]
     rec["guideline_class"] = g["guideline_class"]
     if "plan" not in rec or not rec.get("plan"):

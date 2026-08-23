@@ -1,7 +1,7 @@
-"""Study-config persistence (spec §6.3, §11.5 config_service.py).
+"""Study-config persistence.
 
 The admin-editable study config (``admin_config``) is stored as JSON so changes
-take effect across sessions and restarts **without redeployment** (spec §6.3):
+take effect across sessions and restarts **without redeployment**:
 
   - **Primary:** ``config/study_config.json`` in the HF Dataset repo (when
     ``FOODRAG_DATASET_REPO`` + ``HF_TOKEN`` are set).

@@ -1,14 +1,13 @@
-"""Loader for pre-computed evaluation results (Evaluation Protocol §11.2, §13).
+"""Loader for pre-computed evaluation results.
 
 The Report tab (Flow C) reads versioned result tables — it does NOT compute
-anything live (§11.2). Results live in ``eval_results/`` (or ``FOODRAG_EVAL_RESULTS``):
+anything live. Results live in ``eval_results/`` (or ``FOODRAG_EVAL_RESULTS``):
 
-  - ``aggregate.csv``  — §13.2 per (experiment × config × stratum × metric)
-  - ``pairwise.csv``   — §13.3 significance markers
+  - ``aggregate.csv``  — per (experiment × config × stratum × metric)
+  - ``pairwise.csv``   — significance markers
   - ``manifest.json``  — {"sample": bool, ...} provenance
 
-Files are cached read-only. Panels render conditionally on what's present
-(§12.3: minimum viable = EXP-1 + EXP-3 + Safety).
+Files are cached read-only. Panels render conditionally on what's present.
 """
 
 from __future__ import annotations

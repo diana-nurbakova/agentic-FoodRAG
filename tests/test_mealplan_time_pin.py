@@ -1,10 +1,10 @@
-"""Unit tests for pinning + persisting the meal-plan recommendation time (§time-pin).
+"""Unit tests for pinning + persisting the meal-plan recommendation time.
 
 The goal of the feature is reproducibility: the meal-plan tool resolves a "current
 time/date" that decides which meal types are requested. We now CAPTURE the resolved
 value into RecipeState (RECOMMENDATION_TIME_KEY) and carry it — plus the requested
 meal types (the keys of MEAL_PLAN_QUESTIONS_KEY) — onto AssembledPlan and into the
-§13 record.
+per-question record.
 
 These tests mock the LLM to return a fixed meal-plan-questions JSON, so no real
 API / hummus / retriever is needed (memory-light).

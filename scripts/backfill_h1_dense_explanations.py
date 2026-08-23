@@ -1,10 +1,10 @@
-"""Targeted backfill of NL explanations onto the foodrag_h1_dense records so §8.2
+"""Targeted backfill of NL explanations onto the foodrag_h1_dense records so.2
 claim-grounding (claim_grounding_rate / unsupported_claim_rate) can be computed for
 that config (currently only foodrag_h1_t2p has it).
 
 Why this exists
 ---------------
-foodrag_h1_dense ran on pre-persist code, so its §13.1 records have no
+foodrag_h1_dense ran on pre-persist code, so its.1 records have no
 ``explanation_text`` — hence claim_grounding_rate / unsupported_claim_rate are NaN.
 The final plan's recipes ARE recoverable: ``record["retrieved_ids"]`` is the final
 plan's recipe_urls, so we reconstruct the plan (same ``urls_to_plan`` logic used in
@@ -31,7 +31,7 @@ Usage
     python -m scripts.backfill_h1_dense_explanations --aggregate-only
 
 The final step re-aggregates foodrag_h1_dense and (re)writes eval_results/aggregate.csv
-+ the per-question parquet so they pick up the §8.2 keys.
++ the per-question parquet so they pick up the keys.
 """
 from __future__ import annotations
 
@@ -129,7 +129,7 @@ def generate_explanation(question: str, plan_dict: dict, llm) -> str:
 
 
 def refresh_section8(rec: dict, persona: dict, rows: list, explanation_text: str) -> None:
-    """Recompute the §8 explainability block in place. path_coverage / path_validity
+    """Recompute the explainability block in place. path_coverage / path_validity
     are unchanged (recipes are the same); claim_grounding_rate / unsupported_claim_rate
     now populate from the fresh explanation_text. Everything else in the record is
     left intact (add-only for explanation_text)."""
@@ -145,7 +145,7 @@ def _has_explanation(rec: dict) -> bool:
 
 
 def process_record(rec: dict, qa, indexed, llm) -> tuple[str, str]:
-    """Fill rec["explanation_text"] + refresh §8. Returns (status, sample) for logging.
+    """Fill rec["explanation_text"] + refresh. Returns (status, sample) for logging.
     Never raises: a failed explanation leaves explanation_text unset (retried next run).
     """
     i = int(rec["question_id"].split("_")[1])

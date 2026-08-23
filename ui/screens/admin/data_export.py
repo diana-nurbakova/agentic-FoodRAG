@@ -1,8 +1,8 @@
-"""Data export (spec §6.6).
+"""Data export.
 
 Download the in-memory interaction buffer as JSONL, view auto-push status,
 force a flush, link to the dataset repo, and export the current study config
-JSON (spec §6.3).
+JSON.
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ def render() -> None:
     session_id = st.session_state["session_id"]
 
     st.subheader("Interaction logs")
-    st.caption(f"{len(events)} events in the current in-memory buffer (spec §9.1).")
+    st.caption(f"{len(events)} events in the current in-memory buffer.")
     st.download_button(
         "⬇ Download buffer as JSONL",
         data=_to_jsonl(events) or "",
@@ -37,7 +37,7 @@ def render() -> None:
     st.subheader("Auto-push status")
     status = logging_service.status()
     st.caption("Logs are pushed to the private HF Dataset repo every "
-               f"{status['interval_s'] // 60} minutes and on session end (spec §9.2).")
+               f"{status['interval_s'] // 60} minutes and on session end.")
 
     if status["remote_enabled"]:
         st.success(f"Remote logging ON → `{status['repo_id']}`"
@@ -72,7 +72,7 @@ def render() -> None:
 
     st.divider()
     st.subheader("Study configuration (JSON)")
-    st.caption("This is what would be persisted to the HF Dataset repo so changes apply without redeployment (spec §6.3).")
+    st.caption("This is what would be persisted to the HF Dataset repo so changes apply without redeployment.")
     cfg_json = json.dumps(get_admin_config(), indent=2, ensure_ascii=False)
     st.code(cfg_json, language="json")
     st.download_button("⬇ Download study config", data=cfg_json,

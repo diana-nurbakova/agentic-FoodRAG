@@ -1,8 +1,8 @@
 """Offline analysis over pre-computed FoodRAG evaluation results.
 
 Memory-light, read-only helpers that operate on the aggregate long-format result
-tables (Evaluation Protocol §13.2), NOT on HUMMUS or any live pipeline. The
-Pareto trade-off analysis (§9.4) lives here.
+tables, NOT on HUMMUS or any live pipeline. The
+Pareto trade-off analysis lives here.
 """
 
 from .pareto import (

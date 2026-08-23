@@ -1,4 +1,4 @@
-"""Service layer bridging the Streamlit GUI to the ``foodrag`` backend (spec §11.5).
+"""Service layer bridging the Streamlit GUI to the ``foodrag`` backend.
 
 - ``backend``    — cached heavy singletons (LLM, embedding, HUMMUS df, query engine)
                    + agent-workflow assembly, async run, and state extraction.

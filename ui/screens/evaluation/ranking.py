@@ -1,4 +1,4 @@
-"""Step 8: Final ranking (spec §5.6).
+"""Step 8: Final ranking.
 
 Rank all plans most→least preferred (▲/▼ fallback for drag), pick the one you'd
 actually follow, and leave open-text feedback. Plans are labelled by the order

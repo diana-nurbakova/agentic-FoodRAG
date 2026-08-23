@@ -1,4 +1,4 @@
-"""Admin-editable study configuration (spec §6.3).
+"""Admin-editable study configuration.
 
 The canonical config lives in ``st.session_state['admin_config']`` and mirrors
 the JSON the admin would store in the HF Dataset repo (so it can be edited
@@ -20,7 +20,7 @@ import streamlit as st
 from .mock_data import PERSONAS
 from .study_data import DEFAULT_STUDY_CONDITIONS
 
-# Questionnaire block catalogue (spec §6.3 table) — selectable when adding blocks
+# Questionnaire block catalogue — selectable when adding blocks
 BLOCK_CATALOG = {
     "consent": "Consent (fixed text)",
     "demographics": "Demographics (GDPR fields)",
@@ -50,7 +50,7 @@ _DEFAULT_BLOCKS = [
 
 
 def default_admin_config() -> dict:
-    """Fresh default config (spec §6.3 JSON shape)."""
+    """Fresh default config."""
     return {
         "study_id": "recsys2026-review",
         "active_flow": "both",                       # both | exploration | evaluation
@@ -67,11 +67,11 @@ def default_admin_config() -> dict:
             "explanation_default": True,
             "arena_available": True,
             "user_can_change_pipeline": True,
-            # Live backend (spec §2.2): off by default — real runs hit the LLM
+            # Live backend: off by default — real runs hit the LLM
             # provider (cost + latency). Env FOODRAG_REAL_BACKEND also forces it on.
             "use_real_backend": False,
         },
-        # Persona management (spec §6.2): display order + active flag per persona
+        # Persona management: display order + active flag per persona
         "personas": [{"id": p["id"], "name": p["name"], "active": True} for p in PERSONAS],
         "imported_personas": [],
         # Flow A recommender: which 3 evaluation profiles (profiles.json ids) seed the

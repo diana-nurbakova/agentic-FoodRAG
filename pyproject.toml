@@ -1,11 +1,10 @@
 [project]
 name = "foodrag"
 version = "0.1.0"
-description = "Health-aware, personalised meal-plan recommender (agentic RAG over the HUMMUS KG). Refactor of gitlab.com/felix134/agentic-food-rag."
+description = "Health-aware, personalised meal-plan recommender (agentic RAG over the HUMMUS KG)."
 readme = "README.md"
 requires-python = ">=3.11,<3.12"
 license = { text = "MIT" }
-authors = [{ name = "Diana Nurbakova" }]
 
 # Direct dependencies, pinned to the versions the original code was validated
 # against (frozen_requirements.txt). llama-index's API changes between minor
@@ -50,7 +49,7 @@ dependencies = [
     "ipython-ngql==0.14.3",
     # evaluation
     "ragas==0.2.1",
-    "rapidfuzz>=3,<4",  # pFoodReq baseline: vendored build_all_data.py (§5.8)
+    "rapidfuzz>=3,<4",  # pFoodReq baseline: vendored build_all_data.py
     # config / io / robustness (used by the refactor)
     "ruamel.yaml==0.18.6",
     "pyyaml==6.0.2",
@@ -65,7 +64,7 @@ dependencies = [
     "ipywidgets==8.1.5",
     # GUI (Streamlit demo app — Flow A/B + admin, HF Spaces Docker target)
     "streamlit>=1.58,<2",
-    "plotly>=5.20,<6",  # Report tab Pareto scatters (Eval Protocol §11.3/§11.4)
+    "plotly>=5.20,<6",  # Report tab Pareto scatters
 ]
 
 [project.optional-dependencies]

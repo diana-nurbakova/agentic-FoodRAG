@@ -1,11 +1,11 @@
-"""Paired per-question significance tests between FoodRAG configs (Protocol §6).
+"""Paired per-question significance tests between FoodRAG configs.
 
 The thesis (and the current results pipeline) report means ± SD and bootstrap
-95% CIs only. Protocol §6 ("Statistical Testing Protocol") additionally requires
-**paired** comparison tests over per-question scores, and §13.3 defines the
+95% CIs only.  ("Statistical Testing Protocol") additionally requires
+**paired** comparison tests over per-question scores, and the pairwise record defines the
 Pairwise-Comparison Record this module emits.
 
-What §6 asks for and where it lives here:
+What the tests cover and where each lives:
 
 * **Paired Wilcoxon signed-rank** over per-question scores averaged across runs
   → :func:`paired_wilcoxon`.
@@ -21,7 +21,7 @@ Streamlit) and is unit-testable in isolation. The per-question files may be
 rewritten by a concurrent regeneration job, so :func:`load_per_question` reads
 each file once and retries a few times on a partial-write parse failure.
 
-Pairing rule (§6.2–6.3): for a metric and a config, each question's score is the
+Pairing rule: for a metric and a config, each question's score is the
 NaN-aware mean of that metric across the config's runs; two configs are then
 aligned on ``question_id`` and pairs where **either** side is NaN are dropped.
 
@@ -55,7 +55,7 @@ def higher_is_better(metric: str) -> bool:
 def paired_wilcoxon(a: Sequence[float], b: Sequence[float]) -> Tuple[float, float]:
     """Paired Wilcoxon signed-rank test on aligned vectors ``a`` and ``b``.
 
-    Returns ``(statistic, p_value)``. Edge cases handled per §6:
+    Returns ``(statistic, p_value)``. Edge cases handled per:
 
     * all per-question differences are (numerically) zero → ``(0.0, 1.0)``
       (scipy raises for this; there is no signal to test).
@@ -85,7 +85,7 @@ def paired_wilcoxon(a: Sequence[float], b: Sequence[float]) -> Tuple[float, floa
 
 
 def median_diff(a: Sequence[float], b: Sequence[float]) -> float:
-    """Effect size (§6): the median per-question difference ``a − b``."""
+    """Effect size: the median per-question difference ``a − b``."""
     a = np.asarray(a, dtype=float)
     b = np.asarray(b, dtype=float)
     if a.size == 0:
@@ -108,13 +108,13 @@ def paired_bootstrap(
     seed: int = 0,
     alpha: float = 0.05,
 ) -> BootstrapResult:
-    """Paired bootstrap for the difference in means (§6, allowed alternative).
+    """Paired bootstrap for the difference in means.
 
     Resamples the paired differences ``d = a − b`` (``n`` resamples with a fixed
     ``seed``), returning the observed mean difference, its percentile CI
     (``[alpha/2, 1-alpha/2]``), and a two-sided bootstrap p-value defined as the
     fraction of resample means on the far side of 0 from the observed mean,
-    doubled (§6 "fraction of resamples with diff crossing 0"). p is clipped to
+    doubled. p is clipped to
     ``[1/n, 1]`` — a zero count means "smaller than the resolution", not exactly 0.
     """
     a = np.asarray(a, dtype=float)
@@ -141,7 +141,7 @@ def paired_bootstrap(
 
 
 def holm_bonferroni(pvalues: Sequence[float]) -> List[float]:
-    """Holm–Bonferroni step-down correction (§6.5), preserving input order.
+    """Holm–Bonferroni step-down correction, preserving input order.
 
     For ``m`` p-values sorted ascending, the ``k``-th smallest is scaled by
     ``m − k`` and the running maximum is enforced (monotone, capped at 1.0).
@@ -254,7 +254,7 @@ def metric_available(records: Sequence[dict], metric: str) -> bool:
     return False
 
 
-# ── §13.3 pairwise record generation ───────────────────────────────────────
+# ── pairwise record generation ─────────────────────────────────────────────
 # The interpretable comparisons (task spec). Each entry: (config_a, config_b).
 CONFIG_PAIRS: List[Tuple[str, str]] = [
     # Agentic (H1) vs recommend-only (H2), per retriever.
@@ -329,10 +329,10 @@ def compute_pairwise(
     seed: int = 0,
     metric_selector: "Callable[[str, str], List[str]]" = _metrics_for_pair,
 ) -> List[dict]:
-    """Build §13.3 Pairwise-Comparison Records for every (metric, config pair).
+    """Build Pairwise-Comparison Records for every (metric, config pair).
 
     Holm–Bonferroni is applied **within each metric family** (all config pairs
-    tested for that metric at this stratum), per §6.5. Returns a list of dict
+    tested for that metric at this stratum), per. Returns a list of dict
     records ready for CSV/JSON serialisation.
     """
     # Collect raw rows first, grouped by metric so we can correct within-family.

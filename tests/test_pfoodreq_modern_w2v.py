@@ -1,4 +1,4 @@
-"""Unit tests for the modern-embedding ablation writer (§5.8).
+"""Unit tests for the modern-embedding ablation writer.
 
 Checks the emitted file is GloVe-format (the exact shape pFoodReq's
 build_pretrained_w2v.py parses) and that reserved tokens are skipped — using a

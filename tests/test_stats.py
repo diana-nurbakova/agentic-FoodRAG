@@ -1,4 +1,4 @@
-"""Unit tests for the paired significance-test module (Protocol §6 / §13.3).
+"""Unit tests for the paired significance-test module.
 
 Covers the core statistics on known vectors (identical → p=1, clearly-different
 → p<0.05, all-zero handling), Holm–Bonferroni ordering/monotonicity, NaN-aware
@@ -173,7 +173,7 @@ def test_compute_pairwise_holm_within_metric_family():
     pairs = [("foodrag_h1_t2p", "foodrag_h2_t2p"),
              ("foodrag_h1_t2p", "foodrag_h1_dense")]
     rows = compute_pairwise(records, config_pairs=pairs)
-    # every row carries the §13.3 fields incl. the correction.
+    # every row carries the fields incl. the correction.
     for r in rows:
         assert r["experiment_id"] == "EXP-7"
         assert "p_value_corrected" in r and "significant" in r

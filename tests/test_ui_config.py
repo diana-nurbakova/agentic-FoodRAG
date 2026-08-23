@@ -1,4 +1,4 @@
-"""Study-config persistence unit tests (spec §6.3)."""
+"""Study-config persistence unit tests."""
 import json
 import sys
 import types

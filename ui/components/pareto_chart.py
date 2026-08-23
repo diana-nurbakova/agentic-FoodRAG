@@ -1,13 +1,13 @@
-"""Reusable Pareto scatter with non-dominated frontier highlight (spec Flow C).
+"""Reusable Pareto scatter with non-dominated frontier highlight (Flow C).
 
 An *analysis lens only* — it visualises how configurations trade off two competing
 objectives and highlights the Pareto-optimal (non-dominated) set. It does NOT
-change how Flow A recommends (weighted-sum ranking). Per the spec, safety is never
+change how Flow A recommends (weighted-sum ranking). Safety is never
 a true Pareto axis (it's a hard feasibility filter) — the Safety-vs-Coverage panel
 uses this component only as a lens, with a caveat.
 
 ``pareto_frontier`` is pure (unit-testable); ``render_pareto`` draws an interactive
-Plotly scatter (points + frontier line + hover for config details, spec §11.3/§11.4).
+Plotly scatter (points + frontier line + hover for config details).
 """
 
 from __future__ import annotations

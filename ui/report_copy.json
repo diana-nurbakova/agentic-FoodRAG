@@ -1,5 +1,5 @@
 {
-  "_note": "Editable copy for the Report tab (Flow C). Titles/descriptions/label maps live here so they can be updated without code changes (spec: FoodRAG_Report_Tab_Modifications §3.2, §6). Numbers in prose are grounded in eval_results/RESULTS_SUMMARY.md; the stat values themselves are read live from aggregate.csv.",
+  "_note": "Editable copy for the Report tab (Flow C). Titles/descriptions/label maps live here so they can be updated without code changes. Numbers in prose are grounded in eval_results/RESULTS_SUMMARY.md; the stat values themselves are read live from aggregate.csv.",
 
   "judges": {
     "judgeA": "Gemma-3-27B",

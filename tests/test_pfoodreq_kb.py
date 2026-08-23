@@ -1,4 +1,4 @@
-"""Unit tests for the pFoodReq KB converter (baseline ladder rung 4, §5.8).
+"""Unit tests for the pFoodReq KB converter (baseline ladder rung 4).
 
 Builds a tiny recipe_kg.json from a synthetic frame and checks it against the
 structural validator that mirrors pFoodReq's own field access — so the schema

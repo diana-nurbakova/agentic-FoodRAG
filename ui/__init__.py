@@ -1,4 +1,4 @@
-"""FoodRAG Streamlit GUI package (spec §11.5).
+"""FoodRAG Streamlit GUI package.
 
 Flow A (Interactive Exploration) is implemented first; Flow B (Structured
 Evaluation) and the Admin view follow. Dense visual widgets are rendered as

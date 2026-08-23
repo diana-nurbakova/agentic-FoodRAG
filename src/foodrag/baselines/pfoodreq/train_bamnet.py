@@ -103,7 +103,7 @@ def evaluate(vec_dir: str | Path, *, model_file: str | Path, split: str = "valid
     """Load a trained BAMnet and report pFoodReq's native metrics on ``split``.
 
     Returns avg recall/precision/F1 over the split (the anchor numbers reported
-    for pFoodReq on its own HUMMUS-derived test set — Path A, §5.8). Uses the
+    for pFoodReq on its own HUMMUS-derived test set — Path A). Uses the
     same predict→label→``calc_avg_f1`` path as the training loop's validation.
     """
     _ensure_on_path()

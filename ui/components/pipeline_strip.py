@@ -1,4 +1,4 @@
-"""Pipeline strip: click-to-toggle agents + retriever selector (spec §4.4).
+"""Pipeline strip: click-to-toggle agents + retriever selector.
 
 Recommendation (retriever) and Finalization are always on and shown locked;
 Validation, Substitution and Explanation toggle and are wired straight to the
@@ -39,7 +39,7 @@ def render_pipeline_strip(config: dict, key: str, times: dict | None = None,
     Layout: [Recommend + retriever] → [Validation] → [Substitution] → [Explanation]
     → [Finalize]. Recommend and Finalize are always-on (shown locked); the three
     middle stages toggle and drive ``build_workflow``. When ``disabled`` (admin locked
-    the pipeline, spec §6.4) every control is read-only.
+    the pipeline) every control is read-only.
     """
     config.setdefault("substitution", True)
     arrow = (f"<div style=\"display:flex;align-items:center;justify-content:center;height:48px;"

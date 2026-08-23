@@ -1,6 +1,6 @@
 """EXP-5 (Realistic tier): KG-retrieval evaluation on the TIGHT stratum.
 
-Per the Evaluation Protocol §5.5, KG retrieval is only evaluated where the valid
+Per the , KG retrieval is only evaluated where the valid
 set is small (1-50 answers) so the Text-to-Cypher traversal is bounded and
 performant; broad-stratum KG retrieval remains infeasible without precomputation.
 This runner reports Hit@10 / MRR@10 / latency for a sample of the tight stratum
@@ -142,7 +142,7 @@ def main(argv=None) -> int:
     man["real_experiments"] = sorted(real)
     man["exp5_note"] = (f"EXP-5 KG retrieval: real run, tight stratum only, n={n} "
                         f"({args.qa}). Broad-stratum KG retrieval is infeasible without "
-                        f"precomputation (protocol §5.5).")
+                        f"precomputation.")
     man_path.write_text(json.dumps(man, indent=2), encoding="utf-8")
     print("KG_EVAL_OK", flush=True)
     return 0

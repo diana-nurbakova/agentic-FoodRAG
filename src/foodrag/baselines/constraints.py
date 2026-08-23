@@ -1,7 +1,7 @@
 """Deterministic persona-constraint logic shared by every baseline rung.
 
 This mirrors ``qa_generator._get_valid_recipes_for_persona`` (the function that
-defines the gold answer set) so that the safety metrics (§4.3 of the Evaluation
+defines the gold answer set) so that the safety metrics (.3 of the Evaluation
 Protocol) are computed against *exactly* the same notion of "valid recipe" used
 to build the ground truth — there is no second, drifting definition.
 
@@ -16,9 +16,25 @@ Two views are provided:
 Ingredient matching uses a pluggable ``expand`` callable. The default
 (:func:`identity_expand`) does plain Food.com-name matching, which is exactly
 what the shipped QA set encodes (``persona_config.ingredients.include_food_on =
-false``). Passing a FoodOn-backed expander upgrades allergen detection to the
-hierarchy lookup described in §4.3 ("wheat flour → wheat → gluten") without any
-change to the metric code.
+false``) and what every enforcement call site uses.
+
+DO NOT swap in :func:`foodon_expander` for allergen/blacklist safety. It is sound
+for soft preference expansion ("vegetable" → descendants), but for allergens it is
+measurably WORSE than the verbatim default on both precision and recall:
+
+* Subsumption ≠ composition. The traversal follows ``rdfs:subClassOf`` only, so it
+  cannot represent "wheat flour contains gluten". FoodOn has no "gluten-source"
+  class and models ``gluten`` (FOODON_03420177) as a childless leaf (the isolated
+  protein product), so "wheat flour ⊑ wheat ⊑ gluten-source" does not exist and
+  blacklisting "gluten" expands to nothing.
+* The food.com↔FoodOn bridge (``food_on_mappings.pkl``, inherited from FoodKG) is a
+  lexical join with gross errors: ``dry roasted peanuts`` → *nonfat dry milk*,
+  ``baked tofu`` → *trout baked*, ``black sesame seeds`` → *black bass*,
+  ``aluminum foil`` → *crab (deviled, shrimp added, in aluminum shell)*. Recall vs a
+  substring baseline: egg 16.8%, soy 31.6%, crustacean 33.1% (plain ``crab`` and
+  ``cooked shrimp`` are both missed), peanut 70.9%.
+
+Full measurements and failure modes: docs/ARCHITECTURE.md §2.3.
 """
 from __future__ import annotations
 
@@ -42,8 +58,11 @@ def foodon_expander(food_on, persona_config) -> IngredientExpander:
     """Build an expander that resolves FoodOn classes to leaf Food.com names.
 
     Delegates to ``food_on.translate_ingredients`` with the project's persona
-    config, so the expansion is identical to QA-set generation. Use this for the
-    full §4.3 allergen story; omit it for the lightweight string-matching path.
+    config, so the expansion is identical to QA-set generation.
+
+    Intended for soft *preference* expansion. NOT suitable for allergen/blacklist
+    enforcement — see the module docstring and docs/ARCHITECTURE.md §2.3 for the
+    measured precision/recall failures.
     """
     include_food_on = persona_config["ingredients"]["include_food_on"]
     include_food_com = persona_config["ingredients"]["include_food_com"]
@@ -72,7 +91,7 @@ def violates_hard_nutrient(row, persona: dict) -> bool:
     """True if the recipe breaks any numeric bound stated by the persona.
 
     Covers relative-nutrient bounds, minimum nutrition-score thresholds and
-    total-nutrient maxima — the deterministic "hard constraint" family (§4.3).
+    total-nutrient maxima — the deterministic "hard constraint" family.
     """
     for nutrient, limits in persona.get("relative_nutrients", {}).items():
         lower = limits["limits"]["lower"]
@@ -95,7 +114,8 @@ def violates_allergen(row, persona: dict, expand: IngredientExpander = identity_
     """True if the recipe contains a disliked (blacklisted) ingredient.
 
     Disliked ingredients are the QA set's proxy for allergens/blacklist; with a
-    FoodOn ``expand`` this becomes hierarchy-aware descendant detection (§4.3).
+    FoodOn ``expand`` this becomes subclass-aware descendant detection (see the
+    module docstring for what that does and does not cover).
     """
     disliked = expand(persona.get("ingredients", {}).get("dislikes", []))
     if not disliked:
@@ -194,11 +214,11 @@ def satisfies_all(row, persona: dict, expand: IngredientExpander = identity_expa
     )
 
 
-# ── §4.3 hard/soft constraint decomposition ──────────────────────────────────
+# ── hard/soft constraint decomposition ───────────────────────────────────────
 # The safety metrics decompose a persona into INDIVIDUAL constraints so a
 # recommendation can be scored per-constraint (fraction satisfied) as well as
 # all-or-nothing. This mirrors the single ``satisfies_all`` predicate but exposes
-# each atomic requirement separately (Evaluation Protocol §4.3).
+# each atomic requirement separately.
 #
 # HARD (objective safety/nutrition bounds — one per stated bound):
 #   * each ``relative_nutrients`` bound (per nutrient): lower <= value <= upper

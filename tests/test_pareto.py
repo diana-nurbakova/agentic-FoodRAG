@@ -1,4 +1,4 @@
-"""Tests for foodrag.analysis.pareto (Evaluation Protocol §9.4).
+"""Tests for foodrag.analysis.pareto.
 
 Covers the generic ``pareto_frontier`` (hand-checked 2D sets, single point,
 all-dominated-by-one, ties, a min-axis case, NaN exclusion) and the three

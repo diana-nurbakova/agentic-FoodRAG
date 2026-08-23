@@ -1,8 +1,8 @@
-# Paired Significance Tests (Protocol §6 / §13.3)
+# Paired Significance Tests
 
 The results pipeline reports means ± SD and **bootstrap 95% CIs** (stored for
 **every** `config × stratum × metric` in `eval_results/json/aggregate.json`).
-Protocol §6 ("Statistical Testing Protocol") additionally requires **paired**
+The evaluation protocol additionally requires **paired**
 comparison tests over per-question scores. This document reports those tests for the
 interpretable FoodRAG configuration comparisons (EXP-7), for both the partial-day
 (deployed) and the full-day (all-four-slots) regimes.

@@ -1,15 +1,12 @@
 """Mock data + instruments for Flow B (Structured Evaluation).
 
-Profiles and meal plans are ported from the study mockup
-(``mockups/foodrag-study-final.html``); the **questionnaire instruments and
-flow parameters follow the revised spec (§5)**, which deliberately differs from
-that mockup (see §5.10): 5-point ResQue-based Likert (not 7-point ad-hoc),
-attention checks, a post-study block, random assignment, 3 plans, Latin-square
-counterbalancing.
+The questionnaire instruments and flow parameters are: 5-point ResQue-based
+Likert (not 7-point ad-hoc), attention checks, a post-study block, random
+assignment, 3 plans, Latin-square counterbalancing.
 
 Replace ``STUDY_PLANS`` with real pipeline output later; the screens depend only
 on the shapes defined here. Instruments/config would move to the HF Dataset repo
-config (spec §6.3) so the admin can edit them without redeployment.
+config so the admin can edit them without redeployment.
 """
 
 from __future__ import annotations
@@ -17,7 +14,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-# ── Study configuration (spec §6.3 JSON; hard-coded defaults for now) ──────
+# ── Study configuration (hard-coded defaults for now) ──────────────────────
 STUDY_CONFIG = {
     "study_id": "recsys2026-review",
     "profile_assignment": "random_round_robin",
@@ -27,10 +24,10 @@ STUDY_CONFIG = {
     "likert_scale": 5,
 }
 
-# 5-point Likert, all points labelled (ResQue-compatible, spec §5.4)
+# 5-point Likert, all points labelled (ResQue-compatible)
 LIKERT_5 = ["Strongly disagree", "Disagree", "Neutral", "Agree", "Strongly agree"]
 
-# ── Demographics (GDPR-compliant, spec §5.2) ──────────────────────────────
+# ── Demographics (GDPR-compliant) ─────────────────────────────────────────
 DEMO_AGE = ["Under 18", "18–24", "25–34", "35–44", "45–54", "55–64", "65+"]
 DEMO_EMPLOYMENT = ["Student", "Employed", "Self-employed", "Other"]
 DEMO_COOK_FREQ = ["Daily", "Few times/week", "Once/week", "Rarely", "Never"]
@@ -50,7 +47,7 @@ DEMO_COUNTRIES = [
     "United Kingdom", "United States", "Vietnam", "Other (not listed)",
 ]
 
-# ── Profiles (between-subjects; spec §5.3). "baseline" = no-constraint control ─
+# ── Profiles (between-subjects). "baseline" = no-constraint control ────────
 STUDY_PROFILES = [
     {"id": "A", "icon": "🥗", "specificity": "general", "name": "Profile A",
      "goal": "Weight loss · Vegetarian",
@@ -79,7 +76,7 @@ STUDY_PROFILES = [
      "prompt": "Generate a general healthy meal plan for an average adult with no specific dietary restrictions."},
 ]
 
-# ── Pre-generated plans per profile (3 used by default; spec §5.4) ─────────
+# ── Pre-generated plans per profile (3 used by default) ────────────────────
 # Each plan: {cond, label, explanation:{summary, reasons:[{icon,text}]}, meals:[{type,icon,name,time,kcal,nutri}]}
 STUDY_PLANS = {
     "A": [
@@ -255,7 +252,7 @@ STUDY_PLANS = {
 # the per-question results holding ``{meal: food.com URL}`` plans + explanations.
 #
 # This is only the DEFAULT axis. The **effective** conditions are edited by the admin
-# in the "🧪 Study (Flow B)" tab and persisted in the study config (spec §6.3);
+# in the "🧪 Study (Flow B)" tab and persisted in the study config;
 # resolve them via ``get_study_conditions()`` — never read this constant directly.
 DEFAULT_STUDY_CONDITIONS = [
     {"cond": "C1", "label": "Plan 1",
@@ -360,7 +357,7 @@ def load_study_plans(profile_id: str, n_plans: int | None = None) -> list[dict]:
     return [_mock_plan_to_unified(p) for p in STUDY_PLANS.get(profile_id, [])][:limit]
 
 
-# ── Per-plan questionnaire: 7 ResQue-based items (spec §5.4) ───────────────
+# ── Per-plan questionnaire: 7 ResQue-based items ───────────────────────────
 PLAN_EVAL_ITEMS = [
     {"id": "pq1", "construct": "Perceived Quality", "text": "The recommended meals are appealing to me."},
     {"id": "pq2", "construct": "Perceived Quality", "text": "The meal plan suits my needs."},
@@ -371,13 +368,13 @@ PLAN_EVAL_ITEMS = [
     {"id": "st1", "construct": "Satisfaction", "text": "Overall, I am satisfied with this meal plan."},
 ]
 
-# Attention check (instructed response). Expected = "Disagree" → value 2 (spec §5.4)
+# Attention check (instructed response). Expected = "Disagree" → value 2
 ATTENTION_ITEM = {"id": "attn", "text": "Please select 'Disagree' for this item.", "expected": 2}
 # 1-indexed insertion position of the attention check within the 8-item block,
-# rotated per plan so participants can't learn to skip it (spec §5.4).
+# rotated per plan so participants can't learn to skip it.
 ATTENTION_POSITIONS = [3, 6, 2]
 
-# ── Post-study questionnaire (asked once; spec §5.5) ──────────────────────
+# ── Post-study questionnaire (asked once) ─────────────────────────────────
 POST_STUDY_ITEMS = [
     {"id": "eq1", "construct": "Explanation Quality", "text": "The explanations helped me understand why each plan was recommended."},
     {"id": "eq2", "construct": "Explanation Quality", "text": "The reasons given for each recommendation were convincing."},
@@ -430,7 +427,7 @@ def get_profile(profile_id: str) -> dict:
     return next(p for p in get_study_profiles() if p["id"] == profile_id)
 
 
-# ── Flow A real profiles (spec §4.3) ──────────────────────────────────────
+# ── Flow A real profiles ──────────────────────────────────────────────────
 # The interactive recommender's persona cards are drawn from the SAME evaluation
 # profiles used in the study (ui/study_plans/profiles.json) so live runs reproduce
 # evaluated behaviour. Three admin-selected profiles + one user-defined (custom) slot.

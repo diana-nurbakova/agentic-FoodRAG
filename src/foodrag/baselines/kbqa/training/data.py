@@ -1,4 +1,4 @@
-"""Generate fine-tuning data for the trained KBQA baselines from a QA set (§5.8).
+"""Generate fine-tuning data for the trained KBQA baselines from a QA set.
 
 Each emitted record is ``{"instruction": <prompt>, "output": <target>}`` (JSONL),
 the shape the LoRA trainer consumes. The prompts are the byte-identical
@@ -94,7 +94,7 @@ def mine_relation_paths(kg: HummusKG, topic: Entity, gold_urls: list[str], *,
 
     Direction is recovered from the physical edge orientation (``startNode``), so
     it is label-independent and handles the symmetric ``SUB_CLASS_OF`` edge. Paths
-    longer than ``max_len`` are excluded (§5.5 capped traversal).
+    longer than ``max_len`` are excluded.
     """
     if not gold_urls:
         return []

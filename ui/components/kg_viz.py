@@ -1,11 +1,11 @@
-"""KG-path explanation viz (Evaluation Protocol §8.1, spec §4.4).
+"""KG-path explanation viz.
 
 Renders the grounded path(s) connecting a recommended recipe to each stated
 persona requirement (e.g. ``recipe → has → sugars = 4g → satisfies → sugar ≤ 10``,
 ``recipe → excludes → Gluten``). Paths are real (built from the recipe's
 attributes/ingredients/tags via ``services.path_finding``), so this replaces the
 old hardcoded graph. Path Coverage / Path Validity are shown, and a text
-alternative is provided (WCAG 1.1.1 / spec §8.2).
+alternative is provided (WCAG 1.1.1).
 """
 
 from __future__ import annotations
@@ -66,7 +66,7 @@ def render_recipe_paths(card: dict, persona: dict,
     html(
         f"<div style=\"font-family:{F};font-size:9px;color:{C['textMuted']};margin-bottom:4px\">"
         f"Grounded KG paths from <b>{report['recipe']}</b> to each requirement "
-        f"(constraint-first; every edge is real, protocol §8.1).</div>"
+        f"(constraint-first; every edge is real).</div>"
         f"<div style=\"display:flex;gap:14px;font-family:{F};font-size:10px;margin-bottom:2px\">"
         f"<span>Path coverage: <b style=\"color:{cov_col}\">{cov:.0%}</b></span>"
         f"<span>Path validity: <b style=\"color:{C['nutA']}\">{val:.0%}</b></span></div>"
@@ -78,7 +78,7 @@ def render_recipe_paths(card: dict, persona: dict,
 
 
 def render_kg_ingredient_paths(recipe_name: str, rows: list[dict]) -> None:
-    """Render real recipe→ingredient→FoodOn-class paths from Neo4j (eval §8.1).
+    """Render real recipe→ingredient→FoodOn-class paths from Neo4j.
 
     ``rows`` = ``[{ingredient, food_class, ancestors}]`` from
     ``backend.recipe_ingredient_class_paths``."""
@@ -88,7 +88,7 @@ def render_kg_ingredient_paths(recipe_name: str, rows: list[dict]) -> None:
         return
     html(f"<div style=\"font-family:{F};font-size:9px;color:{C['textMuted']};margin:6px 0 4px\">"
          f"Ingredient → FoodOn class chains for <b>{recipe_name}</b>, traversed live over Neo4j "
-         f"(bounded depth, protocol §5.5).</div>")
+         f"(bounded depth).</div>")
     for row in rows:
         nodes = [(recipe_name, "recipe"), (row["ingredient"], "ingredient"), (row["food_class"], "class")]
         nodes += [(a, "class") for a in row.get("ancestors", [])]

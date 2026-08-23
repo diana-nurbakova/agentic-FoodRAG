@@ -1,18 +1,18 @@
-"""Deterministic meal-plan quality metrics (Evaluation Protocol §4.4–§4.5).
+"""Deterministic meal-plan quality metrics.
 
 The Use-2 full-pipeline (EXP-7 rung 4 / EXP-3) judges an *assembled meal plan*,
 not a flat ranked list. Three of its quality signals are deterministic — computed
 straight off the plan's recipes + the HUMMUS attributes — and so live here next to
 the other rule-based metrics rather than going through an LLM judge:
 
-* **Structural Validity** (§4.4) — does the output parse as a meal plan with the
+* **Structural Validity** — does the output parse as a meal plan with the
   required slots (and an explanation field, when the config is expected to emit
   one)? A schema check, not an LLM call.
-* **Intra-Plan Diversity** (§4.5) — 1 − mean pairwise ingredient/tag Jaccard
+* **Intra-Plan Diversity** — 1 − mean pairwise ingredient/tag Jaccard
   across the meals (penalises four-near-identical-dishes plans).
-* **Calorie-Distribution Adherence** (§4.5) — 1 − mean abs. deviation from the
+* **Calorie-Distribution Adherence** — 1 − mean abs. deviation from the
   target split (Breakfast 22% / Lunch 32% / Dinner 32% / Snack 14%).
-* **Meal-Slot Completeness** (§4.5) — fraction of the four required slots filled.
+* **Meal-Slot Completeness** — fraction of the four required slots filled.
 
 A plan is passed in normalised form: ``{meal_type_str: recipe_row | None}`` where a
 recipe row is a mapping of HUMMUS columns (``ingredient_names``, ``tags``,
@@ -23,13 +23,13 @@ from __future__ import annotations
 from itertools import combinations
 from typing import Mapping, Optional
 
-# §4.5 calorie target split for adults 19–59 (thesis Table 6.3).
+# calorie target split for adults 19–59 (thesis Table 6.3).
 CALORIE_TARGETS = {"breakfast": 0.22, "lunch": 0.32, "dinner": 0.32, "snack": 0.14}
 STANDARD_SLOTS = tuple(CALORIE_TARGETS)
 CALORIE_COL = "calories [kcal]"
 SERVING_COL = "servingSize [g]"
 
-# §4.5 slot-appropriateness synonym map: which HUMMUS ``meal_types`` labels count
+# slot-appropriateness synonym map: which HUMMUS ``meal_types`` labels count
 # as "suitable" for each plan slot. A recipe suits a slot if its meal_types overlap
 # the slot's synonym set (or its meal_types are unknown/empty → not penalised).
 SLOT_SYNONYMS = {
@@ -42,7 +42,7 @@ SLOT_SYNONYMS = {
 Plan = Mapping[str, Optional[dict]]
 
 
-# ── §4.4 structural validity ─────────────────────────────────────────────────
+# ── structural validity ──────────────────────────────────────────────────────
 
 def structural_validity(plan: Plan, *, has_explanation: bool = True,
                         require_explanation: bool = False) -> float:
@@ -50,14 +50,14 @@ def structural_validity(plan: Plan, *, has_explanation: bool = True,
     ``require_explanation``, an explanation field is present); else 0.0.
 
     This is the deterministic half of the thesis "Guideline" metric, split out
-    from explanation *quality* (§4.4) which stays LLM-judged.
+    from explanation *quality* which stays LLM-judged.
     """
     slots_ok = all(slot in plan for slot in STANDARD_SLOTS)
     explanation_ok = has_explanation or not require_explanation
     return 1.0 if (slots_ok and explanation_ok) else 0.0
 
 
-# ── §4.5 meal-plan quality ───────────────────────────────────────────────────
+# ── meal-plan quality ────────────────────────────────────────────────────────
 
 def meal_slot_completeness(plan: Plan) -> float:
     """Fraction of the four required slots filled with a real recipe."""
@@ -94,7 +94,7 @@ def calorie_distribution_adherence(plan: Plan) -> float:
 
 
 def slot_appropriateness(plan: Plan) -> float:
-    """Fraction of FILLED slots whose recipe suits the slot's meal type (§4.5).
+    """Fraction of FILLED slots whose recipe suits the slot's meal type.
 
     A recipe suits its slot when its HUMMUS ``meal_types`` overlap the slot's
     :data:`SLOT_SYNONYMS`; a recipe with unknown/empty ``meal_types`` is *not*
@@ -112,9 +112,71 @@ def slot_appropriateness(plan: Plan) -> float:
     return appropriate / len(filled)
 
 
+def budget_compliance(plan: Plan, restriction: Optional[Mapping] = None) -> dict:
+    """Did the plan respect the calorie caps its own question stated?
+
+    Distinct from ``guideline_adherence``, which scores the plan against population
+    reference bands the persona was never told. This scores it against the per-slot
+    caps actually present in its prompt, so it answers "did it obey the budget it was
+    given?" — and unlike :func:`calorie_distribution_adherence`, which normalises by
+    the plan total and so only sees the *shape* of the split, it is sensitive to
+    magnitude: a plan with a perfect 22/32/32/14 shape at triple the calories scores 0.
+
+    ``restriction`` is the QA item's ``meal_plan`` mapping
+    ``{slot: {"meal_type": str, "guidelines": {"calories [kcal]": cap}}}``. All keys
+    are NaN when it is absent (a recipe-type question, or a run predating per-slot
+    budgets) — absent is not the same as complied.
+    """
+    nan = float("nan")
+    empty = {"budget_slot_compliance": nan, "budget_total_compliance": nan,
+             "budget_overshoot_ratio": nan, "budget_daily_kcal": nan, "budget_plan_kcal": nan}
+    if not restriction:
+        return empty
+
+    caps = {}
+    for slot, spec in restriction.items():
+        cap = ((spec or {}).get("guidelines") or {}).get(CALORIE_COL)
+        if cap is None:
+            continue
+        try:
+            caps[slot] = float(cap)
+        except (TypeError, ValueError):
+            continue
+    if not caps:
+        return empty
+
+    daily_budget = sum(caps.values())
+    if daily_budget <= 0:
+        return empty
+
+    # Per-slot: only slots that are both filled and capped can be judged.
+    judged = [(_total_calories(plan.get(slot)), cap) for slot, cap in caps.items()
+              if _filled(plan.get(slot))]
+    judged = [(kcal, cap) for kcal, cap in judged if kcal is not None]
+    slot_compliance = (sum(1 for kcal, cap in judged if kcal <= cap) / len(judged)
+                       if judged else nan)
+
+    # Daily total: over ALL filled slots, including any the restriction never capped —
+    # calories eaten off-budget still count against the day.
+    totals = [_total_calories(r) for r in plan.values() if _filled(r)]
+    totals = [t for t in totals if t is not None]
+    if not totals:
+        return {**empty, "budget_daily_kcal": daily_budget}
+    plan_kcal = sum(totals)
+
+    return {
+        "budget_slot_compliance": slot_compliance,
+        "budget_total_compliance": 1.0 if plan_kcal <= daily_budget else 0.0,
+        "budget_overshoot_ratio": plan_kcal / daily_budget,
+        "budget_daily_kcal": daily_budget,
+        "budget_plan_kcal": plan_kcal,
+    }
+
+
 def plan_quality_metrics(plan: Plan, *, has_explanation: bool = True,
-                         require_explanation: bool = False) -> dict:
-    """The full deterministic §4.4/§4.5 block for a §13.1 record."""
+                         require_explanation: bool = False,
+                         restriction: Optional[Mapping] = None) -> dict:
+    """The full deterministic meal-plan-quality block for a per-question record."""
     return {
         "structural_validity": structural_validity(
             plan, has_explanation=has_explanation, require_explanation=require_explanation),
@@ -122,6 +184,7 @@ def plan_quality_metrics(plan: Plan, *, has_explanation: bool = True,
         "intra_plan_diversity": intra_plan_diversity(plan),
         "calorie_adherence": calorie_distribution_adherence(plan),
         "slot_appropriateness": slot_appropriateness(plan),
+        **budget_compliance(plan, restriction),
     }
 
 

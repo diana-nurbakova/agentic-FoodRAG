@@ -1,4 +1,4 @@
-"""``generate_meal_plan`` — the single entrypoint the GUI calls (spec §11.5).
+"""``generate_meal_plan`` — the single entrypoint the GUI calls.
 
 Builds a natural-language question from the persona + free-text query, runs the
 agentic pipeline, and maps the resulting RecipeState into the GUI plan shape:
@@ -167,7 +167,7 @@ def generate_meal_plan(persona: dict, query: str, config: dict, on_event=None) -
 
 
 def _safety_check(persona: dict, meal_plan: dict, cards: list[dict]) -> dict | None:
-    """Deterministic FoodOn-aware safety check on the generated plan (protocol §4.3).
+    """Deterministic FoodOn-aware safety check on the generated plan.
 
     Runs on the RAW backend recipes (HUMMUS columns), attaches a per-card
     ``safety`` flag (aligned to ``cards``), and returns the aggregate report.

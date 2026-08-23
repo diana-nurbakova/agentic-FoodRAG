@@ -1,4 +1,4 @@
-"""§4.5.1 Guideline Adherence — persona-class-relative nutrient-band scoring.
+"""Guideline Adherence — persona-class-relative nutrient-band scoring.
 
 Scores an assembled meal plan's aggregate *daily* nutrient totals against reference
 bands from ``config/guideline_reference_tables.json`` (EFSA DRV / WHO, class-based —
@@ -10,9 +10,9 @@ QA set carries no condition field, so it always resolves to ``general_adult``).
 For each of the eight tracked nutrients the plan total is scored 1 if it falls inside
 the class band ``[low, high]`` (``upper_only`` bands treat ``low`` as 0), else 0.
 ``guideline_adherence_overall`` is the mean of those 0/1 flags;
-``guideline_adherence_per_nutrient`` is a dict of the 0/1 flags under short §13.1 keys.
+``guideline_adherence_per_nutrient`` is a dict of the 0/1 flags under short per-nutrient record keys.
 
-hard_ceiling interaction (§4.3): a nutrient total exceeding its ``hard_ceiling`` (a UL
+hard_ceiling interaction: a nutrient total exceeding its ``hard_ceiling`` (a UL
 / safety ceiling, e.g. sodium) is ALSO a safety violation — :func:`hard_ceiling_breach`
 reports it so the caller can fold it into ``hard_constraint_violation`` for plan configs.
 
@@ -41,7 +41,7 @@ NUTRIENT_COLS = {
     "sugars_g": ("sugars [g]", 1.0),
 }
 
-# Ref-nutrient key -> short §13.1 per-nutrient record key.
+# Ref-nutrient key -> short per-nutrient record key.
 SHORT_KEYS = {
     "energy_kcal": "energy",
     "protein_g": "protein",
@@ -132,6 +132,40 @@ def _resolve_bands(classes: list[str], reference_tables: dict) -> dict:
     return resolved
 
 
+ENERGY_COL = "calories [kcal]"
+
+
+def resolve_daily_energy(persona: dict, reference_tables: Optional[dict] = None) -> float:
+    """The persona's daily energy budget in kcal — the anchor for per-slot caps.
+
+    Resolution order: the persona's own stated cap when known, else the reference
+    energy of their mapped guideline class (comorbidity → the strictest matched
+    class), else the documented 2000 kcal default. The shipped personas carry no
+    condition field, so they resolve to ``general_adult`` → 2000 unless they state
+    a cap of their own.
+
+    Anchoring the per-slot split here (rather than on an independent draw) is what
+    keeps a meal-plan question self-consistent: the caps sum to the same number the
+    question states as the daily total, and to the band this module scores against.
+    """
+    stated = (persona.get("total_nutrients") or {}).get(ENERGY_COL)
+    try:
+        stated = float(stated)
+    except (TypeError, ValueError):
+        stated = None
+    if stated and stated > 0:
+        return stated
+
+    ref = reference_tables or load_reference_tables()
+    classes = matched_classes(persona, ref)
+    energies = [ref["reference_classes"][c].get("reference_energy_kcal")
+                for c in classes if c in ref["reference_classes"]]
+    energies = [float(e) for e in energies if e]
+    if energies:
+        return min(energies)  # strictest matched class, mirroring _resolve_bands
+    return float(ref["modeling_assumptions"]["reference_energy_kcal_default"])
+
+
 def map_persona_to_class(persona: dict, reference_tables: Optional[dict] = None):
     """Return ``(class_label, resolved_bands)`` for a persona.
 
@@ -202,7 +236,7 @@ def _direction(total: float, band: dict) -> str:
 def hard_ceiling_breach(plan: Plan, persona: dict, reference_tables: Optional[dict] = None) -> bool:
     """True if any plan nutrient total exceeds its class ``hard_ceiling`` (a safety UL).
 
-    Per §4.3 / the reference file's ``hard_ceiling_interaction``: a plan exceeding a UL
+    Per the reference file's ``hard_ceiling_interaction``: a plan exceeding a UL
     is a SAFETY flag, folded into ``hard_constraint_violation`` for plan configs. False
     when the plan has no resolved recipes (nothing to breach).
     """
@@ -218,7 +252,7 @@ def hard_ceiling_breach(plan: Plan, persona: dict, reference_tables: Optional[di
 
 
 def guideline_adherence(plan: Plan, persona: dict, reference_tables: Optional[dict] = None) -> dict:
-    """The §4.5.1 guideline-adherence block for a §13.1 record.
+    """The guideline-adherence block for a per-question record.
 
     Returns::
 
@@ -226,7 +260,7 @@ def guideline_adherence(plan: Plan, persona: dict, reference_tables: Optional[di
           "guideline_adherence_overall": float,          # mean of 8 per-nutrient 0/1 (NaN if no recipes)
           "guideline_adherence_per_nutrient": {short_key: 0/1, ...},   # {} if no recipes
           "guideline_class": str,                        # resolved reference class label
-          "guideline_direction": {short_key: "under"/"within"/"over"},  # for the report (not a §13.1 key)
+          "guideline_direction": {short_key: "under"/"within"/"over"},  # for the report (not a record key)
           "guideline_hard_ceiling_breach": bool,         # feeds hard_constraint_violation
         }
 

@@ -1,4 +1,4 @@
-"""Turnkey Heuristic-1 agent-workflow builder for the KBQA full pipeline (§5.7).
+"""Turnkey Heuristic-1 agent-workflow builder for the KBQA full pipeline.
 
 The Use-2 agentic config (Recommend → Correct → Enhance → Explain → Finalize) is
 assembled here in code, mirroring ``notebooks/food_RAG_agents.ipynb`` (cells 47–48)

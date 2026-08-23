@@ -1,6 +1,6 @@
-"""Interaction logging service (spec §9).
+"""Interaction logging service.
 
-Architecture (spec §9.1):
+Architecture:
 
     Streamlit app (in-memory buffer)
        ├── every 5 min ──────→ push JSONL to HF Dataset repo (primary)
@@ -8,7 +8,7 @@ Architecture (spec §9.1):
        ├── on admin request ─→ manual download / force flush
        └── on each event ────→ insert to external DB over HTTPS (secondary)
 
-Every event is enriched to the §9.4 record schema and appended to the session's
+Every event is enriched to the record schema and appended to the session's
 in-memory buffer (``st.session_state['event_log']``). If a HF Dataset repo is
 configured (``FOODRAG_DATASET_REPO`` + ``HF_TOKEN``), buffers are pushed to
 ``logs/<session_id>.jsonl`` by a background thread and on demand. Everything
@@ -26,7 +26,7 @@ from typing import Any, Optional
 
 import streamlit as st
 
-FLUSH_INTERVAL_SECONDS = 300  # spec §9.1: every 5 minutes
+FLUSH_INTERVAL_SECONDS = 300  # every 5 minutes
 
 # Process-wide registry: session_id -> the live event_log list (shared by ref so
 # the background thread sees appends made on the main thread).
@@ -58,13 +58,13 @@ def set_dataset_repo(repo_id: str) -> None:
         os.environ.pop("FOODRAG_DATASET_REPO", None)
 
 
-# ── §9.4 record schema ────────────────────────────────────────────────────
+# ── record schema ─────────────────────────────────────────────────────────
 def _now_iso() -> str:
     return datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def enrich(event_type: str, payload: dict | None) -> dict:
-    """Build a full §9.4 log record from the current session state."""
+    """Build a full log record from the current session state."""
     ss = st.session_state
     persona = ss.get("persona") or {}
     return {
@@ -98,7 +98,7 @@ def log_event(event_type: str, payload: dict | None = None) -> None:
     _ensure_thread()
 
 
-# ── primary sink: HF Dataset repo (spec §9.2) ─────────────────────────────
+# ── primary sink: HF Dataset repo ─────────────────────────────────────────
 def flush_session(session_id: str, events: list[dict]) -> tuple[bool, str]:
     """Push one session's JSONL to ``logs/<session_id>.jsonl``. Returns (ok, msg)."""
     if not remote_enabled():
@@ -194,7 +194,7 @@ def status() -> dict:
     }
 
 
-# ── secondary sink: external DB over HTTPS (spec §9.3, optional) ───────────
+# ── secondary sink: external DB over HTTPS (optional) ──────────────────────
 def _supabase_enabled() -> bool:
     return bool(os.environ.get("SUPABASE_URL") and os.environ.get("SUPABASE_KEY"))
 

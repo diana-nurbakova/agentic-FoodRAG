@@ -1,18 +1,18 @@
-"""Baseline ladder (Evaluation Protocol §5.7).
+"""Baseline ladder.
 
 Each rung turns a QA item into a ranked recipe list scored by the same
-deterministic metrics (§4.1–4.3) and strata (§9) as FoodRAG:
+deterministic metrics and strata as FoodRAG:
 
 * 0a ``PopularityRaw`` / 0b ``PopularityHealthAware`` — deterministic, no LLM
 * 2  ``LLMOnly`` — generation without retrieval (needs an LLM)
 * 3  ``NaiveRAG`` — retrieve-then-generate without agentic correction (needs a retriever)
 
-The runner produces §13 Results-Schema records consumed by the Report tab.
+The runner produces Results-Schema records consumed by the Report tab.
 
 Rung **4** (the external KBQA suite — ToG, RoG, TFS-KBQA) lives in the
 :mod:`foodrag.baselines.kbqa` subpackage and plugs into the same runner via
-``KBQABaseline`` (dual-use, §5.7). Rung 1 (item-based CF) and pFoodReq/BAMnet
-remain follow-up scope (§12.2).
+``KBQABaseline`` (dual-use). Rung 1 (item-based CF) and pFoodReq/BAMnet
+remain follow-up scope.
 """
 from foodrag.baselines.base import Baseline, answer_set_stratum, requirement_count, requirement_types
 from foodrag.baselines.llm_only import LLMOnly

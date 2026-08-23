@@ -1,15 +1,15 @@
-"""Baseline interface + stratification helpers for the §5.7 baseline ladder.
+"""Baseline interface + stratification helpers for the baseline ladder.
 
 A ``Baseline`` turns one QA item (persona + question) into a ranked list of
 ``recipe_url`` ids. The runner (:mod:`foodrag.baselines.runner`) scores that list
-with the deterministic metrics and tags each record with the strata of §9 so the
+with the deterministic metrics and tags each record with the strata  so the
 Report tab can switch between aggregate and stratified views.
 """
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
-# §9.1 answer-set-size strata.
+# answer-set-size strata.
 TIGHT_MAX = 50
 MEDIUM_MAX = 5_000
 
@@ -31,13 +31,46 @@ class Baseline(ABC):
         raise NotImplementedError
 
 
-# ── stratification (§9) ──────────────────────────────────────────────────────
+# ── gold answers ─────────────────────────────────────────────────────────────
+
+def gold_urls(qa_item: dict) -> set:
+    """The QA item's gold ``recipe_url`` set, for either question type.
+
+    ``QuestionType.RECIPE`` stores ``answer`` as a flat url list, but
+    ``QuestionType.MEAL_PLAN`` stores the per-slot mapping built by
+    ``qa_generator._find_valid_combinations``::
+
+        {meal_name: {"meal_type": str, "valid_recipes": [url, ...]}}
+
+    Iterating that dict yields meal *names*, so the flat-list read used before
+    silently scored recipe urls against ``{"breakfast", "lunch", ...}`` — every
+    retrieval metric would read 0 rather than raising. Meal-plan gold flattens to
+    the union over slots: the metrics rank one flat list, so a recipe counts as
+    correct when it is valid for at least one slot.
+    """
+    answer = qa_item.get("answer")
+    if not answer:
+        return set()
+    if isinstance(answer, dict):
+        urls: set = set()
+        for slot in answer.values():
+            # A slot is the {"meal_type", "valid_recipes"} record; tolerate a bare
+            # url list in case a caller pre-flattened it.
+            if isinstance(slot, dict):
+                urls.update(slot.get("valid_recipes") or [])
+            elif isinstance(slot, (list, tuple, set)):
+                urls.update(slot)
+        return urls
+    return set(answer)
+
+
+# ── stratification ───────────────────────────────────────────────────────────
 
 def answer_set_stratum(answer_set_size: int) -> str:
-    """Map a gold answer-set size to the §9.1 stratum label.
+    """Map a gold answer-set size to the.1 stratum label.
 
     Size 0 (no recipe satisfies the persona — an over-constrained/unsatisfiable
-    question) is its own ``empty`` stratum: §9.1 defines ``tight`` as 1–50, so
+    question) is its own ``empty`` stratum:.1 defines ``tight`` as 1–50, so
     folding zeros into ``tight`` would swamp it with unsatisfiable personas.
     """
     if answer_set_size <= 0:
@@ -50,7 +83,7 @@ def answer_set_stratum(answer_set_size: int) -> str:
 
 
 def requirement_count(persona: dict) -> int:
-    """Number of atomic stated requirements (§9.2): every liked/disliked tag &
+    """Number of atomic stated requirements: every liked/disliked tag &
     ingredient plus every nutrient/score bound counts once."""
     tags = persona.get("tags", {})
     ingredients = persona.get("ingredients", {})
@@ -64,7 +97,7 @@ def requirement_count(persona: dict) -> int:
 
 
 def requirement_types(persona: dict) -> list[str]:
-    """Requirement-type tags present in the persona (§9.3), ordered & de-duped.
+    """Requirement-type tags present in the persona, ordered & de-duped.
 
     * ``allergen``       — disliked (blacklisted) ingredients (safety-critical)
     * ``ingredient``     — liked-ingredient preferences

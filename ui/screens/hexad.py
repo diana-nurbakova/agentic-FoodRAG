@@ -1,4 +1,4 @@
-"""Screen 2: HEXAD-12 questionnaire (spec §4.2).
+"""Screen 2: HEXAD-12 questionnaire.
 
 Tondello et al. (2016) 12-item short scale, 7-point Likert, 2 items per type.
 Items are ordered so that item ``i`` scores HEXAD type ``i % 6``. Scoring:

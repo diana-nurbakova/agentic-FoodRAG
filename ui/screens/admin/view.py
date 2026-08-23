@@ -1,9 +1,9 @@
-"""Admin view shell: authentication gate + tabbed sections (spec §6.1).
+"""Admin view shell: authentication gate + tabbed sections.
 
 Auth: ``?admin=true`` query param reveals a password prompt compared against the
-``ADMIN_PASSWORD`` env var (spec §6.1, §11.3). If unset, a dev fallback is used
+``ADMIN_PASSWORD`` env var. If unset, a dev fallback is used
 with a visible warning. Authenticated admin sessions are tagged ``is_admin`` so
-they're excluded from participant analytics (spec §6.5).
+they're excluded from participant analytics.
 """
 
 from __future__ import annotations

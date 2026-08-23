@@ -1,20 +1,20 @@
-"""Use-2 full-pipeline driver: assemble a meal plan, judge it, emit §13 records.
+"""Use-2 full-pipeline driver: assemble a meal plan, judge it, emit per-question records.
 
-This is the "Use 2" half of the dual-use design (§5.7): instead of scoring a
+This is the "Use 2" half of the dual-use design: instead of scoring a
 baseline's ranked list directly (Use 1, :mod:`runner`), it attaches **FoodRAG's
 meal-plan assembly layer** on top of the baseline's retrieval and evaluates the
 resulting plan end-to-end. Holding the assembly layer constant across baselines
-makes end-to-end differences attributable to retrieval quality (the §5.7
+makes end-to-end differences attributable to retrieval quality (the.7
 decomposition), and is the generous adaptation that lets a full-pipeline FoodRAG
 win mean something.
 
-Per QA item it produces one §13.1 record combining three metric families on the
+Per QA item it produces one.1 record combining three metric families on the
 *assembled plan*:
 
-* deterministic safety/retrieval (§4.1–4.3) — reusing :mod:`metrics` on the plan's
+* deterministic safety/retrieval — reusing :mod:`metrics` on the plan's
   recipes, so "valid recipe" matches the gold definition exactly;
-* deterministic meal-plan quality (§4.4–4.5) — :mod:`meal_plan_metrics`;
-* LLM-judged quality (§4.4, §7) — the dual-judge :mod:`judge` pass.
+* deterministic meal-plan quality — :mod:`meal_plan_metrics`;
+* LLM-judged quality — the dual-judge :mod:`judge` pass.
 
 The assembly itself is behind the :class:`MealPlanAssembler` protocol, so the
 orchestration is fully testable with a fake assembler; :class:`RagMealPlanAssembler`
@@ -32,7 +32,7 @@ import pandas as pd
 
 from foodrag.baselines import constraints, explainability, guideline_adherence, meal_plan_metrics, metrics
 from foodrag.baselines import judge as judge_mod
-from foodrag.baselines.base import answer_set_stratum, requirement_count, requirement_types
+from foodrag.baselines.base import answer_set_stratum, gold_urls, requirement_count, requirement_types
 from foodrag.baselines.runner import _resolve_rows
 
 ID_COL = "recipe_url"
@@ -49,7 +49,7 @@ class AssembledPlan:
     recipe_urls: list[str] = field(default_factory=list)
     contexts: list[str] = field(default_factory=list)  # retrieved recipes (for faithfulness)
     has_explanation: bool = False
-    # The raw NL explanation string (§8.2 claim-grounding input; the text
+    # The raw NL explanation string (.2 claim-grounding input; the text
     # ``has_explanation`` is derived from). "" when the config emits no explanation.
     explanation_text: str = ""
     # Any structured "why this recipe" evidence the assembly layer carries. The current
@@ -91,13 +91,13 @@ def run_full_pipeline(assembler: MealPlanAssembler, qa_set: Iterable[dict],
                       k: int = 10, experiment_id: str = "EXP-7", rung: str = "4", run: int = 1,
                       expand: constraints.IngredientExpander = constraints.identity_expand,
                       id_prefix: str = "q") -> list[dict]:
-    """Assemble + score every QA item; return §13.1 full-pipeline records."""
+    """Assemble + score every QA item; return.1 full-pipeline records."""
     indexed = recipes_df.set_index(ID_COL, drop=False)
     needed = [c for c in indexed.columns if c != "tags_str"]
     records: list[dict] = []
 
     for i, qa_item in enumerate(qa_set):
-        gold = set(qa_item.get("answer") or [])
+        gold = gold_urls(qa_item)
         persona = qa_item["persona"]
 
         assembled = assembler.assemble(qa_item)
@@ -109,18 +109,19 @@ def run_full_pipeline(assembler: MealPlanAssembler, qa_set: Iterable[dict],
                 block[m] = float("nan")
         block.update(meal_plan_metrics.plan_quality_metrics(
             assembled.plan, has_explanation=assembled.has_explanation,
-            require_explanation=assembler.require_explanation))
-        # §4.5.1 plan-level guideline adherence + hard-ceiling → hard_constraint_violation.
+            require_explanation=assembler.require_explanation,
+            restriction=qa_item.get("meal_plan")))
+        # plan-level guideline adherence + hard-ceiling → hard_constraint_violation.
         guide = guideline_adherence.guideline_adherence(assembled.plan, persona)
         block["guideline_adherence_overall"] = guide["guideline_adherence_overall"]
         block["guideline_adherence_per_nutrient"] = guide["guideline_adherence_per_nutrient"]
         block["guideline_class"] = guide["guideline_class"]
-        # A plan exceeding a nutrient hard_ceiling (UL) is a safety flag (§4.3): raise
+        # A plan exceeding a nutrient hard_ceiling (UL) is a safety flag: raise
         # hard_constraint_violation to 1.0 for the plan (max with the rec-list value).
         if guide["guideline_hard_ceiling_breach"]:
             block["hard_constraint_violation"] = max(
                 block.get("hard_constraint_violation", 0.0) or 0.0, 1.0)
-        # §8 explainability: graph-path coverage/validity (always) + NL-claim grounding
+        # explainability: graph-path coverage/validity (always) + NL-claim grounding
         # (only when this config emits an explanation_text). Uses the recommended
         # recipe rows — the plan's resolved slots.
         block.update(explainability.explainability_metrics(
@@ -149,11 +150,11 @@ def run_full_pipeline(assembler: MealPlanAssembler, qa_set: Iterable[dict],
             "metrics": block,
             "retrieved_ids": assembled.recipe_urls,
             # Persist the assembled plan (per-slot recipe_url) so plan-level metrics are
-            # reproducible/backfillable offline, plus the explanation inputs for the §8 task.
+            # reproducible/backfillable offline, plus the explanation inputs for the explainability task.
             "plan": _plan_urls(assembled.plan),
             "explanation_text": assembled.explanation_text,
             "explanation_structured": assembled.explanation_structured,
-            # Resolved time + requested meal types → reproducible record (§time-pin).
+            # Resolved time + requested meal types → reproducible record.
             "recommendation_time": assembled.recommendation_time,
             "requested_meal_types": assembled.requested_meal_types,
         })
@@ -303,7 +304,7 @@ _FINAL_DEFAULTS = {"", "final recommendation required."}
 def _validation_evidence(state: dict) -> dict:
     """The only semi-structured "why this recipe" evidence the pipeline carries: the
     per-slot validation verdicts (``{meal_type: verdict_str}``). Pure NL otherwise — no
-    KG paths. Returns ``{}`` when absent. Persisted for the future §8 explainability task.
+    KG paths. Returns ``{}`` when absent. Persisted for the future explainability task.
     """
     val = state.get(_VALIDATION_KEY)
     if val is None:

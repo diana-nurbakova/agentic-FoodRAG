@@ -1,4 +1,4 @@
-"""Step 7: Post-study questionnaire (asked once, spec §5.5).
+"""Step 7: Post-study questionnaire (asked once).
 
 Constructs that apply to the system as a whole, not per plan: explanation
 quality, constraint compliance, behavioural intention, usability. Same 5-point
@@ -39,7 +39,7 @@ def render() -> None:
     if st.button("Continue to final ranking →", type="primary", disabled=not complete,
                  use_container_width=True):
         st.session_state["post_study_answers"] = answers
-        # Group by construct for the structured event payload (spec §9.5)
+        # Group by construct for the structured event payload
         by_construct: dict[str, dict[str, int]] = {}
         for item in POST_STUDY_ITEMS:
             by_construct.setdefault(item["construct"], {})[item["id"]] = answers[item["id"]]

@@ -1,4 +1,4 @@
-"""Screen 1: Consent (spec §4.1).
+"""Screen 1: Consent.
 
 GDPR: no sensitive personal data; random session ID; consent required before
 continuing. Continue is disabled until the box is checked.
@@ -33,9 +33,9 @@ def render() -> None:
         ("Purpose", "Evaluation of a food recommendation system — LIRIS (UMR 5205 CNRS), INSA Lyon."),
         ("Data", "Interactions, HEXAD scores, pipeline preferences, timing. Fictional personas — no real health data."),
         ("Recipe data", "Recipes and their nutrition come from the HUMMUS dataset "
-                        f"(<a href=\"https://gitlab.com/felix134/connected-recipe-data-set/\" "
+                        f"(<a href=\"https://doi.org/10.1145/3604915.3609491\" "
                         f"target=\"_blank\" style=\"color:{C['primary']};text-decoration:underline\">"
-                        f"connected-recipe-data-set</a>), our main recipe source."),
+                        f"RecSys '23</a>), our main recipe source."),
         ("Anonymity", "Random session IDs. Free-text queries are logged — please do not enter real health data."),
         ("Withdrawal", "Stop anytime. Data deleted on request. Retention: 24 months."),
     ):
@@ -50,6 +50,6 @@ def render() -> None:
     if st.button("Continue", type="primary", disabled=not ok, use_container_width=True):
         st.session_state["consent_given"] = True
         log_event("consent_given")
-        # Branch to the selected flow (spec §3). Defaults to exploration.
+        # Branch to the selected flow. Defaults to exploration.
         # HEXAD questionnaire hidden for now — Flow A skips straight to persona.
         goto("demographics" if st.session_state.get("flow") == "evaluation" else "persona")

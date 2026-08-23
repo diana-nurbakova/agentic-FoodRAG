@@ -1,4 +1,4 @@
-"""Unit tests for §8 Explainability metrics (path coverage/validity + NL-claim grounding).
+"""Unit tests for Explainability metrics (path coverage/validity + NL-claim grounding).
 
 Everything is deterministic and needs only small hand-built persona/recipe dicts and
 representative templated explanation strings — no LLM, no graph, no 7GB hummus.
@@ -28,7 +28,7 @@ def _recipe(**kw):
     return base
 
 
-# ══ §8.1 path coverage ═══════════════════════════════════════════════════════
+# ══ path coverage ════════════════════════════════════════════════════════════
 
 def test_path_coverage_fully_covered():
     persona = {
@@ -100,7 +100,7 @@ def test_path_ignores_unresolved_none_rows():
     assert ex.path_coverage(persona, [None, rec]) == pytest.approx(1.0)
 
 
-# ══ §8.2 claim extraction ════════════════════════════════════════════════════
+# ══ claim extraction ═════════════════════════════════════════════════════════
 
 # The wording mirrors ExplanationTool.EXPLANATION_TEMPLATE's worked example.
 _REAL_EXPLANATION = (
@@ -154,7 +154,7 @@ def test_extract_claims_empty_text():
     assert ex.extract_claims("   ") == []
 
 
-# ══ §8.2 claim grounding ═════════════════════════════════════════════════════
+# ══ claim grounding ══════════════════════════════════════════════════════════
 
 def test_claim_grounding_all_supported():
     claims = [

@@ -1,8 +1,8 @@
-"""Flow C: Report tab (Evaluation Protocol §11; spec: FoodRAG_Report_Tab_Modifications).
+"""Flow C: Report tab.
 
-Interactive view over the *real* pre-computed evaluation results (§11.2 — read-only,
+Interactive view over the *real* pre-computed evaluation results (read-only,
 no live computation). The tab leads with the headline findings and organises panels
-into three tiers (spec §4):
+into three tiers:
 
   ① Headline    Overview (marquee) · Retriever comparison · Safety (before→after)
   ② Attribution Agentic comparison · Error taxonomy · Retrieval vs full pipeline
@@ -210,7 +210,7 @@ def _distinct_strata(df: pd.DataFrame, metric: str) -> list[str]:
 
 
 def _exp_select(agg: pd.DataFrame, key: str, only=None) -> str:
-    """Descriptive experiment selector + description block (spec §3)."""
+    """Descriptive experiment selector + description block."""
     exps = sorted(agg["experiment_id"].unique())
     if only:
         exps = [e for e in only if e in set(exps)] or exps
@@ -224,7 +224,7 @@ def _exp_select(agg: pd.DataFrame, key: str, only=None) -> str:
 
 
 def _ceiling_captions(configs) -> None:
-    """Reference-ceiling / cost caveats for any flagged config in view (spec §7)."""
+    """Reference-ceiling / cost caveats for any flagged config in view."""
     for cid in configs:
         note = rd.ceiling_note(cid)
         if note:

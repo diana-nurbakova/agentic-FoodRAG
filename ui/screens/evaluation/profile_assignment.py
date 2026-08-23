@@ -1,4 +1,4 @@
-"""Step 3: Profile assignment (between-subjects, spec §5.3).
+"""Step 3: Profile assignment (between-subjects).
 
 The profile is **randomly assigned** (round-robin), not chosen — this removes
 self-selection bias. The participant sees the assigned profile and its prompt

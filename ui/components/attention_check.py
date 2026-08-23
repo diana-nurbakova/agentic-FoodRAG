@@ -1,4 +1,4 @@
-"""Attention check item (instructed response, spec §5.4 / §5.8).
+"""Attention check item (instructed response).
 
 Renders like a normal Likert item but with an instructed-response prompt
 ("Please select 'Disagree'…"). Position is rotated per plan by the caller

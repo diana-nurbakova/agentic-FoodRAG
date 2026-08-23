@@ -1,4 +1,4 @@
-"""Unit tests for the external KBQA baselines (Evaluation Protocol §5.8).
+"""Unit tests for the external KBQA baselines.
 
 ToG, RoG and TFS-KBQA are exercised against an in-memory fake graph + a scripted
 (or absent) LLM, so the traversal, planning, parsing, ranking and dual-use
@@ -124,7 +124,7 @@ def test_constraint_text_covers_families(qa_item):
     assert "nutri_score" in text                # health-score minimum
 
 
-# ── health-aware ranking (§5.7) ──────────────────────────────────────────────
+# ── health-aware ranking ─────────────────────────────────────────────────────
 
 def test_blend_order_prefers_health_on_ties(kg):
     # equal evidence → healthier recipe (key 1, nutri 0.9) ranks above key 2 (0.2)
@@ -176,7 +176,7 @@ def test_tfs_executes_and_falls_back(kg, qa_item):
     assert urls == ["u1", "u2"]                    # from the fake execution
 
 
-# ── dual-use adapters (§5.7) ─────────────────────────────────────────────────
+# ── dual-use adapters ────────────────────────────────────────────────────────
 
 def test_kbqa_baseline_is_a_ladder_rung(kg, qa_item):
     base = KBQABaseline(TFSKBQA(kg, llm=None), rung="4", config_id="tfs_kbqa")

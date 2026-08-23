@@ -1,5 +1,6 @@
-"""Recipe detail modal (spec §4.4 "recipe detail modal with ingredient
-substitutions"). Uses ``st.dialog`` for the overlay.
+"""Recipe detail modal with ingredient substitutions.
+
+Uses ``st.dialog`` for the overlay.
 """
 
 from __future__ import annotations

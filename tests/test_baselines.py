@@ -1,7 +1,7 @@
-"""Unit tests for the baseline ladder (Evaluation Protocol §5.7).
+"""Unit tests for the baseline ladder.
 
 Uses a tiny synthetic recipe corpus so the deterministic rungs (0a, 0b), the
-constraint predicates (§4.3) and the metric/aggregation plumbing (§13) are
+constraint predicates and the metric/aggregation plumbing are
 checked without loading the full HUMMUS frame.
 """
 from __future__ import annotations
@@ -14,7 +14,7 @@ import pytest
 from foodrag.baselines import (PopularityHealthAware, PopularityRaw, aggregate,
                                requirement_count, requirement_types, run_baseline)
 from foodrag.baselines import constraints, metrics
-from foodrag.baselines.base import answer_set_stratum
+from foodrag.baselines.base import answer_set_stratum, gold_urls
 
 pytestmark = pytest.mark.unit
 
@@ -53,7 +53,7 @@ def qa_item() -> dict:
     }
 
 
-# ── constraint predicates / valid-set filter (§4.3) ──────────────────────────
+# ── constraint predicates / valid-set filter ─────────────────────────────────
 
 def test_filter_valid_matches_only_compliant_recipe(recipes_df, qa_item):
     valid = constraints.filter_valid(qa_item["persona"], recipes_df)
@@ -70,7 +70,7 @@ def test_predicates_flag_allergen_and_hard_nutrient(recipes_df, qa_item):
     assert not constraints.satisfies_all(rows["r3"], persona)  # wrong tag + sugar
 
 
-# ── retrieval metrics (§4.1) ─────────────────────────────────────────────────
+# ── retrieval metrics ────────────────────────────────────────────────────────
 
 def test_retrieval_metrics():
     gold = {"r1"}
@@ -102,7 +102,39 @@ def test_raw_popularity_has_safety_failures_health_aware_does_not(recipes_df, qa
     assert aware[0]["metrics"]["constraint_satisfaction"] == 1.0
 
 
-# ── strata + records + aggregation (§9, §13) ─────────────────────────────────
+# ── gold answers (both question types) ───────────────────────────────────────
+
+def test_gold_urls_reads_flat_recipe_answer(qa_item):
+    assert gold_urls(qa_item) == set(qa_item["answer"])
+
+
+def test_gold_urls_flattens_meal_plan_answer_over_slots():
+    # QuestionType.MEAL_PLAN gold: the per-slot mapping from _find_valid_combinations.
+    qa = {"answer": {
+        "breakfast": {"meal_type": "breakfast", "valid_recipes": ["r1", "r2"]},
+        "lunch": {"meal_type": "lunch", "valid_recipes": ["r2", "r3"]},
+        "snack 1": {"meal_type": "snack", "valid_recipes": []},
+    }}
+    # Union over slots, de-duped — NOT the meal names.
+    assert gold_urls(qa) == {"r1", "r2", "r3"}
+
+
+def test_gold_urls_never_returns_meal_names():
+    """Regression: `set(answer)` on the meal-plan dict yields slot names, which
+    scored every retrieval metric at 0 instead of raising."""
+    qa = {"answer": {"breakfast": {"meal_type": "breakfast", "valid_recipes": ["r1"]}}}
+    assert "breakfast" not in gold_urls(qa)
+
+
+def test_gold_urls_empty_answers_are_falsy():
+    assert gold_urls({}) == set()
+    assert gold_urls({"answer": None}) == set()
+    assert gold_urls({"answer": []}) == set()
+    # All slots empty → empty stratum, not a phantom 1-item gold set.
+    assert gold_urls({"answer": {"lunch": {"meal_type": "lunch", "valid_recipes": []}}}) == set()
+
+
+# ── strata + records + aggregation ───────────────────────────────────────────
 
 def test_stratum_and_requirements(qa_item):
     assert answer_set_stratum(0) == "empty"

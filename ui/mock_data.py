@@ -1,7 +1,7 @@
 """Mock data for Flow A (Interactive Exploration).
 
 Ported verbatim from the v4 React mockup so the UI is fully clickable
-end-to-end before the real RAG backend is wired in (see spec §12, Phase 2).
+end-to-end before the real RAG backend is wired in.
 Replace these structures with calls into ``foodrag`` services later; the
 component layer only depends on the shapes defined here.
 """
@@ -132,9 +132,13 @@ MOCK_SPLITS = [
     {"meal": "Snack", "q": "Suggest a diabetes-friendly snack under 200 kcal, no gluten"},
 ]
 
+# NB: illustrative strings only — nothing here is produced by the live pipeline.
+# Keep the stated mechanisms truthful anyway: these surface in demos and screenshots.
+# FoodOn expansion is rdfs:subClassOf only, so it resolves "wheat food product" →
+# "wheat flour"; it does NOT derive gluten from wheat (docs/ARCHITECTURE.md §2.3).
 CORRECTION_LOG = [
     {"meal": "Dinner", "round": 1, "status": "INVALID",
-     "reason": "Recipe contained wheat flour (gluten allergen detected via FoodOn hierarchy)",
+     "reason": "Recipe contained wheat flour (blacklisted ingredient detected)",
      "action": "Constraint relaxation level 1: removed tag preference 'Italian', kept allergen constraint"},
     {"meal": "Dinner", "round": 2, "status": "OK", "reason": "Replacement recipe passes all constraints", "action": ""},
     {"meal": "Snack", "round": 1, "status": "OK", "reason": "All constraints satisfied", "action": ""},
@@ -187,5 +191,5 @@ RETRIEVER_LABELS = {
     "dense": "Dense", "sparse": "BM25", "hybrid": "Hybrid",
     "text-to-pandas": "Text→Pandas", "fusion": "Fusion (3-way)",
 }
-# Estimated latencies (spec §2.3), used to fake the processing timer
+# Estimated latencies, used to fake the processing timer
 RETRIEVER_LATENCY = {"dense": 6.0, "sparse": 1.5, "hybrid": 3.5, "text-to-pandas": 2.5, "fusion": 5.0}

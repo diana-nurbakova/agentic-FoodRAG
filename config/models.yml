@@ -14,6 +14,9 @@ providers:
   openrouter:
     api_base: "https://openrouter.ai/api/v1"
     api_key_env: OPENROUTER_API_KEY
+  openai:             # OpenAI direct (api.openai.com), not a reseller
+    api_base: "https://api.openai.com/v1"
+    api_key_env: OPENAI_API_KEY
   nvidia:             # NVIDIA NIM (hosts e.g. snowflake/arctic-embed-l, NV-Embed)
     api_base: "https://integrate.api.nvidia.com/v1"
     api_key_env: NVIDIA_KEY
@@ -78,6 +81,38 @@ embedding_candidates:
     provider: huggingface
     model: "sentence-transformers/all-mpnet-base-v2"
     dim: 768
+
+# Text-to-Pandas retriever backbones (EXP-ret-tight).
+#
+# The code-generation LLM behind `ret_text2pandas@<name>`. Both backbones are
+# run in ONE session into ONE aggregate so the comparison is within-experiment
+# (the Jun/Jul 2026 artefacts had llama70b in eval_results_llama/ and gpt4o-mini
+# in eval_results/, produced a day apart — see specs/checks-T-Q-H-findings.md H.2).
+#
+# NOTE on provenance: the original `ret_text2pandas@gpt4o-mini` run left no trace
+# in data/logs/llm_calls-*.jsonl and models.yml had no OpenAI provider at the
+# time, so the model behind that config_id is unverifiable. The `openai` provider
+# below is a deliberate re-declaration, not a reconstruction.
+retriever_backbones:
+  - name: llama70b
+    provider: deepinfra
+    model: "meta-llama/Llama-3.3-70B-Instruct"
+    temperature: 0.1
+    max_retries: 5
+    request_timeout: 120
+  # Routed via OpenRouter rather than OpenAI direct. Both were verified working
+  # on 2026-08-23; OpenRouter is the more likely match for the original run,
+  # since models.yml had no `openai` provider when those artefacts were made.
+  #
+  # PINNED, deliberately: `openai/gpt-4o-mini` is a floating alias that OpenAI
+  # can repoint at any time, which would make this run as unreproducible as the
+  # one it replaces. The dated id is the whole point.
+  - name: gpt4o-mini
+    provider: openrouter
+    model: "openai/gpt-4o-mini-2024-07-18"
+    temperature: 0.1
+    max_retries: 5
+    request_timeout: 120
 
 # LLM-as-judge models. MUST differ from `llm.model` (enforced in code).
 # Used for QA question-rating and answer evaluation; compared head-to-head.

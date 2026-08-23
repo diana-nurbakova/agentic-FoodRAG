@@ -10,7 +10,7 @@ KBQA systems need two things out of it:
   *exclusion* constraints, not walk seeds, so they are not linked as topics.
 * **Constraint text** — a frozen, deterministic natural-language rendering of the
   persona's requirements, injected into every LLM prompt so each baseline gets
-  the *same* health information FoodRAG gets (§5.7 fairness principle).
+  the *same* health information FoodRAG gets.
 
 Keeping both here means ToG, RoG and TFS-KBQA share one notion of "what the user
 asked for", and it matches the persona structure the gold set was built from.
@@ -38,7 +38,7 @@ def link_query(qa_item: dict, kg: HummusKG, *, query_field: str = "question",
 
     Liked ingredients are linked first (most specific seeds), then liked tags,
     capped at ``max_topics`` so a persona with many likes does not seed an
-    unbounded beam (§5.5 capped traversal applies from the very first hop).
+    unbounded beam.
     """
     persona = qa_item["persona"]
     ingredients = persona.get("ingredients", {})

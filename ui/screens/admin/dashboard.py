@@ -1,4 +1,4 @@
-"""Visit analytics dashboard (spec §6.5).
+"""Visit analytics dashboard.
 
 Funnel, engagement, temporal and quality-flag metrics for participants
 (admin sessions excluded). Mock aggregates + a live overlay from the current
@@ -45,7 +45,7 @@ def render() -> None:
 
     st.divider()
     st.subheader("Quality flags")
-    st.caption("Careless-responding & data-quality indicators (spec §5.8).")
+    st.caption("Careless-responding & data-quality indicators.")
     qcols = st.columns(3)
     for i, (k, v) in enumerate(a["quality"].items()):
         qcols[i % 3].metric(k, v)

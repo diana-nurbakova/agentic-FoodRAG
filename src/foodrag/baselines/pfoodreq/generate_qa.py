@@ -6,7 +6,7 @@ Two steps, both torch-free:
 2. the **vendored** ``data_builder/src/generate_all_qa.py`` (Apache-2.0, see
    ``third_party/pfoodreq/NOTICE.md``) — KB → ``train/valid/test_qas.json``.
 
-This is the faithful-retrain path (§5.8): BAMnet trains on questions pFoodReq
+This is the faithful-retrain path: BAMnet trains on questions pFoodReq
 itself generates over HUMMUS recipes, rather than on a lossy projection of our
 QA set. The output ``*_qas.json`` are the inputs to the (still-to-be-ported)
 BAMnet ``build_all_data.py`` → ``train.py`` stage (sub-task a).

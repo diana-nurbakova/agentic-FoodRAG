@@ -1,9 +1,9 @@
-"""Visit analytics (spec §6.5).
+"""Visit analytics.
 
 Combines mock historical aggregates (so the dashboard looks populated in the
 demo) with live counts derived from the current session's in-memory event log.
 Admin sessions are excluded from participant analytics via the ``is_admin`` flag
-(spec §6.1); here the live overlay simply reflects the current event buffer.
+; here the live overlay simply reflects the current event buffer.
 
 Replace ``_MOCK_*`` with reads from the analytics service / HF Dataset repo.
 """

@@ -6,7 +6,7 @@ import pytest
 pytestmark = [pytest.mark.unit, pytest.mark.gui]
 
 
-# ── HEXAD-12 scoring (spec §4.2) ──────────────────────────────────────────
+# ── HEXAD-12 scoring ──────────────────────────────────────────────────────
 def test_hexad_score_dominant_and_sums():
     from ui.screens.hexad import HEXAD_TYPES, _score
 
@@ -19,7 +19,7 @@ def test_hexad_score_dominant_and_sums():
     assert all(v == 2 for t, v in scores.items() if t != "Player")  # 1 + 1
 
 
-# ── Counterbalancing (spec §5.7) ──────────────────────────────────────────
+# ── Counterbalancing ──────────────────────────────────────────────────────
 def test_latin_square_3_balanced_each_position():
     from ui.counterbalancing import get_plan_order
 
@@ -51,7 +51,7 @@ def test_round_robin_profile_assignment():
     assert assigned == [0, 1, 2, 3, 4, 0, 1, 2, 3, 4]
 
 
-# ── Attention-check placement (spec §5.4) ─────────────────────────────────
+# ── Attention-check placement ─────────────────────────────────────────────
 def test_attention_check_positions_rotate():
     from ui.study_data import ATTENTION_ITEM, ATTENTION_POSITIONS, plan_eval_items_for
 
@@ -62,7 +62,7 @@ def test_attention_check_positions_rotate():
         assert pos == ATTENTION_POSITIONS[plan_index]
 
 
-# ── Flow B study-data integrity (spec §5.3/§5.4) ──────────────────────────
+# ── Flow B study-data integrity ───────────────────────────────────────────
 def test_study_data_integrity():
     from ui.study_data import (
         PLAN_EVAL_ITEMS,

@@ -83,7 +83,7 @@ def _gen_qa_item(_):
     qt = w['question_type']
     persona = persona_generator.generate_persona_preferences(
         w['persona_config'], w['nutrition_config'], w['hummus'], food_on=w['food_on'])
-    meal_plan = persona_generator.get_random_meal_plan_nutrients(w['persona_config']) \
+    meal_plan = _meal_plan_restriction(persona, w['persona_config']) \
         if qt == QuestionType.MEAL_PLAN else None
     question = _generate_question(persona, meal_plan, qt)
     if qt == QuestionType.RECIPE:
@@ -165,7 +165,7 @@ def generate_question_answer_set(hummus_data, question_type: QuestionType, perso
                 persona = persona_generator.generate_persona_preferences(persona_config, nutrition_config, hummus_data,
                                                                          food_on=food_on)
                 if question_type == QuestionType.MEAL_PLAN:
-                    meal_plan = persona_generator.get_random_meal_plan_nutrients(persona_config)
+                    meal_plan = _meal_plan_restriction(persona, persona_config)
                 else:
                     meal_plan = None
 
@@ -229,6 +229,30 @@ def _save(path, file_name, stage, question_answer_set, question_type, end_stage=
             print(f"Saving question-answer set in stage '{stage}' to file: '{file_name}'")
 
         load_util.store_data({'stage_' + str(question_type): stage, file_name: question_answer_set}, path)
+
+
+def _meal_plan_restriction(persona: dict, persona_config: dict) -> dict:
+    """The per-slot calorie caps for a meal-plan question, anchored to the persona.
+
+    Full-day by design: this is the benchmark question ("plan a whole day"), so the
+    day starts at breakfast with nothing eaten yet, rather than the deployment
+    behaviour of planning the remainder of the day from a random current meal.
+
+    The caps are shares of the persona's own daily budget, so they sum to the daily
+    total the question states. Anchoring them on an independent draw — the historical
+    default — made the two contradict each other for most personas.
+    """
+    # Imported here: baselines/guideline_adherence owns the reference tables and the
+    # persona→class mapping, and is a stdlib-only leaf, so this adds no import cycle.
+    from foodrag.baselines.guideline_adherence import resolve_daily_energy
+
+    return persona_generator.get_random_meal_plan_nutrients(
+        persona_config,
+        current_meal='breakfast',
+        today_intaken_kcal=0,
+        kcal_per_day=resolve_daily_energy(persona),
+        merge_snacks=True,
+    )
 
 
 def _generate_question(persona: dict, meal_plan_restriction: dict, question_type: QuestionType) -> str:

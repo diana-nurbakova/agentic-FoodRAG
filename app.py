@@ -1,4 +1,4 @@
-"""FoodRAG demo — Streamlit entry point (spec §11.5).
+"""FoodRAG demo — Streamlit entry point.
 
 Routing + session bootstrap. Flow A (Interactive Exploration) and Flow B
 (Structured Evaluation) are implemented and share the consent screen; a welcome
@@ -38,7 +38,7 @@ st.set_page_config(page_title="FoodRAG Demo", page_icon="🍽️", layout="cente
 
 @st.cache_resource(show_spinner="Starting backing stores (Docker: Postgres + Neo4j)…")
 def _bootstrap_stores() -> dict:
-    """Bring the pgvector Postgres (and Neo4j) up once per server process (spec §2.2)."""
+    """Bring the pgvector Postgres (and Neo4j) up once per server process."""
     return ensure_stores_up()
 
 
@@ -69,12 +69,12 @@ elif not st.session_state.get("_stores_warned"):
 _warm_backend()
 init_state()
 
-# Admin view (spec §6.1): ?admin=true reveals the password-gated admin panel.
+# Admin view: ?admin=true reveals the password-gated admin panel.
 if st.query_params.get("admin") == "true":
     admin_view.render()
     st.stop()
 
-# Report tab (Flow C, Evaluation Protocol §11): ?report=true opens it directly.
+# Report tab (Flow C): ?report=true opens it directly.
 if st.query_params.get("report") == "true":
     report.render()
     st.stop()

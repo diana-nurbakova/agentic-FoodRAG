@@ -29,10 +29,9 @@ The system has three faces:
 - an **evaluation framework** — deterministic + dual-LLM-judge metrics with a full baseline ladder
   (popularity, LLM-only, naive-RAG, ToG/RoG/TFS-KBQA, pFoodReq).
 
-This is an app based on a refactored, reproducible version of the original research prototype
-[gitlab.com/felix134/agentic-food-rag](https://gitlab.com/felix134/agentic-food-rag) of the same team — packaged with
-`uv`, explicit data loading, configurable model providers, Dockerized stores, logging/retry/JSON
-recovery, resumable runs, deterministic safety guards, and a test suite.
+The system is packaged for reproducibility: `uv`-managed dependencies, explicit data loading,
+configurable model providers, Dockerized stores, logging/retry/JSON recovery, resumable runs,
+deterministic safety guards, and a test suite.
 
 **Full architecture & reproducibility reference:** [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 
@@ -121,7 +120,7 @@ uv run python -m foodrag.data prepare    # unzip local archives + download publi
 uv run python -m foodrag.data validate   # non-zero exit if anything required is missing
 ```
 
-Sources: HUMMUS recipes/reviews/members ([GitLab](https://gitlab.com/felix134/connected-recipe-data-set)),
+Sources: HUMMUS recipes/reviews/members ([RecSys '23](https://doi.org/10.1145/3604915.3609491)),
 food.com tags ([Kaggle](https://www.kaggle.com/shuyangli94/food-com-recipes-and-user-interactions),
 free account), FoodKG mappings, the [FoodOn](https://foodon.org/) ontology, and
 [USDA FoodData](https://fdc.nal.usda.gov/download-datasets). Data lives under `data/` (gitignored).
@@ -209,7 +208,6 @@ docker-compose.yml, pyproject.toml, uv.lock
 
 ## Credits
 
-Refactor of the Food RAG system by Felix Bölz et al.; built on **HUMMUS**
-(Bölz, Nurbakova, Calabretto, Gerl, Brunie, Kosch — RecSys '23,
+Built on **HUMMUS** (Bölz, Nurbakova, Calabretto, Gerl, Brunie, Kosch — RecSys '23,
 [doi:10.1145/3604915.3609491](https://doi.org/10.1145/3604915.3609491)), LlamaIndex, FoodKG, FoodOn,
 and USDA FoodData Central.

@@ -1,4 +1,4 @@
-"""Steps 4–6: Plan evaluation (spec §5.4).
+"""Steps 4–6: Plan evaluation.
 
 Each participant evaluates N plans (default 3) for the assigned profile, in
 Latin-square order. Per plan: view the 4-meal plan + explanation, then rate 7

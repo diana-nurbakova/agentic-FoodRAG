@@ -1,9 +1,9 @@
-"""Screen 4: Main interface (spec §4.4).
+"""Screen 4: Main interface.
 
 Pipeline strip, query input, simulated processing, query inspector, correction
 log, three alternative plans × four meals, recipe cards with triple scoring,
 recipe detail modal, explanation tab, KG path, and arena mode (compare two
-pipeline configs). Data is mocked (spec §12 Phase 2 wires the real backend).
+pipeline configs). Data is mocked.
 """
 
 from __future__ import annotations
@@ -53,7 +53,7 @@ def _full_day() -> bool:
 
 def _current_meal() -> str:
     """Meal slot matching the local time of day — the default single-meal target
-    when the query names no explicit meal (spec §4.4)."""
+    when the query names no explicit meal."""
     h = datetime.now().hour
     if 5 <= h < 11:
         return "Breakfast"
@@ -281,7 +281,7 @@ def _hummus_warm_indicator() -> None:
 
 
 def _simulate_run(config: dict) -> dict:
-    """Fake the agent pipeline latency breakdown (spec §2.3 estimates)."""
+    """Fake the agent pipeline latency breakdown."""
     base = RETRIEVER_LATENCY.get(config["retriever"], 3.5)
     val = 1.2 if config["validation"] else 0.0
     exp = 2.0 if config["explanation"] else 0.0
@@ -366,7 +366,7 @@ def _live_expander():
 
 
 def _render_safety_panel(safety: dict | None, side: str) -> None:
-    """Deterministic safety summary for the live plan (protocol §4.3)."""
+    """Deterministic safety summary for the live plan."""
     if not safety or not safety.get("n"):
         return
     # Log once per result (keyed by side + plan size)
@@ -436,7 +436,7 @@ def _render_real_results(side: str, arena_mode: bool) -> None:
 
     if config["retriever"] == "fusion":
         st.caption("ℹ Fusion runs reciprocal-rank fusion over dense + sparse "
-                   "(+ Neo4j KG when available, per protocol §5.5).")
+                   "(+ Neo4j KG when available).")
 
     # A run is in flight for this side → show the live trace and poll (background thread
     # does the work so the script never blocks and updates flush live).
@@ -708,7 +708,7 @@ def render() -> None:
         st.session_state["arena_mode"] = False
 
     # Navigation: Flow A is consent → persona → main, so Back returns to the
-    # persona chooser and Home to the flow chooser (spec §4.4). Shared helper uses
+    # persona chooser and Home to the flow chooser. Shared helper uses
     # on_click callbacks, robust against the live-backend warm-poll fragment.
     render_step_nav(back_screen="persona", home_screen="welcome")
 

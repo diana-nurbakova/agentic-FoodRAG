@@ -1,15 +1,14 @@
 """Shared theme: colour palette, fonts and global CSS injection.
 
-Ported from the v4 React mockup (``mockups/foodrag-mockup-v4.html``) and the
-spec colour appendix (Appendix A / B). Keeping the palette in one place means
-the custom-HTML components and the native Streamlit theme stay in sync.
+Keeping the palette in one place means the custom-HTML components and the
+native Streamlit theme stay in sync.
 """
 
 from __future__ import annotations
 
 import streamlit as st
 
-# ── Core palette (spec Appendix A) ────────────────────────────────────────
+# ── Core palette ──────────────────────────────────────────────────────────
 C = {
     "bg": "#f5f3ee",
     "card": "#ffffff",

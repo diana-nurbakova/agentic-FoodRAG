@@ -1,4 +1,4 @@
-"""Modern-embedding ablation for pFoodReq (§5.8).
+"""Modern-embedding ablation for pFoodReq.
 
 The faithful pFoodReq run uses its original **GloVe 840B.300d** (a deliberate
 between-method difference vs FoodRAG, not a confound). For thoroughness we also

@@ -82,7 +82,7 @@ def build_agentic_pipeline(name: str, kg: HummusKG, recipes_df: pd.DataFrame, *,
                            query_engine_kwargs: Optional[dict] = None,
                            rog_checkpoint: Optional[str] = None, tfs_checkpoint: Optional[str] = None,
                            **assembler_kw):
-    """A KBQA system under the full agentic pipeline (Heuristic 1, Use 2 §5.7).
+    """A KBQA system under the full agentic pipeline (Heuristic 1, Use 2).
 
     By default assembles the standard five-agent chain in code (turnkey) — pass
     ``hummus_data`` and leave ``workflow_builder=None``. Supply a custom

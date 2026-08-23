@@ -1,4 +1,4 @@
-"""Bring the backing stores up when the app launches (spec §2.2 infra).
+"""Bring the backing stores up when the app launches.
 
 Best-effort ``docker compose up -d`` for the pgvector Postgres (and Neo4j) so the
 live retrievers (Dense/Sparse/Hybrid/Fusion) work without the user starting Docker

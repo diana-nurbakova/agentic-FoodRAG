@@ -1,4 +1,4 @@
-"""HUMMUS knowledge-graph access layer for the external KBQA baselines (§5.8).
+"""HUMMUS knowledge-graph access layer for the external KBQA baselines.
 
 The three KBQA systems (ToG, RoG, TFS-KBQA) all traverse the same HUMMUS graph.
 This module is the single place that knows the graph's *shape* — its node labels,
@@ -8,7 +8,7 @@ first space, so ``servingSize [g]`` is stored as ``servingSize`` and queried as
 ``r.servingSize``). Everything above this file reasons in terms of
 :class:`Entity` / :class:`Relation`, never raw Cypher.
 
-Three faithfulness-relevant decisions live here, all from §5.5:
+Three faithfulness-relevant decisions live here, all from:
 
 * **Capped depth** — the recipe→ingredient→FoodOn-class→ingredient→recipe pattern
   (length 5) is the unit of traversal; callers pass a small ``max_depth`` and the
@@ -16,10 +16,10 @@ Three faithfulness-relevant decisions live here, all from §5.5:
 * **Hub pruning** — high-degree FoodOn hub classes (``vegetable``, ``salt``, …)
   drive the combinatorial fan-out the thesis hit. :meth:`HummusKG.tail_entities`
   drops tail nodes whose degree exceeds ``hub_degree_max`` so a single hub cannot
-  explode the beam. This prunes the *traversal*, not the *data* (§5.5 note), so it
+  explode the beam. This prunes the *traversal*, not the *data*, so it
   does not compromise cross-retriever comparability.
 * **Constraint-first is opt-in** — prefiltering to the persona's valid set (which
-  equals the gold set on satisfiable personas, §5.7 caveat) would trivially
+  equals the gold set on satisfiable personas,.7 caveat) would trivially
   saturate retrieval metrics, so the KBQA systems traverse *natively* by default;
   constraint-first is exposed as a tractability mode the adapters can switch on.
 
@@ -178,7 +178,7 @@ class HummusKG:
     Wraps a :class:`KGClient` and exposes the handful of primitives the KBQA
     algorithms need — entity linking, relation exploration, bounded one-hop
     expansion, recipe-url resolution and capped-depth path grounding — with the
-    §5.5 traversal guards (fan-out cap, hub pruning) applied consistently.
+.5 traversal guards (fan-out cap, hub pruning) applied consistently.
     """
 
     def __init__(self, client: KGClient, *, hub_degree_max: int = DEFAULT_HUB_DEGREE_MAX,
@@ -218,7 +218,7 @@ class HummusKG:
 
     # — relation exploration (ToG step 1) —
     def relations_of(self, entity: Entity) -> list[Relation]:
-        """Candidate relations to explore from ``entity`` (schema-driven, §5.5
+        """Candidate relations to explore from ``entity`` (schema-driven,.5
         capped: only the one-hop relation types of the node's label)."""
         return list(_SCHEMA_RELATIONS.get(entity.label, ()))
 
@@ -229,7 +229,7 @@ class HummusKG:
 
         Hub tails (Food_on classes whose degree exceeds ``hub_degree_max``) are
         dropped when ``prune_hubs`` so a high-degree class cannot blow up the beam
-        (§5.5). The cap is applied in Cypher (``LIMIT``) so the fan-out never
+. The cap is applied in Cypher (``LIMIT``) so the fan-out never
         materialises server-side.
         """
         limit = self.fanout if limit is None else limit
@@ -285,10 +285,10 @@ class HummusKG:
         )
         return {r.pop("key"): r for r in rows}
 
-    # — constraint-first tractability mode (§5.5, opt-in) —
+    # — constraint-first tractability mode —
     def restrict_to_recipes(self, recipe_keys: Iterable[object]) -> "RecipeScope":
         """Return a scope object the algorithms can intersect recipe tails with,
-        so traversal stays inside an already-filtered valid set (§5.5 option 3)."""
+        so traversal stays inside an already-filtered valid set."""
         return RecipeScope(frozenset(recipe_keys))
 
 

@@ -1,4 +1,4 @@
-"""Deterministic evaluation-metric unit tests (Evaluation Protocol §4.3–4.5)."""
+"""Deterministic evaluation-metric unit tests."""
 import pytest
 
 from ui.services import eval_metrics as M
@@ -67,7 +67,7 @@ def test_foodon_expander_uses_translate_ingredients():
 
     expand = M.foodon_expander({"food_on": FakeFoodOn()})
     out = expand(["gluten"])
-    # genuine ontology call: include_food_on must be True (the §4.3 upgrade)
+    # genuine ontology call: include_food_on must be True (the.3 upgrade)
     assert calls["args"][1] is True
     assert "wheat flour" in out and "gluten" in out          # leaves + original, lower-cased
     assert M.recipe_violates_allergen(R_GLUTEN, ["gluten"], expand=expand) is True

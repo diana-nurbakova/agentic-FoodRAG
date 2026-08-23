@@ -1,4 +1,4 @@
-"""Admin: Flow B study design — conditions & profiles (spec §6.3).
+"""Admin: Flow B study design — conditions & profiles.
 
 The study's meal plans are **selected from already-run evaluation results** (no live
 pipeline). Here the admin sets:

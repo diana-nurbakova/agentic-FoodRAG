@@ -1,25 +1,25 @@
-"""ToG — Think-on-Graph (Sun et al., ICLR 2024), adapted to HUMMUS (§5.8).
+"""ToG — Think-on-Graph (Sun et al., ICLR 2024), adapted to HUMMUS.
 
 Training-free agentic KG traversal: the LLM does *beam search on the graph*,
 alternating between exploring the graph and pruning with the model. Each depth is
 the faithful two-step ToG cycle:
 
 1. **Relation exploration** — for every entity at the frontier, list its candidate
-   relations (schema-driven, §5.5 capped) and ask the LLM to *prune* to the most
+   relations (schema-driven, capped) and ask the LLM to *prune* to the most
    useful ones for the question + constraints (the ToG "relation search + prune").
 2. **Entity exploration** — expand the kept relations one hop (bounded fan-out,
-   hub-pruned, §5.5), then ask the LLM to *score* the candidate tail entities; keep
+   hub-pruned), then ask the LLM to *score* the candidate tail entities; keep
    the global top-``beam_width`` partial reasoning paths.
 
 After each depth a **reasoning** call decides whether the paths gathered so far
 are adequate to answer (recommend recipes); if so the walk stops early. Recipe
 nodes met anywhere along surviving paths are the candidate answers, ranked by the
-score of the best path that reached them and tie-broken health-aware (§5.7).
+score of the best path that reached them and tie-broken health-aware.
 
-Adaptation notes (faithful-reproduction discipline, §5.8):
+Adaptation notes (faithful-reproduction discipline):
 * Native by default — ToG is *not* handed the persona's valid set; constraints
   enter only through the prompts (fairness) and the final health blend. The
-  optional ``constraint_first`` mode (§5.5) is a tractability switch, off here.
+  optional ``constraint_first`` mode is a tractability switch, off here.
 * The LLM is injected and may be ``None`` (deterministic fallback: uniform
   relation/entity scores, stop when ≥k recipes are found) so the traversal is
   testable without a generator or live graph.
@@ -198,7 +198,7 @@ class ToG(KBQASystem):
         return {r["key"]: r["url"] for r in rows if r.get("url")}
 
     def _scope(self, linked: LinkedQuery, qa_item: dict) -> Optional[RecipeScope]:
-        """Constraint-first traversal scope (§5.5) — only when explicitly enabled."""
+        """Constraint-first traversal scope — only when explicitly enabled."""
         if not self.opt.constraint_first:
             return None
         gold = qa_item.get("_valid_recipe_keys")

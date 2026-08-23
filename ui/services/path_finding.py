@@ -1,12 +1,12 @@
-"""Grounded KG-path extraction for explanations (Evaluation Protocol §8.1).
+"""Grounded KG-path extraction for explanations.
 
 For a recommended recipe, extract the path(s) connecting it to each stated
 persona requirement, grounded in the recipe's real attributes / ingredients /
 tags (and the FoodOn hierarchy when available). This is the **constraint-first,
-graph-second** approach (§5.5/§8): we explain only already-recommended recipes,
+graph-second** approach: we explain only already-recommended recipes,
 so traversal is bounded and every presented edge is real.
 
-Two deterministic metrics (§8.1):
+Two deterministic metrics:
   - **Path Coverage** — fraction of stated requirements with a supporting path.
   - **Path Validity** — fraction of presented paths whose edges are real.
     Paths here are built only from genuine attributes/membership, so validity is
@@ -92,7 +92,7 @@ def _tag_path(card: dict, req: dict) -> dict:
 
 
 def build_paths(card: dict, persona: dict, expand: Optional[Callable[[Iterable[str]], set]] = None) -> dict:
-    """Grounded requirement-paths for one recipe card (§8.1).
+    """Grounded requirement-paths for one recipe card.
 
     Returns ``{recipe, requirements, paths:[...], coverage, validity, n}`` where
     ``coverage`` = supported/total requirements, ``validity`` = real/presented.

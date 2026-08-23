@@ -1,12 +1,11 @@
-"""§8 Explainability metrics — graph-path coverage/validity + NL-claim grounding.
+"""Explainability metrics — graph-path coverage/validity + NL-claim grounding.
 
-FoodRAG's explanations have two layers (Evaluation Protocol §8):
+FoodRAG's explanations have two layers:
 
 * an **intrinsic KG-path layer** (structural, extracted from HUMMUS recipe
-  attributes), evaluated by :func:`path_coverage` / :func:`path_validity` (§8.1);
+  attributes), evaluated by :func:`path_coverage` / :func:`path_validity`;
 * a **natural-language rationale layer** (Enhancement Agent, user-facing), which
-  can *hallucinate*, evaluated by :func:`extract_claims` + :func:`claim_grounding`
-  (§8.2).
+  can *hallucinate*, evaluated by :func:`extract_claims` + :func:`claim_grounding`.
 
 The contrast between the two layers is the finding: **the KG-path layer is valid
 by construction** — every supporting path here is read directly off a real recipe
@@ -16,11 +15,11 @@ checked one-by-one, so its grounding rate can (and does) fall below 1.0.
 
 Everything is deterministic + rule-based and memory-light: it needs only the
 persona dict and the *recommended* recipe rows (mappings of HUMMUS columns), never
-Neo4j or the 7GB HUMMUS graph. The "constraint-first, graph-second" framing of §8
+Neo4j or the 7GB HUMMUS graph. The "constraint-first, graph-second" framing
 is what makes this sound: because we operate only over the already-recommended
 recipes (a tiny induced subgraph), the KG-path evidence is a plain attribute lookup.
 
-── §8.1 requirement enumeration ────────────────────────────────────────────────
+── requirement enumeration ─────────────────────────────────────────────────────
 Each atomic persona requirement becomes one "requirement to explain":
 
 * ``relative_nutrients[n]`` bound  → supported if some recipe's ``row[n]`` ∈ [lo,hi]
@@ -46,7 +45,7 @@ from foodrag.baselines import constraints
 Row = Optional[dict]
 
 
-# ── §8.1 graph-path explanations ─────────────────────────────────────────────
+# ── graph-path explanations ──────────────────────────────────────────────────
 
 def _resolved(recipes: Sequence[Row]) -> list[dict]:
     return [r for r in recipes if r]
@@ -109,7 +108,7 @@ def supporting_paths(persona: dict, recipes: Sequence[Row],
 
 def path_coverage(persona: dict, recipes: Sequence[Row],
                   expand: constraints.IngredientExpander = constraints.identity_expand) -> float:
-    """§8.1 Path Coverage = (# requirements with a supporting path) / (# stated requirements).
+    """Path Coverage = (# requirements with a supporting path) / (# stated requirements).
 
     NaN when the persona states no requirements (nothing to cover).
     """
@@ -121,7 +120,7 @@ def path_coverage(persona: dict, recipes: Sequence[Row],
 
 def path_validity(persona: dict, recipes: Sequence[Row],
                   expand: constraints.IngredientExpander = constraints.identity_expand) -> float:
-    """§8.1 Path Validity = fraction of constructed supporting paths whose edges are
+    """Path Validity = fraction of constructed supporting paths whose edges are
     real HUMMUS edges.
 
     **Valid by construction:** every supporting path this module constructs is read
@@ -137,7 +136,7 @@ def path_validity(persona: dict, recipes: Sequence[Row],
     return 1.0 if covered else float("nan")
 
 
-# ── §8.2 NL-explanation grounding ────────────────────────────────────────────
+# ── NL-explanation grounding ─────────────────────────────────────────────────
 #
 # The explanations are templated NL (see ``ExplanationTool.EXPLANATION_TEMPLATE``).
 # ``extract_claims`` pulls typed, checkable factual claims out via rule-based regex;
@@ -230,7 +229,7 @@ def _clean_token(tok: str) -> str:
 
 def extract_claims(explanation_text: str) -> list[dict]:
     """Rule-based extraction of typed, checkable factual claims from a templated NL
-    explanation (§8.2). Returns a list of claim dicts, each with a ``type`` and the
+    explanation. Returns a list of claim dicts, each with a ``type`` and the
     fields needed to verify it against a recipe row. Empty list if the text is empty
     or yields no recognisable claim.
 
@@ -337,7 +336,7 @@ def _has_tag(row: dict, tag: str) -> bool:
 
 
 def claim_grounding(claims: Sequence[dict], recipes: Sequence[Row]) -> dict:
-    """§8.2 Claim Grounding — verify extracted claims against the recommended recipes.
+    """Claim Grounding — verify extracted claims against the recommended recipes.
 
     Returns ``{"claim_grounding_rate": supported/total, "unsupported_claim_rate":
     unsupported/total}``. Both NaN when no claims were extracted (nothing to ground).
@@ -355,15 +354,15 @@ def claim_grounding(claims: Sequence[dict], recipes: Sequence[Row]) -> dict:
     }
 
 
-# ── one-shot §8 block ────────────────────────────────────────────────────────
+# ── one-shot explainability block ────────────────────────────────────────────
 
 def explainability_metrics(persona: dict, recipes: Sequence[Row], *,
                            explanation_text: str = "",
                            expand: constraints.IngredientExpander = constraints.identity_expand) -> dict:
-    """The full §8 explainability block for a §13.1 record.
+    """The full explainability block for a per-question record.
 
-    ``path_coverage`` / ``path_validity`` (§8.1) are always computed from the
-    recommended recipes. ``claim_grounding_rate`` / ``unsupported_claim_rate`` (§8.2)
+    ``path_coverage`` / ``path_validity`` are always computed from the
+    recommended recipes. ``claim_grounding_rate`` / ``unsupported_claim_rate``
     are computed only when ``explanation_text`` is non-empty (they need the NL layer);
     otherwise they are NaN — populating on the new-code configs that persist the text.
     """

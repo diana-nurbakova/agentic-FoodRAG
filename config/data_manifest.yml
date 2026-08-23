@@ -19,10 +19,10 @@ datasets:
     dir: data/hummus/hummus_data/raw
     kind: files
     source:
-      name: "HUMMUS connected-recipe-data-set"
-      url: "https://gitlab.com/felix134/connected-recipe-data-set"
+      name: "HUMMUS connected-recipe-data-set (RecSys '23)"
+      url: "https://doi.org/10.1145/3604915.3609491"
       public: true
-      note: "Public GitLab repo. Download the data release and place the CSVs (or their .zip) here."
+      note: "Public dataset released with the HUMMUS paper; see the paper for the data-release link. Download the release and place the CSVs (or their .zip) here."
     files:
       - name: recipes.csv
         unzip_from: recipes.zip
@@ -59,7 +59,7 @@ datasets:
     kind: files
     source:
       name: "FoodKG bundle (shipped with the HUMMUS food_kg release)"
-      url: "https://gitlab.com/felix134/connected-recipe-data-set"
+      url: "https://doi.org/10.1145/3604915.3609491"
       public: true
     files:
       - name: graph_ingredient_mapping.csv

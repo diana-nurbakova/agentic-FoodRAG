@@ -1,4 +1,4 @@
-"""Persona management (spec §6.2).
+"""Persona management.
 
 Browse personas (in the demo, the predefined set standing in for a live HUMMUS
 query), toggle them active/inactive, reorder them, and import custom edge-case

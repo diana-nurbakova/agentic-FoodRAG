@@ -1,4 +1,4 @@
-"""Pipeline defaults (spec §6.4).
+"""Pipeline defaults.
 
 Defaults the Flow A pipeline starts from, and whether participants may change it
 or use arena mode (lock for a controlled between-subjects study, unlock for the

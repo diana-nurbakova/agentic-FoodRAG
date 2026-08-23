@@ -2,12 +2,12 @@
 
 All three systems (ToG, RoG, TFS-KBQA) reduce to one operation — turn a QA item
 into a ranked list of ``recipe_url`` ids — so they share a single
-:class:`KBQASystem` interface. The dual-use adapters (§5.7) wrap *that* interface
+:class:`KBQASystem` interface. The dual-use adapters wrap *that* interface
 twice: once as a ladder :class:`~foodrag.baselines.base.Baseline` (Use 1
 retrieval, EXP-1; Use 2 full-pipeline, EXP-7) and once as a
 ``DataFrameRetrieverBase`` for FoodRAG's meal-plan assembly layer.
 
-Ranking is factored out here because the fairness principle (§5.7) requires every
+Ranking is factored out here because the fairness principle requires every
 baseline to receive the *same* health information FoodRAG gets: whatever evidence
 score a system assigns to a candidate, the final tie-break is health-aware
 (NutriScore, then FSA, then popularity), so a baseline is never silently
@@ -39,7 +39,7 @@ class KBQASystem(ABC):
 
 @dataclass
 class KBQAOptions:
-    """Shared knobs for the KBQA traversal/tractability behaviour (§5.5)."""
+    """Shared knobs for the KBQA traversal/tractability behaviour."""
 
     max_depth: int = 3          # capped traversal depth (recipe↔ingredient↔class)
     beam_width: int = 5         # ToG beam / RoG plan count kept per step
@@ -49,7 +49,7 @@ class KBQAOptions:
     query_field: str = "question"
 
 
-# ── health-aware ranking (§5.7 fairness, shared by all systems) ───────────────
+# ── health-aware ranking ──────────────────────────────────────────────────────
 
 def health_sort_key(attrs: dict) -> tuple:
     """Descending NutriScore, then FSA, then rating, then #ratings (NaN-safe)."""
@@ -69,7 +69,7 @@ def blend_order(scored: dict[object, float], kg: HummusKG, *, alpha: float = 0.2
 
     ``scored`` maps a recipe key to the system's evidence score (path score,
     reasoning confidence, …). Returns keys (or urls, if ``key_to_url`` given) best
-    first. This is the single place the §5.7 "same health info" promise is kept.
+    first. This is the single place the.7 "same health info" promise is kept.
     """
     if not scored:
         return []

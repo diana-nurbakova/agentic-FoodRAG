@@ -2,13 +2,13 @@
 
 Every baseline rung is scored the same way: it produces a ranked list of recipe
 ids (``recipe_url``), and these functions turn that list + the persona + the gold
-answer set into the metric block of a §13.1 per-question record.
+answer set into the metric block of a per-question record.
 
 Three families, all rule-based (no LLM):
 
-* retrieval — :func:`hit_at_k`, :func:`mrr_at_k`, :func:`ndcg_at_k` (§4.1)
-* health    — :func:`avg_score_at_k` over ``nutri_score`` / ``fsa_score`` (§4.2)
-* safety    — :func:`violation_rate` / :func:`satisfaction_rate` (§4.3)
+* retrieval — :func:`hit_at_k`, :func:`mrr_at_k`, :func:`ndcg_at_k`
+* health    — :func:`avg_score_at_k` over ``nutri_score`` / ``fsa_score``
+* safety    — :func:`violation_rate` / :func:`satisfaction_rate`
 
 Recommendations that do not resolve to a real recipe (LLM hallucinations) are
 passed as ``None`` rows: they count as retrieval misses and are reported via
@@ -25,7 +25,7 @@ from foodrag.baselines import constraints
 Row = Optional[dict]
 
 
-# ── retrieval (§4.1) ─────────────────────────────────────────────────────────
+# ── retrieval ────────────────────────────────────────────────────────────────
 
 def hit_at_k(retrieved_ids: Sequence[str], gold: set[str], k: int) -> float:
     return 1.0 if any(i in gold for i in retrieved_ids[:k]) else 0.0
@@ -49,7 +49,7 @@ def ndcg_at_k(retrieved_ids: Sequence[str], gold: set[str], k: int) -> float:
     return dcg / idcg
 
 
-# ── health (§4.2) ────────────────────────────────────────────────────────────
+# ── health ───────────────────────────────────────────────────────────────────
 
 def avg_score_at_k(rows: Sequence[Row], col: str, k: int) -> float:
     """Mean of ``col`` over the resolved recipes in the top-k (NaN if none)."""
@@ -57,7 +57,7 @@ def avg_score_at_k(rows: Sequence[Row], col: str, k: int) -> float:
     return sum(vals) / len(vals) if vals else float("nan")
 
 
-# ── safety (§4.3) ────────────────────────────────────────────────────────────
+# ── safety ───────────────────────────────────────────────────────────────────
 
 def violation_rate(rows: Sequence[Row], predicate: Callable[[dict], bool], k: int) -> float:
     """Fraction of the top-k recommendations for which ``predicate`` is True.
@@ -91,7 +91,7 @@ def hallucination_rate(rows: Sequence[Row], k: int) -> float:
     return sum(1 for r in top if r is None) / len(top)
 
 
-# ── §4.3 hard/soft per-constraint satisfaction ───────────────────────────────
+# ── hard/soft per-constraint satisfaction ────────────────────────────────────
 
 def hard_constraint_sat_perconstraint(rows: Sequence[Row], persona: dict,
                                       expand: constraints.IngredientExpander, k: int) -> float:
@@ -154,7 +154,7 @@ def soft_constraint_sat(rows: Sequence[Row], persona: dict,
     return sum(fracs) / len(fracs)
 
 
-# ── one-shot block for a §13.1 record ────────────────────────────────────────
+# ── one-shot block for a per-question record ──────────────────────────────────
 
 def deterministic_metrics(retrieved_ids: Sequence[str], rows: Sequence[Row],
                           gold: set[str], persona: dict, k: int,
@@ -170,7 +170,7 @@ def deterministic_metrics(retrieved_ids: Sequence[str], rows: Sequence[Row],
         f"ndcg_at_{k}": ndcg_at_k(retrieved_ids, gold, k),
         f"avg_nutri_at_{k}": avg_score_at_k(rows, "nutri_score", k),
         f"avg_fsa_at_{k}": avg_score_at_k(rows, "fsa_score", k),
-        # §9.4 relevance axis for the Health-vs-Relevance Pareto frontier (NaN if none resolve).
+        # relevance axis for the Health-vs-Relevance Pareto frontier (NaN if none resolve).
         f"avg_rating_at_{k}": avg_score_at_k(rows, "average_rating", k),
         "allergen_violation": violation_rate(
             rows, lambda r: constraints.violates_allergen(r, persona, expand), k),
@@ -178,7 +178,7 @@ def deterministic_metrics(retrieved_ids: Sequence[str], rows: Sequence[Row],
             rows, lambda r: constraints.violates_hard_nutrient(r, persona), k),
         "constraint_satisfaction": satisfaction_rate(rows, persona, expand, k),
         "hallucination_rate": hallucination_rate(rows, k),
-        # §4.3 hard/soft split (per-constraint & all-or-nothing; NaN if no such constraints)
+        # hard/soft split (per-constraint & all-or-nothing; NaN if no such constraints)
         "hard_constraint_sat_perconstraint": hard_constraint_sat_perconstraint(rows, persona, expand, k),
         "hard_constraint_sat_allornothing": hard_constraint_sat_allornothing(rows, persona, expand, k),
         "soft_constraint_sat": soft_constraint_sat(rows, persona, expand, k),

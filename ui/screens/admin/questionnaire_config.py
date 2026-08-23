@@ -1,4 +1,4 @@
-"""Questionnaire configuration (spec §6.3).
+"""Questionnaire configuration.
 
 Study-level settings + an ordered list of questionnaire blocks (active,
 required, position). Mirrors the JSON stored in the HF Dataset repo. ``active_flow``
@@ -32,7 +32,7 @@ def _persistence_controls(cfg: dict) -> None:
     status = config_service.status()
     dest = (f"HF repo `{status['repo_id']}` + local" if status["remote_enabled"]
             else "local file only (set `FOODRAG_DATASET_REPO` + `HF_TOKEN` for the dataset repo)")
-    st.caption(f"Persists to {dest}. Changes apply to new sessions without redeployment (spec §6.3).")
+    st.caption(f"Persists to {dest}. Changes apply to new sessions without redeployment.")
     c1, c2, c3 = st.columns([1, 1, 2])
     if c1.button("💾 Save configuration", type="primary"):
         ok, msg = config_service.save_config(cfg)

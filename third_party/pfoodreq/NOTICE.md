@@ -8,8 +8,7 @@ License: **Apache License 2.0** (see `LICENSE`).
 
 ## What is vendored and why
 
-Both halves are vendored for the **faithful-retrain (Path A)** pFoodReq baseline
-(see `specs/pFoodReq_Adaptation.md`):
+Both halves are vendored for the **faithful-retrain (Path A)** pFoodReq baseline:
 
 - `data_builder/` — the QA-generation half (numpy-only): generate HUMMUS-derived
   KBQA from a converted `recipe_kg.json`.
@@ -20,7 +19,7 @@ Both halves are vendored for the **faithful-retrain (Path A)** pFoodReq baseline
   `run_pfoodreq` (which import only `BAMnetAgent`, never matchnn/bow/pbow).
 
 Requires `rapidfuzz` (modern) for `build_all_data.py`; GloVe `glove.840B.300d`
-for the faithful embedding, or the modern-embedding ablation file (§5.8.1).
+for the faithful embedding, or the modern-embedding ablation file.
 
 ## Modifications
 

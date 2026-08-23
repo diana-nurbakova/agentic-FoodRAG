@@ -1,4 +1,4 @@
-"""Correction Agent log (spec §4.4 / §2.2 Agent 2).
+"""Correction Agent log.
 
 Shows per-meal validation rounds with INVALID/OK status and the relaxation
 action taken. Only rendered when the Validation agent is enabled.

@@ -1,4 +1,4 @@
-"""Popularity baselines — ladder rungs 0a and 0b (§5.7).
+"""Popularity baselines — ladder rungs 0a and 0b.
 
 * **0a — Popularity (raw):** top-rated recipes, *no* constraint filtering. The
   deliberately health-unaware control; it should score badly on the safety

@@ -1,4 +1,4 @@
-"""Step 9: Completion (spec §5.9).
+"""Step 9: Completion.
 
 Summary of the session: profile assigned (not chosen), plans evaluated,
 attention-check pass/fail, average rating per plan, final ranking, and a
@@ -39,7 +39,7 @@ def render() -> None:
             "attention_checks_failed": failed,
         })
         ss["study_completed_logged"] = True
-        # Push the full session log on completion (spec §9.1 "on session end")
+        # Push the full session log on completion
         from ...services.logging_service import flush_now
 
         flush_now(ss["session_id"])
@@ -95,7 +95,7 @@ def render() -> None:
             f"<div style=\"height:100%;width:{pct:.0f}%;background:{bar};border-radius:6px\"></div></div></div>"
         )
 
-    # Researcher data view (toggleable, spec §5.9)
+    # Researcher data view (toggleable)
     with st.expander("🔬 Recorded response data (researcher view)"):
         record = {
             "session_id": ss["session_id"],

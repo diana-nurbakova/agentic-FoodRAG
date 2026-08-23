@@ -1,4 +1,4 @@
-"""Grounded KG-path extraction tests (Evaluation Protocol §8.1)."""
+"""Grounded KG-path extraction tests."""
 import pytest
 
 from ui.services import path_finding as P

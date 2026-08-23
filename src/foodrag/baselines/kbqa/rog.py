@@ -1,21 +1,21 @@
-"""RoG — Reasoning on Graphs (Luo et al., ICLR 2024), adapted to HUMMUS (§5.8).
+"""RoG — Reasoning on Graphs (Luo et al., ICLR 2024), adapted to HUMMUS.
 
 RoG is *plan-then-retrieve*: a **planner** (a fine-tuned LLM) first generates
 faithful **relation paths** grounded in the KG schema, then a **retrieval-
 reasoning** module grounds those paths on the graph to fetch reasoning paths and
 reasons over them to answer. RoG's explicit reasoning-plan generation is the part
-the protocol pairs with FoodRAG's explanation story (§5.8, §8).
+the protocol pairs with FoodRAG's explanation story.
 
 This module implements both stages over the HUMMUS schema:
 
 * :class:`RoGPlanner` emits relation paths over a fixed directed relation
-  vocabulary (:data:`REL_VOCAB`). It prefers a fine-tuned checkpoint (the §12.2
+  vocabulary (:data:`REL_VOCAB`). It prefers a fine-tuned checkpoint (the.2
   "light fine-tuning"; trained by ``kbqa/training/rog_planner_train.py``), falls
   back to prompting the base LLM with RoG's planning instruction, and finally to a
   small set of canonical schema paths so grounding always has something to run.
 * :class:`RoG` grounds each plan from the topic entities (bounded one-hop hops,
-  §5.5 fan-out cap + hub pruning), aggregates plan agreement per recipe as the
-  evidence score, and ranks health-aware (§5.7).
+.5 fan-out cap + hub pruning), aggregates plan agreement per recipe as the
+  evidence score, and ranks health-aware.
 
 The planner checkpoint and the reasoning LLM are injected; with neither present
 the deterministic canonical-plan path keeps RoG runnable and testable.
@@ -182,7 +182,7 @@ class RoG(KBQASystem):
     def _ground(self, plan: list[str], seeds: list[Entity]) -> list[object]:
         """Execute a relation path from the seeds; return reached recipe keys.
 
-        Bounded one-hop expansion per relation (§5.5 fan-out cap + hub pruning via
+        Bounded one-hop expansion per relation (.5 fan-out cap + hub pruning via
         :meth:`HummusKG.tail_entities`); the frontier is capped each hop so a long
         path cannot blow up combinatorially.
         """

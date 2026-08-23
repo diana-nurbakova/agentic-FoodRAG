@@ -1,4 +1,4 @@
-"""End-to-end pFoodReq orchestrator on HUMMUS (baseline ladder rung 4, §5.8).
+"""End-to-end pFoodReq orchestrator on HUMMUS (baseline ladder rung 4).
 
 Chains the whole faithful-retrain (Path A) pipeline:
 
@@ -13,7 +13,7 @@ fan-out bounding (``recipe_filter`` / ``max_dishes_per_tag``) so a run stays on
 the tight stratum. Heavy stages (`build_all_data`, training) shell out / run on
 CPU, so this is a driver for real runs rather than a unit test.
 
-Two embedding variants (§5.8.1): pass ``glove_path`` for the faithful GloVe run,
+Two embedding variants: pass ``glove_path`` for the faithful GloVe run,
 or ``embed_fn`` for the modern-embedding ablation (`pfoodreq_modernemb`).
 """
 from __future__ import annotations
@@ -69,7 +69,7 @@ def build_embeddings(vec_dir: str | Path, out_npy: str | Path, *,
     """Build BAMnet's pretrained-embedding matrix for the built ``vocab2id``.
 
     Faithful run: pass ``glove_path`` (e.g. ``glove.840B.300d.txt``). Ablation
-    (§5.8.1): pass ``embed_fn`` to synthesise a GloVe-format file from a modern
+: pass ``embed_fn`` to synthesise a GloVe-format file from a modern
     embedder over the vocab, then build the matrix from that. Returns the
     embedding dim so the caller can set ``vocab_embed_size`` accordingly.
     """

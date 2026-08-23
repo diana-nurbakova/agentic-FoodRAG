@@ -1,7 +1,7 @@
-"""External KBQA baselines (Evaluation Protocol §5.8): ToG, RoG, TFS-KBQA.
+"""External KBQA baselines: ToG, RoG, TFS-KBQA.
 
 Three modern KBQA paradigms adapted to the HUMMUS food graph, used in both roles
-of the §5.7 dual-use design:
+of the dual-use design:
 
 * **Use 1 — retrieval (EXP-1):** each system as a native retriever, scored on the
   retrieval/health/safety metrics. Wrap with :class:`KBQABaseline` (tag ``EXP-1``).
@@ -13,7 +13,7 @@ and health-aware ranking (:mod:`base`). ToG is training-free; RoG and TFS-KBQA a
 trained (planner / parser fine-tuned by :mod:`training`), with base-LLM and
 deterministic fallbacks so they are runnable and testable without a checkpoint.
 
-pFoodReq/BAMnet (the trained prior-work anchor, §5.8) is intentionally out of this
+pFoodReq/BAMnet (the trained prior-work anchor) is intentionally out of this
 package — it is handled separately.
 """
 from foodrag.baselines.kbqa.adapters import KBQABaseline, KBQARetriever

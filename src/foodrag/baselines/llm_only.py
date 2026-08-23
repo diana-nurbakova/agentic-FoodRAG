@@ -1,4 +1,4 @@
-"""LLM-only (no retrieval) — ladder rung 2 (§5.7).
+"""LLM-only (no retrieval) — ladder rung 2.
 
 Llama 3.3 70B generates recipe recommendations directly from the persona's
 question, with health/constraint instructions in the prompt but *no* HUMMUS

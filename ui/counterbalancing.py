@@ -1,4 +1,4 @@
-"""Counterbalancing & between-subjects assignment (spec §5.3, §5.7).
+"""Counterbalancing & between-subjects assignment.
 
 - ``assign_profile``: round-robin across active profiles (balanced group sizes).
 - ``get_plan_order``: balanced Latin square so each plan appears in each
@@ -12,7 +12,7 @@ gives variety across sessions but not guaranteed global balance.
 
 from __future__ import annotations
 
-# 3×3 balanced Latin square (spec §5.7)
+# 3×3 balanced Latin square
 LATIN_SQUARE_3 = [[0, 1, 2], [1, 2, 0], [2, 0, 1]]
 # 4×4 balanced Latin square (Williams design)
 LATIN_SQUARE_4 = [[0, 1, 3, 2], [1, 2, 0, 3], [2, 3, 1, 0], [3, 0, 2, 1]]
@@ -25,7 +25,7 @@ def get_plan_order(participant_number: int, num_plans: int = 3) -> list[int]:
 
 
 def assign_profile_index(participant_number: int, num_profiles: int) -> int:
-    """Round-robin profile index (between-subjects, spec §5.3)."""
+    """Round-robin profile index (between-subjects)."""
     return participant_number % num_profiles
 
 

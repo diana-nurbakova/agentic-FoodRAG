@@ -1,8 +1,8 @@
-"""Query inspector (spec §4.4): collapsible panel showing the per-meal query
+"""Query inspector: collapsible panel showing the per-meal query
 split, the generated retriever query, and the extracted constraints as chips.
 
 Removable constraints can be deleted (logs ``constraint_removed``); the allergy/
-health "Diabetes-friendly" constraint is non-removable (safety, spec §10.2).
+health "Diabetes-friendly" constraint is non-removable (safety).
 """
 
 from __future__ import annotations

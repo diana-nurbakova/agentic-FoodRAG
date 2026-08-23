@@ -1,9 +1,9 @@
-"""Unit tests for the added deterministic metrics (Evaluation Protocol §4.3, §4.5, §4.5.1).
+"""Unit tests for the added deterministic metrics.
 
 Covers:
-  * §4.3 hard/soft constraint split (metrics + constraints decomposition),
-  * §4.5 slot_appropriateness,
-  * §4.5.1 guideline adherence (class mapping, band scoring, hard-ceiling → violation),
+  *.3 hard/soft constraint split (metrics + constraints decomposition),
+  *.5 slot_appropriateness,
+  *.1 guideline adherence (class mapping, band scoring, hard-ceiling → violation),
 and the full-pipeline record schema additions (plan + explanation persistence).
 
 Everything here is deterministic and needs only small hand-built recipe dicts / a
@@ -36,7 +36,7 @@ def _recipe(**kw):
     return base
 
 
-# ══ §4.3 hard/soft constraint split ══════════════════════════════════════════
+# ══ hard/soft constraint split ═══════════════════════════════════════════════
 
 def test_hard_constraints_decomposition_counts_each_bound():
     persona = {
@@ -119,7 +119,7 @@ def test_deterministic_metrics_includes_new_keys_and_keeps_old():
 
 
 def test_avg_rating_at_k_is_relevance_axis():
-    # §9.4 Pareto relevance axis: mean of average_rating over resolved top-k
+    # Pareto relevance axis: mean of average_rating over resolved top-k
     persona = {}
     r1 = _recipe(**{"average_rating": 4.0})
     r2 = _recipe(**{"average_rating": 5.0})
@@ -130,7 +130,7 @@ def test_avg_rating_at_k_is_relevance_axis():
     assert math.isnan(block_none["avg_rating_at_10"])
 
 
-# ══ §4.5 slot_appropriateness ════════════════════════════════════════════════
+# ══ slot_appropriateness ═════════════════════════════════════════════════════
 
 def test_slot_appropriateness_matches_synonyms():
     plan = {
@@ -168,7 +168,7 @@ def test_plan_quality_metrics_has_slot_appropriateness_key():
         assert key in block
 
 
-# ══ §4.5.1 guideline adherence ═══════════════════════════════════════════════
+# ══ guideline adherence ══════════════════════════════════════════════════════
 
 @pytest.fixture
 def ref_tables():

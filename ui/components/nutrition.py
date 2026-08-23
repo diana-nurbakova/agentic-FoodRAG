@@ -4,7 +4,7 @@ bars, triple health score and cooking-skill badge.
 All functions return HTML strings (no Streamlit calls) so they can be embedded
 inside larger component markup. Ported from the v4 mockup's NS / Donut / Bars /
 TripleScore / Skill components. Colour AND letter are used for Nutri-Score so it
-stays accessible without relying on colour alone (WCAG 1.4.1 / spec §8.2).
+stays accessible without relying on colour alone (WCAG 1.4.1).
 """
 
 from __future__ import annotations

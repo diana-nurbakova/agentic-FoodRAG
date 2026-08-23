@@ -1,4 +1,4 @@
-"""Naive RAG — ladder rung 3 (§5.7).
+"""Naive RAG — ladder rung 3.
 
 Standard single-shot retrieve-then-generate with *no* agentic
 validation/correction/enhancement. Isolates what FoodRAG's Correction +

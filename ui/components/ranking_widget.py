@@ -1,7 +1,7 @@
-"""Drag-to-rank widget with up/down arrow fallback (spec §5.6).
+"""Drag-to-rank widget with up/down arrow fallback.
 
 Streamlit can't capture native HTML5 drag-and-drop server-side, so this uses
-the spec's accessible fallback: ▲/▼ buttons to reorder. Position 1 = most
+an accessible fallback: ▲/▼ buttons to reorder. Position 1 = most
 preferred. The order is kept in ``st.session_state[key]`` as a list of item
 indices into ``items``.
 """

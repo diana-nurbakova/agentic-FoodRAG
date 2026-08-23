@@ -1,4 +1,4 @@
-"""Entry screen: choose a flow (spec §3).
+"""Entry screen: choose a flow.
 
 Flow A (Interactive Exploration) for demo/reviewers; Flow B (Structured
 Evaluation) for the user study. When the admin pins a single active flow

@@ -157,3 +157,11 @@ thesis/
 mockups/
 
 .claude/
+
+# Colab helper docs: untracked for now — they clone/pip-install from the
+# authors' own GitHub repo by URL, which self-identifies.
+notebooks/colab_pfoodreq.md
+notebooks/colab_recipe_embedding.md
+
+# Colab driver for the pFoodReq baseline: untracked until that analysis is run.
+scripts/run_pfoodreq_colab.py

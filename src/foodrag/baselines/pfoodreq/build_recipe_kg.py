@@ -1,4 +1,4 @@
-"""HUMMUS → pFoodReq ``recipe_kg.json`` converter (baseline ladder rung 4, §5.8).
+"""HUMMUS → pFoodReq ``recipe_kg.json`` converter (baseline ladder rung 4).
 
 pFoodReq/BAMnet consumes a FoodKG-style knowledge graph as newline-delimited
 JSON, **tag-rooted and nested**: each line is ``{tag_uri: tag_entity}``, and the
@@ -13,8 +13,7 @@ Two consequences drive the design:
   per question BAMnet's candidate-answer set is *all dishes under the topic tag*.
   At full HUMMUS scale this is multi-GB and is the literal source of pFoodReq's
   slowness. ``recipe_filter`` / ``max_dishes_per_tag`` bound the build so it can
-  run on the tight stratum (§9.1) — the protocol's bounded-evaluation stance
-  (§5.5, §5.8).
+  run on the tight stratum — the bounded-evaluation stance.
 * **Nutrient mapping.** pFoodReq expects ``protein``, ``carbohydrates``, ``sugar``,
   ``calories`` and the three fat components (``polyunsaturated/monounsaturated/
   saturated fat``); it derives ``fat`` as their sum. HUMMUS has total + saturated

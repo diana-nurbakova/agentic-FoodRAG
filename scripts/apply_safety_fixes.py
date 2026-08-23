@@ -1,4 +1,4 @@
-"""Apply the two committed safety fixes (commit 54a62ae) to the AFFECTED §13.1
+"""Apply the two committed safety fixes (commit 54a62ae) to the AFFECTED per-question
 evaluation records, re-judge the fixed output, and re-aggregate — so the stored
 results reflect the fixed system for exactly the records the fixes change.
 
@@ -247,7 +247,7 @@ def process_allergen(rec, qa, indexed, judges, cfg) -> dict:
 
 
 def process_empty_expl(rec, qa, indexed, judges, cfg) -> dict:
-    """Apply fix 2 to an empty-plan record: fixed message + refresh §8 + re-judge."""
+    """Apply fix 2 to an empty-plan record: fixed message + refresh explainability + re-judge."""
     i = int(rec["question_id"].split("_")[1])
     persona = qa[i]["persona"]
     gold = set(qa[i].get("answer") or [])
@@ -260,7 +260,7 @@ def process_empty_expl(rec, qa, indexed, judges, cfg) -> dict:
     rows = _resolve(urls, indexed)                    # []
 
     rec["explanation_text"] = EMPTY_MSG               # fix 2
-    # §8: fixed message has no extractable factual claims -> claim_grounding NaN
+    # fixed message has no extractable factual claims -> claim_grounding NaN
     rec["metrics"].update(explainability.explainability_metrics(
         persona, rows, explanation_text=EMPTY_MSG, expand=constraints.identity_expand))
     # re-judge the fixed message (answer = fixed message; empty plan -> empty contexts)

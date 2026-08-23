@@ -1,7 +1,7 @@
-"""Stage: run the external KBQA baselines through the full pipeline (Use 2, §5.7).
+"""Stage: run the external KBQA baselines through the full pipeline (Use 2).
 
 Wires each KBQA system (ToG/RoG/TFS-KBQA) into FoodRAG's meal-plan assembly layer
-and the dual-judge pass (EXP-7 rung 4), writing §13 records to ``eval_results/``
+and the dual-judge pass (EXP-7 rung 4), writing per-question records to ``eval_results/``
 alongside the deterministic rungs. Unlike ``run-baselines`` this needs a Neo4j
 graph, a generator LLM and judge credentials, so it is meant to be driven from the
 eval notebook (or the CLI below when the environment is configured).
