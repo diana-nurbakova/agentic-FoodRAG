@@ -1,5 +1,6 @@
 import asyncio
 import json
+import re
 import pandas as pd
 import litellm
 from enum import Enum
@@ -220,9 +221,8 @@ def generate_question_answer_set(hummus_data, question_type: QuestionType, perso
 
 
 def _save(path, file_name, stage, question_answer_set, question_type, end_stage=False):
-    load_util.ensure_dir(path)
-
     if path:  # Save the question-answer set to a file
+        load_util.ensure_dir(path)
         if end_stage:
             print(f"Finally, saving question-answer to file: '{file_name}'")
         else:
@@ -560,6 +560,37 @@ async def reformulate_questions(question_answer_set, llm, path, file_name, quest
             _save(path, file_name, 'llm_qa', question_answer_set, question_type)
 
 
+def _rating_prompt(qa) -> str:
+    """The judge prompt for rating one QA entry's reformulated questions.
+
+    Built in explicit parts: an earlier inline ``... if meal_plan_str else ""`` bound across
+    implicitly-concatenated literals, so recipe questions were rated without the original
+    question or persona, and meal-plan questions without the reformulations or instruction.
+    """
+    parts = [f"Original Question: {qa['question']}\n\n",
+             f"Persona:\n{qa['persona']}\n"]
+    if qa.get('meal_plan'):
+        parts.append(f"Meal Plan:\n{qa['meal_plan']}\n")
+    parts.append("\nReformulated questions:\n   - "
+                 + "\n   - ".join(q['question'] for q in qa['llm_questions']) + "\n\n")
+    parts.append("Rate each reformulated question based on how well it represents the original question and "
+                 "maintains the content of the persona and the (if present) meal plan. "
+                 "Provide a score between 1 (poor) and 5 (excellent) for each reformulated question. "
+                 "Return the results as a list of integer scores, e.g. [5, 4, 3].")
+    return "".join(parts)
+
+
+def _parse_scores(text: str):
+    """Parse the judge's ``[5, 4, 3]`` reply, tolerating text around the list; None if unusable."""
+    match = re.search(r"\[[^\[\]]*\]", text or "")
+    scores = load_util.serialize(match.group(0)) if match else []
+    if not isinstance(scores, (list, tuple)) or not scores:
+        return None
+    if not all(isinstance(s, int) and 1 <= s <= 5 for s in scores):
+        return None
+    return list(scores)
+
+
 async def rate_reformulated_questions(question_answer_set, llm, path, file_name, question_type, batch_size=1000,
                                       storage_frequency=10000):
     """
@@ -584,26 +615,12 @@ async def rate_reformulated_questions(question_answer_set, llm, path, file_name,
         if qa['llm_questions'] and not 'score' in qa['llm_questions'][0]:
             # If there are no scores (exemplary see if score 0 is present) in the reformulated questions yet
             try:
-                original_question = qa['question']
-                persona_str = '\n' + str(qa['persona'])
-                meal_plan_str = 'and \n' + str(qa['meal_plan']) if qa.get('meal_plan') else ''
-
                 if 'llm_questions' in qa:
                     reformulated_questions = [question['question'] for question in qa['llm_questions']]
 
                     if reformulated_questions:  # If there are reformulated questions
                         # Prepare the query for the LLM to evaluate each reformulated question
-                        query = (
-                            f"Original Question: {original_question}\n\n"
-                            f"Persona: {persona_str}\n"
-                            f"Meal Plan: {meal_plan_str}\n" if meal_plan_str else ""
-                                                                                  "\nReformulated questions:\n   - " + "\n   - ".join(
-                                reformulated_questions) + "\n\n"
-                                                          "Rate each reformulated question based on how well it represents the original question and "
-                                                          "maintains the content of the persona and the (if present) meal plan."
-                                                          "Provide a score between 1 (poor) and 5 (excellent) for each reformulated question."
-                                                          "Return the results as a list of integer scores, e.g. [5, 4, 3]."
-                        )
+                        query = _rating_prompt(qa)
 
                         system_msg = {
                             'role': 'system',
@@ -627,10 +644,10 @@ async def rate_reformulated_questions(question_answer_set, llm, path, file_name,
 
                         # Extract and deserialize the response content (rating for each reformulated question)
                         response_contents = response.choices[0].message['content']
-                        scores = load_util.serialize(response_contents)
+                        scores = _parse_scores(response_contents)
 
                         # Update the question-answer set with ratings
-                        if isinstance(scores, list) or isinstance(scores, set):
+                        if scores is not None:
                             if len(reformulated_questions) == len(scores):
                                 for i, score in enumerate(scores):
                                     qa['llm_questions'][i]['score'] = score

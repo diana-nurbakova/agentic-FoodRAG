@@ -348,7 +348,12 @@ metric scoring and the TFS-KBQA baseline share one definition of "valid recipe".
    `ProcessPoolExecutor` (`workers>1`).
 2. **`llm_qa`** — LLM produces 5 diverse reformulations per question (formal / concise / casual /
    two free), async batched via litellm `acompletion` (`timeout=90`, `num_retries=3`).
-3. **`scored_qa`** — an **LLM judge** rates each reformulation 1–5 for fidelity → `score`.
+3. **`scored_qa`** — an **LLM judge** rates each reformulation 1–5 for fidelity → `score`
+   (prompt: `_rating_prompt`). Scores in `main_10k` / `main_10k_tight` were regenerated on
+   2026-10-12 with `scripts/rescore_llm_questions.py`: the original prompt rated recipe questions
+   without the original question or persona, so the old scores were invalid. They only fed
+   `qa_helper.get_best_questions`; the evaluated query is the templated `question`. The judge is
+   lenient (~78% of rewrites score 5; every entry has one), so a 5 is weak evidence of fidelity.
 4. **`done`.** Defaults `size=10000`, `batch_size=10`, `storage_frequency=1000`.
 
 Supporting: `persona_validator.py` (boolean AND constraint checks), `restriction_matcher.py`
