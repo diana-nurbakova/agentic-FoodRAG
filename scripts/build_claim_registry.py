@@ -22,6 +22,7 @@ not enter the draft.
 from __future__ import annotations
 
 import argparse
+import json
 import gc
 import glob
 import subprocess
@@ -126,6 +127,38 @@ def last_commit(path: Path) -> str:
 
 def load(path: Path) -> pd.DataFrame:
     return pd.read_parquet(path) if path.suffix == ".parquet" else pd.read_pickle(path)
+
+
+E7_GUARD = ("E-7: a follow-up re-judging of the 421 empty-plan items, never 'corrected scores'. "
+            "One session, descriptive only; no significance claims across judges; no reported or "
+            "recovered value is changed by it.")
+
+
+def e7_rows(root: Path) -> list[dict]:
+    """E11 (cell means, C1-C4 x judge x metric) and E12 (drift vs stored C1/C4) from
+    every ``eval_results_e7_rejudge/<run>/e7_results.json`` (specs/E7-rejudge-2x2-spec.md)."""
+    rows: list[dict] = []
+    for res_path in sorted((root / "eval_results_e7_rejudge").glob("*/e7_results.json")):
+        res = json.loads(res_path.read_text(encoding="utf-8"))
+        src = last_commit(res_path)
+        base = {"config": "e7_rejudge_421", "source_dir": f"eval_results_e7_rejudge/{res_path.parent.name}",
+                "stratum": "empty-plan items", "runs": 1, "convention": "NaN excluded (pipeline parser)",
+                "verdict": "n/a", "empty_class": "", "patched": "no", "source": src}
+        for metric, m in res["metrics"].items():
+            for judge, v in m["per_judge"].items():
+                for cell, c in v["cells"].items():
+                    rows.append({**base, "registry_id": "E11", "metric": f"{metric}_{judge}:{cell}",
+                                 "value": round(c["mean"], 6), "ci": f"[{c['lo']:.4f}, {c['hi']:.4f}]",
+                                 "n": c["n"], "guard": f"{E7_GUARD} NaN {c['nan']}, stray-token NaN "
+                                                      f"{c['stray_token_nan']}."})
+                d = v["drift_check"]
+                for cell, when in (("C1", "4-5 Jul"), ("C4", "6 Jul")):
+                    rows.append({**base, "registry_id": "E12", "metric": f"{metric}_{judge}:{cell}_drift",
+                                 "value": round(d[f"{cell}_today_minus_stored"], 6), "ci": "",
+                                 "n": v["cells"][cell]["n"],
+                                 "guard": (f"{E7_GUARD} Today minus stored ({when}); a gap > 0.10 would make "
+                                           f"every E-7 effect session-specific (exceeded: {d['exceeds_0.10']}).")})
+    return rows
 
 
 def main(argv: Optional[list[str]] = None) -> int:
@@ -279,12 +312,15 @@ def main(argv: Optional[list[str]] = None) -> int:
             del recs, agg
             gc.collect()
 
+    rows.extend(e7_rows(root))
     reg = pd.DataFrame(rows)
+    reg["registry_id"] = reg["registry_id"].fillna("") if "registry_id" in reg else ""
+    reg = reg[["registry_id"] + [c for c in reg.columns if c != "registry_id"]]
     print(f"# REG — claim registry\n\nrows: {len(reg)}   configs: {reg.config.nunique()}")
     print(f"rows carrying a guard: {int((reg.guard.astype(str) != '').sum())}")
     print(f"rows from patched artefacts: {int((reg.patched != 'no').sum())}")
     print(f"configs with a non-HEALTHY verdict: "
-          f"{sorted(reg[~reg.verdict.str.fullmatch('HEALTHY', na=False)].config.unique())}\n")
+          f"{sorted(reg[~reg.verdict.str.fullmatch('HEALTHY|n/a', na=False)].config.unique())}\n")
 
     key = reg[reg.metric.isin(RETRIEVAL + ("correctness_judgeA", "faithfulness_judgeA",
                                            "allergen_violation"))]
@@ -299,10 +335,10 @@ def main(argv: Optional[list[str]] = None) -> int:
         with open(args.md, "w", encoding="utf-8") as fh:
             fh.write("# Claim registry (generated — do not hand-edit)\n\n")
             fh.write(f"Generated from per-question artefacts only. Rows: {len(reg)}.\n\n")
-            fh.write("| config | metric | value | CI | n | runs | convention | empty_class | health | patched | source | guard |\n")
-            fh.write("|---|---|---|---|---|---|---|---|---|---|---|---|\n")
+            fh.write("| id | config | metric | value | CI | n | runs | convention | empty_class | health | patched | source | guard |\n")
+            fh.write("|---|---|---|---|---|---|---|---|---|---|---|---|---|\n")
             for _, r in reg.iterrows():
-                fh.write(f"| {r['config']} | {r['metric']} | {r['value']} | {r['ci']} | {r['n']} | "
+                fh.write(f"| {r['registry_id']} | {r['config']} | {r['metric']} | {r['value']} | {r['ci']} | {r['n']} | "
                          f"{r['runs']} | {r['convention']} | {r['empty_class']} | {r['verdict']} | {r['patched']} | "
                          f"{r['source']} | {r['guard']} |\n")
         print(f"registry (md) -> {args.md}")
