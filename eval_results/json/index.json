@@ -1,126 +1,161 @@
 [
  {
   "config_id": "foodrag_h1_dense_fullday",
+  "source_dir": "eval_results",
   "file": "foodrag_h1_dense_fullday_per_question.json",
   "n_records": 4938,
   "n_runs": 3
  },
  {
   "config_id": "foodrag_h1_dense",
+  "source_dir": "eval_results",
   "file": "foodrag_h1_dense_per_question.json",
   "n_records": 4938,
   "n_runs": 3
  },
  {
   "config_id": "foodrag_h1_t2p_fullday",
+  "source_dir": "eval_results",
   "file": "foodrag_h1_t2p_fullday_per_question.json",
   "n_records": 4938,
   "n_runs": 3
  },
  {
   "config_id": "foodrag_h1_t2p",
+  "source_dir": "eval_results",
   "file": "foodrag_h1_t2p_per_question.json",
   "n_records": 4938,
   "n_runs": 3
  },
  {
   "config_id": "foodrag_h2",
+  "source_dir": "eval_results",
   "file": "foodrag_h2_per_question.json",
   "n_records": 4938,
   "n_runs": 3
  },
  {
   "config_id": "foodrag_h2_t2p",
+  "source_dir": "eval_results",
   "file": "foodrag_h2_t2p_per_question.json",
   "n_records": 4938,
   "n_runs": 3
  },
  {
   "config_id": "llm_only",
+  "source_dir": "eval_results",
   "file": "llm_only_per_question.json",
   "n_records": 8230,
   "n_runs": 5
  },
  {
   "config_id": "naive_rag",
+  "source_dir": "eval_results",
   "file": "naive_rag_per_question.json",
   "n_records": 1646,
   "n_runs": 1
  },
  {
   "config_id": "popularity_health_aware",
+  "source_dir": "eval_results",
   "file": "popularity_health_aware_per_question.json",
   "n_records": 10000,
   "n_runs": 1
  },
  {
   "config_id": "popularity_raw",
+  "source_dir": "eval_results",
   "file": "popularity_raw_per_question.json",
   "n_records": 10000,
   "n_runs": 1
  },
  {
   "config_id": "ret_dense",
+  "source_dir": "eval_results",
   "file": "ret_dense_per_question.json",
   "n_records": 1646,
   "n_runs": 1
  },
  {
   "config_id": "ret_fulltext",
+  "source_dir": "eval_results",
   "file": "ret_fulltext_per_question.json",
   "n_records": 1646,
   "n_runs": 1
  },
  {
   "config_id": "ret_hybrid",
+  "source_dir": "eval_results",
   "file": "ret_hybrid_per_question.json",
   "n_records": 1646,
   "n_runs": 1
  },
  {
   "config_id": "ret_intersection",
+  "source_dir": "eval_results",
   "file": "ret_intersection_per_question.json",
   "n_records": 1646,
   "n_runs": 1
  },
  {
   "config_id": "ret_random",
+  "source_dir": "eval_results",
   "file": "ret_random_per_question.json",
   "n_records": 1646,
   "n_runs": 1
  },
  {
   "config_id": "ret_sparse",
+  "source_dir": "eval_results",
   "file": "ret_sparse_per_question.json",
   "n_records": 1646,
   "n_runs": 1
  },
  {
   "config_id": "ret_text2pandas@gpt4o-mini",
+  "source_dir": "eval_results",
   "file": "ret_text2pandas_at_gpt4o-mini_per_question.json",
   "n_records": 8230,
   "n_runs": 5
  },
  {
   "config_id": "tog",
+  "source_dir": "eval_results",
   "file": "tog_per_question.json",
   "n_records": 300,
   "n_runs": 3
  },
  {
   "config_id": "ret_text2pandas@llama70b",
+  "source_dir": "eval_results_llama",
   "file": "ret_text2pandas_at_llama70b_per_question.json",
   "n_records": 8230,
   "n_runs": 5
  },
  {
+  "config_id": "ret_text2pandas@gpt4o-mini",
+  "source_dir": "eval_results_ret_rerun",
+  "file": "ret_text2pandas_at_gpt4o-mini__rerun_per_question.json",
+  "n_records": 8230,
+  "n_runs": 5
+ },
+ {
+  "config_id": "ret_text2pandas@llama70b",
+  "source_dir": "eval_results_ret_rerun",
+  "file": "ret_text2pandas_at_llama70b__rerun_per_question.json",
+  "n_records": 8230,
+  "n_runs": 5
+ },
+ {
   "config_id": "foodrag_h2_fullday",
+  "source_dir": "eval_results",
   "file": "foodrag_h2_fullday_per_question.json",
   "n_records": 4938,
   "n_runs": 3
  },
  {
   "config_id": "foodrag_h2_t2p_fullday",
+  "source_dir": "eval_results",
   "file": "foodrag_h2_t2p_fullday_per_question.json",
   "n_records": 4938,
   "n_runs": 3

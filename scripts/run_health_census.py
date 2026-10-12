@@ -45,11 +45,13 @@ HEALTHY = "HEALTHY"
 KNOWN_BAD = {("eval_results", "ret_text2pandas@gpt4o-mini", 4),
              ("eval_results", "ret_text2pandas@gpt4o-mini", 5)}
 
-# S's published fit (specs/checks-S-R-findings.md S.3). ``--frozen`` applies
-# these instead of refitting, so a verdict issued today matches the one S
-# published. Refitting is the tool's default because that is what S did, but a
-# threshold that moves when new artefacts land is not a detection rule — see
-# ``specs/checks-PREV-FI-E1prime-spec.md`` FI.1.
+# S's published fit (specs/checks-S-R-findings.md S.3). These are the DEFAULT
+# from WB.3 onward: a verdict issued today matches the one S published.
+# ``--refit`` re-derives them from whatever is on disk, which is what S did, but
+# a threshold that moves when new artefacts land is not a detection rule — see
+# ``specs/checks-PREV-FI-E1prime-findings.md`` FI.5. ⛔ Whenever SUSPECT-LATENCY
+# is reported, its 30% out-of-sample false-positive rate must be reported with
+# it (FI.2b, LAT.2).
 FROZEN_CV, FROZEN_MAX_LATENCY = 0.4034, 79.13
 
 
@@ -238,9 +240,17 @@ def main(argv: Optional[list[str]] = None) -> int:
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--root", default=".")
     p.add_argument("--json", help="write the full census here")
-    p.add_argument("--frozen", action="store_true",
-                   help="apply S's published SUSPECT-LATENCY thresholds instead of "
-                        "refitting them on whatever artefacts are on disk")
+    # WB.3 / FI.5 — frozen is the DEFAULT. Refitting is what S originally did and
+    # is kept only so S's published output can be reproduced, but a threshold
+    # defined by the population it is detecting in cannot detect anything in that
+    # population: adding the E-1' artefacts moved cv_threshold 0.4034 -> 0.3394,
+    # exactly below the runs the frozen rule flags.
+    p.add_argument("--frozen", action="store_true", default=True,
+                   help="apply S's published SUSPECT-LATENCY thresholds (DEFAULT)")
+    p.add_argument("--refit", dest="frozen", action="store_false",
+                   help="refit the thresholds on whatever artefacts are on disk. "
+                        "Reproduces S's original output; see FI.5 for why the "
+                        "result cannot be used as a detector")
     args = p.parse_args(argv)
     root = Path(args.root).resolve()
 

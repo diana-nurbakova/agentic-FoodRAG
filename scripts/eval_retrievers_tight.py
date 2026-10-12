@@ -16,7 +16,9 @@ Three things it does that the original demonstrably did not
    the generated pandas expression, the row count, the error, and a classified
    ``empty_class``. The old artefacts carried no error field and left no entry in
    ``data/logs/llm_calls-*.jsonl``, so check Q.2's empty-class partition could
-   not be reconstructed after the fact.
+   not be reconstructed after the fact. ``empty_class`` is also written into the
+   per-question parquet as a first-class column (check SCH), so the published
+   artefact schema is health-aware on its own, without the sidecar.
 
 3. **A per-run health gate.** The old gpt4o-mini job averaged two runs that were
    100% empty into a published headline (0.427096) without complaint. Here a run
@@ -244,6 +246,55 @@ class Text2PandasBaseline:
         return ids
 
 
+# ── empty_class as a first-class per-question field (check SCH) ──────────────
+
+def attach_empty_class(records: list[dict], rows: list[dict]) -> list[dict]:
+    """Copy ``empty_class`` from this run's trace rows onto the scored records.
+
+    The trace and the per-question records are two views of the same
+    ``(config_id, run, question_id)`` population — the trace is written by
+    ``Text2PandasBaseline.recommend`` and the records by
+    ``runner.run_baseline`` — so the join is total in both directions. It is
+    asserted rather than assumed: a silent left-join miss here would put a
+    ``None`` into the published schema, which is precisely the health-blindness
+    this field exists to remove.
+
+    Mutates and returns ``records`` so ``runner.write_results`` persists
+    ``empty_class`` into the per-question parquet rather than leaving it in the
+    sidecar (E-1'.4).
+    """
+    by_key = {(r["config_id"], r["run"], r["question_id"]): r.get("empty_class")
+              for r in rows}
+    if len(by_key) != len(rows):
+        raise ValueError(f"trace keys are not unique: {len(rows)} rows, "
+                         f"{len(by_key)} distinct (config_id, run, question_id)")
+
+    missing = []
+    for rec in records:
+        key = (rec["config_id"], rec["run"], rec["question_id"])
+        klass = by_key.pop(key, _MISSING)
+        if klass is _MISSING:
+            missing.append(key)
+        else:
+            rec["empty_class"] = klass
+    if missing or by_key:
+        raise ValueError(
+            f"trace/record join is not total: {len(missing)} record(s) with no "
+            f"trace row (e.g. {missing[:3]}), {len(by_key)} trace row(s) with no "
+            f"record (e.g. {list(by_key)[:3]})")
+
+    # The class must agree with the artefact it annotates, or it is decoration.
+    bad = [rec["question_id"] for rec in records
+           if bool(rec["retrieved_ids"]) != (rec["empty_class"] == OK)]
+    if bad:
+        raise ValueError(f"{len(bad)} record(s) whose empty_class disagrees with "
+                         f"retrieved_ids (e.g. {bad[:3]})")
+    return records
+
+
+_MISSING = object()
+
+
 # ── run health ───────────────────────────────────────────────────────────────
 
 def run_health(records: list[dict]) -> dict:
@@ -336,9 +387,12 @@ def main(argv: Optional[list[str]] = None) -> int:
                 experiment_id="EXP-ret-tight", run=run,
                 id_prefix=config_id, max_workers=args.workers,
             )
-            all_records.extend(records)
             rows = list(trace.rows)
             trace.flush()
+            # empty_class is a persisted per-question field, not a sidecar-only
+            # annotation (check SCH, route A).
+            attach_empty_class(records, rows)
+            all_records.extend(records)
 
             h = run_health(records) | {"config_id": config_id, "run": run,
                                        "classes": trace_health(rows),
