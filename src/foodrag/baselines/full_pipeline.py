@@ -299,6 +299,8 @@ _LLM_SEQ_KEY = "llm_sequential_usage_counter"
 _LLM_PARSING_KEY = "llm_parsing_usage_counter"
 _EXPLANATION_DEFAULTS = {"", "not written yet."}
 _FINAL_DEFAULTS = {"", "final recommendation required."}
+# Mirrors ExplanationTool.EMPTY_PLAN_MESSAGE (kept import-free; equality is tested).
+EMPTY_PLAN_MESSAGE = "No meal plan could be recommended that satisfies the given requirements."
 
 
 def _validation_evidence(state: dict) -> dict:
@@ -365,11 +367,20 @@ class WorkflowMealPlanAssembler(MealPlanAssembler):
         has_explanation = explanation.strip().lower() not in _EXPLANATION_DEFAULTS
         urls = _dedupe([r.get("recipe_url") for r in plan.values() if r and r.get("recipe_url")])
         contexts = [str(r.get("title")) for r in plan.values() if r and r.get("title")]
+        if has_explanation and not urls:
+            # Final-plan gate. ExplanationTool gates inside the workflow, i.e. before the
+            # post-filters above; a plan they empty afterwards would keep an explanation of
+            # recipes that were removed. Nothing is recommended, so the fixed message is both
+            # the explanation and the whole answer (the finalization text would narrate it).
+            explanation = EMPTY_PLAN_MESSAGE
+            answer_text = EMPTY_PLAN_MESSAGE
+        else:
+            answer_text = _answer_text(state, plan, explanation, has_explanation)
         explanation_text = explanation if has_explanation else ""
         rec_time = str(state.get(_RECOMMENDATION_TIME_KEY, "") or "")
         meal_types = _requested_meal_types(state.get(_MEAL_QUESTIONS_KEY))
         return AssembledPlan(
-            question=question, answer_text=_answer_text(state, plan, explanation, has_explanation),
+            question=question, answer_text=answer_text,
             plan=plan, recipe_urls=urls, contexts=contexts, has_explanation=has_explanation,
             explanation_text=explanation_text, explanation_structured=_validation_evidence(state),
             recommendation_time=rec_time, requested_meal_types=meal_types,

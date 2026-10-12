@@ -139,23 +139,27 @@ class ExplanationTool(RecipeToolBase):
         else:
             full_history = state_history
 
-        # Choose the current recommendation (if substituted meal plan is available take it,
-        # otherwise take the original meal plan)
-        if not substituted_meal_plan.is_empty():
-            recommendation = substituted_meal_plan
-        else:
-            recommendation = meal_plan
-
-        # Gate on a non-empty plan: if there is nothing to explain, do NOT call the LLM
+        # Gate on a non-empty MEAL PLAN: if there is nothing to explain, do NOT call the LLM
         # (it would hallucinate recipes that were never selected). Emit a fixed safe
         # message instead and persist it exactly like a normal explanation.
-        if self._is_empty_recommendation(recommendation):
+        # The gate must look at the meal plan, not at the substitution: an empty slot is
+        # validated INVALID and handed to the SubstitutionAgent, which then "substitutes" a
+        # recipe that does not exist — so a non-empty substitution of an empty plan is the
+        # common case (E-6: all 133 empty plans), and gating on it let every one through.
+        if self._is_empty_recommendation(meal_plan):
             if self.verbose:
                 print("Empty recommendation — skipping LLM explanation, using fixed message.")
             current_state.set_meal_plan_explanation(self.EMPTY_PLAN_MESSAGE)
             current_state.update_history_item(self.EMPTY_PLAN_MESSAGE)
             current_state.save_to_context()
             return self.EMPTY_PLAN_MESSAGE
+
+        # Choose the current recommendation (if substituted meal plan is available take it,
+        # otherwise take the original meal plan)
+        if not substituted_meal_plan.is_empty():
+            recommendation = substituted_meal_plan
+        else:
+            recommendation = meal_plan
 
         # Use LLM to generate the explanation
         explanation_prompt = self.explanation_template.format(

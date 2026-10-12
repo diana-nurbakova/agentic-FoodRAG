@@ -163,3 +163,56 @@ def test_is_empty_recommendation_helper():
     assert ExplanationTool._is_empty_recommendation(MealPlanSubstitution.from_dict({})) is True
     assert ExplanationTool._is_empty_recommendation(
         MealPlanSubstitution.from_dict({"breakfast": "swap eggs"})) is False
+
+
+# ── FIX 2 regression (E-6): the gate checks the meal plan, not the substitution ─────
+
+def test_empty_plan_with_substitution_is_still_gated():
+    """E-6 found every empty plan bypassing the gate: the empty slot is validated INVALID,
+    the SubstitutionAgent then 'substitutes' a recipe that does not exist, and the gate
+    checked that non-empty substitution instead of the empty plan."""
+    llm = _RecordingLLM()
+    tool = ExplanationTool(llm=llm, hummus_data=None, verbose=False)
+    ctx = _ctx_with_plan({"breakfast": {}}, {"breakfast": "Simple Breakfast with low-fat butter"})
+    result = tool.explain(ctx=ctx)
+    assert result == ExplanationTool.EMPTY_PLAN_MESSAGE
+    assert llm.complete_called is False, "an empty plan must never reach the LLM"
+
+
+def test_non_empty_plan_with_substitution_still_explained():
+    llm = _RecordingLLM(text="Swapped butter for a lighter option.")
+    tool = ExplanationTool(llm=llm, hummus_data=None, verbose=False)
+    ctx = _ctx_with_plan({"breakfast": {"recipe_url": "b", "title": "Eggs"}}, {"breakfast": "use olive oil"})
+    assert tool.explain(ctx=ctx) == "Swapped butter for a lighter option."
+    assert llm.complete_called is True
+
+
+# ── final-plan gate in the H1 assembler (plans emptied by the post-filters) ──
+
+def _assemble(plan, explanation, final="Final: enjoy the green-onion stir-fry!", dislikes=("green onions",)):
+    from foodrag.baselines.full_pipeline import WorkflowMealPlanAssembler
+
+    state = {"meal_plan_recommendation": plan, "meal_plan_explanation": explanation,
+             "final_recommendation": final}
+    asm = WorkflowMealPlanAssembler(None, retriever=None, config_id="h1",
+                                    run_workflow=lambda wf, q, mem: (state, 1.0))
+    return asm.assemble({"question": "q", "persona": _persona(dislikes)})
+
+
+def test_plan_emptied_by_allergen_filter_gets_fixed_message():
+    out = _assemble({"dinner": _recipe("stirfry", ["green onions", "soy sauce"])},
+                    "The green-onion stir-fry is a great dinner.")
+    assert out.recipe_urls == []
+    assert out.explanation_text == ExplanationTool.EMPTY_PLAN_MESSAGE
+    assert out.answer_text == ExplanationTool.EMPTY_PLAN_MESSAGE   # no narration of removed recipes
+
+
+def test_non_empty_final_plan_keeps_its_explanation():
+    out = _assemble({"lunch": _recipe("salad", ["lettuce"])}, "A fresh salad.", final="")
+    assert out.recipe_urls == ["salad"]
+    assert out.explanation_text == "A fresh salad."
+
+
+def test_assembler_message_mirrors_tool():
+    from foodrag.baselines.full_pipeline import EMPTY_PLAN_MESSAGE
+    assert EMPTY_PLAN_MESSAGE == ExplanationTool.EMPTY_PLAN_MESSAGE
