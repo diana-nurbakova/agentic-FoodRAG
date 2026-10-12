@@ -1,0 +1,110 @@
+--- a/scripts/build_claim_registry.py	2026-10-12 14:33:48.081691600 +0200
++++ b/scripts/build_claim_registry.py	2026-10-12 14:34:24.914161000 +0200
+@@ -42,7 +42,8 @@
+      "WITHDRAWN (B5): runs 4 and 5 returned nothing for all 1,646 questions; the "
+      "comparison is void. Superseded by eval_results_ret_rerun/."),
+     ("ret_text2pandas@gpt4o-mini", None, "eval_results_ret_rerun",
+-     "E-1' re-run, 5/5 runs healthy (2.19-2.55% empty). Fresh-vs-fresh only: do NOT "
++     "E-1' re-run, 5/5 runs non-void (2.19-2.55% empty; the SUSPECT-LATENCY flags are "
++     "LAT.2 false positives). Fresh-vs-fresh only: do NOT "
+      "compare against the published 0.853827, and never merge with the void run."),
+     ("ret_text2pandas@llama70b", None, "eval_results_ret_rerun",
+      "E-1' re-run, 5/5 runs healthy (3.77-4.86% empty). Diverges from the published "
+@@ -59,9 +60,20 @@
+      "E-3: n=100 not 300; per_question_variance 0.0311 not 0; CIs ~60% wider than published."),
+     (None, "calorie_adherence", None,
+      "Scale-invariant and anti-correlated with in-band rate; rename to calorie_distribution_shape."),
+-    (None, "allergen_violation", None,
+-     "P1: 0.000 is POST-remediation. Quote pre-fix 0.000310 (h1_t2p) / 0.001969 (h1_dense) "
+-     "/ 0.003427 (h2) / 0.000608 (h2_t2p)."),
++    (None, "calorie_adherence_full", None,
++     "Identical to calorie_adherence: scale-invariant and anti-correlated with in-band rate; "
++     "rename to calorie_distribution_shape."),
++    *[(c, "allergen_violation", None,
++       "P1: 0.000 is POST-remediation. Quote pre-fix 0.000310 (h1_t2p) / 0.001969 (h1_dense) "
++       "/ 0.003427 (h2) / 0.000608 (h2_t2p) [record-pooled; on this registry's per-question "
++       "estimator: 0.000304 / 0.002093 / 0.003426 / 0.000608].")
++      for c in ("foodrag_h1_t2p", "foodrag_h1_dense", "foodrag_h2", "foodrag_h2_t2p")],
++    *[("foodrag_h1_t2p", m, None,
++       f"P1 Fix 2: re-judged after 421 explanations were templated; quote pre-fix {v}, not this value.")
++      for m, v in (("faithfulness_judgeB", "0.914587"), ("relevancy_judgeB", "0.701664"),
++                   ("claim_grounding_rate", "0.649689"), ("unsupported_claim_rate", "0.350311"),
++                   ("explanation_quality_judgeA", "0.714724"),
++                   ("explanation_quality_judgeB", "0.838050"))],
+     ("foodrag_h1_t2p", "correctness_judgeA", None,
+      "D2: quote pre-fix 0.689, never 0.765. p=0.089 belongs to hit_at_10 on the dense pair, "
+      "not to correctness."),
+@@ -94,7 +106,8 @@
+         "Pair positionally, on the stripped suffix.",
+     "EXP-10k-tog":
+         "ID SCHEME (S.4.4): question ids are unique per (run, question), so no id "
+-        "is shared across runs and the run dimension collapses. See the tog guard.",
++        "is shared across runs and the run dimension collapses. See the tog guard. "
++        "This registry strips the r{run} prefix, so its n/CI are per-question (n=100).",
+ }
+ 
+ # LAT.2 — wherever SUSPECT-LATENCY appears it must carry its false-positive rate.
+@@ -121,7 +134,13 @@
+ def last_commit(path: Path) -> str:
+     r = subprocess.run(["git", "log", "-1", "--format=%h %ad", "--date=short", "--", str(path)],
+                        capture_output=True, text=True, check=False)
+-    return (r.stdout or "").strip() or "untracked"
++    out = (r.stdout or "").strip() or "untracked"
++    # The commit alone misdescribes a file edited in the working tree since.
++    d = subprocess.run(["git", "status", "--porcelain", "--", str(path)],
++                       capture_output=True, text=True, check=False)
++    if out != "untracked" and (d.stdout or "").strip():
++        out += " +uncommitted"
++    return out
+ 
+ 
+ def load(path: Path) -> pd.DataFrame:
+@@ -242,6 +261,12 @@
+                 if isinstance(r.get("metrics"), dict):
+                     r["metrics"] = dict(r["metrics"])
+             exp = sorted(set(adf[adf.config_id == cfg].experiment_id))[0]
++            if exp == "EXP-10k-tog":
++                # S.4.4 / E-3: ids are r{run}c{chunk}_{n}; strip the run prefix so
++                # the 3 runs of each of the 100 questions pool per question.
++                import re
++                for r in recs:
++                    r["question_id"] = re.sub(r"^r\d+", "", str(r["question_id"]))
+             agg = runner.aggregate(recs, experiment_id=exp, config_id=cfg)
+             agg = agg[agg.stratum == "aggregate"]
+ 
+@@ -280,9 +305,12 @@
+             gc.collect()
+ 
+     reg = pd.DataFrame(rows)
++    # NO ARTEFACT rows carry None; keep the columns integral ("1646", not "1646.0").
++    reg["n"] = reg["n"].astype("Int64")
++    reg["runs"] = reg["runs"].astype("Int64")
+     print(f"# REG — claim registry\n\nrows: {len(reg)}   configs: {reg.config.nunique()}")
+     print(f"rows carrying a guard: {int((reg.guard.astype(str) != '').sum())}")
+-    print(f"rows from patched artefacts: {int((reg.patched != 'no').sum())}")
++    print(f"rows from patched artefacts: {int((~reg.patched.isin(['no', ''])).sum())}")
+     print(f"configs with a non-HEALTHY verdict: "
+           f"{sorted(reg[~reg.verdict.str.fullmatch('HEALTHY', na=False)].config.unique())}\n")
+ 
+@@ -299,12 +327,16 @@
+         with open(args.md, "w", encoding="utf-8") as fh:
+             fh.write("# Claim registry (generated — do not hand-edit)\n\n")
+             fh.write(f"Generated from per-question artefacts only. Rows: {len(reg)}.\n\n")
+-            fh.write("| config | metric | value | CI | n | runs | convention | empty_class | health | patched | source | guard |\n")
+-            fh.write("|---|---|---|---|---|---|---|---|---|---|---|---|\n")
++            fh.write("| config | source_dir | metric | value | CI | n | runs | convention | empty_class | health | patched | source | guard |\n")
++            fh.write("|---|---|---|---|---|---|---|---|---|---|---|---|---|\n")
++
++            def _c(v):  # blank for missing; escape pipes so multi-guard cells are not split
++                return "" if v is None or v is pd.NA or (isinstance(v, float) and np.isnan(v)) \
++                    else str(v).replace("|", "\\|")
+             for _, r in reg.iterrows():
+-                fh.write(f"| {r['config']} | {r['metric']} | {r['value']} | {r['ci']} | {r['n']} | "
+-                         f"{r['runs']} | {r['convention']} | {r['empty_class']} | {r['verdict']} | {r['patched']} | "
+-                         f"{r['source']} | {r['guard']} |\n")
++                fh.write("| " + " | ".join(_c(r[k]) for k in (
++                    "config", "source_dir", "metric", "value", "ci", "n", "runs", "convention",
++                    "empty_class", "verdict", "patched", "source", "guard")) + " |\n")
+         print(f"registry (md) -> {args.md}")
+     return 0
+ 
