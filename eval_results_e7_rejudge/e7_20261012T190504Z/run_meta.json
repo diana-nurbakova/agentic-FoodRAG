@@ -1,0 +1,30 @@
+{
+  "run_id": "e7_20261012T190504Z",
+  "spec": "specs/E7-rejudge-2x2-spec.md",
+  "items": 421,
+  "commit": "f48c0463d7815a1509cd46388cf32415d49b4af4",
+  "judges": {
+    "judgeA": "openai/google/gemma-3-27b-it",
+    "judgeB": "openai/deepseek-ai/DeepSeek-V3"
+  },
+  "decoding": {
+    "judgeA": {
+      "temperature": 0.1
+    },
+    "judgeB": {
+      "temperature": 0.1
+    }
+  },
+  "phases": {
+    "correctness": {
+      "started": "2026-10-12T19:05:04+00:00",
+      "template_check": "C1 == recovered prompt for all 842 recovered correctness prompts",
+      "finished": "2026-10-12T19:16:15+00:00"
+    },
+    "relevancy": {
+      "started": "2026-10-12T19:17:02+00:00",
+      "template_check": "C1 == recovered prompt for all 842 recovered relevancy prompts",
+      "finished": "2026-10-12T19:23:55+00:00"
+    }
+  }
+}

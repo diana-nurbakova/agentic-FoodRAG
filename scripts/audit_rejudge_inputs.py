@@ -92,7 +92,7 @@ def scan(path: Path, keep) -> list[dict]:
             for metric, pat in PATTERNS.items():
                 m = pat.search(p)
                 if m:
-                    rec = {"metric": metric, "judge": judge, "ts": r.get("ts"), **m.groupdict(),
+                    rec = {"metric": metric, "judge": judge, "ts": r.get("ts"), **m.groupdict(), "prompt_full": p,
                            "response": response_text(r.get("response"))}
                     if keep(rec):
                         out.append(rec)
