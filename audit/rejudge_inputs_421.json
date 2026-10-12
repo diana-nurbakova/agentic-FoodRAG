@@ -1,0 +1,50 @@
+{
+  "summary": {
+    "records": 421,
+    "original_prompt_recovered": 421,
+    "original_side": {
+      "question_present": 421,
+      "answer_is_fixed_message": 0,
+      "answer_starts_with_stored_explanation": 421,
+      "answer_has_meal_plan_block": 420,
+      "answer_chars_median": 1801.0,
+      "logged_score_matches_stored_judgeA": 411,
+      "logged_score_matches_stored_judgeB": 421,
+      "stored_mean_correctness_judgeA": 0.045012165450121655
+    },
+    "rejudge_side": {
+      "fixed_message_correctness_prompts": {
+        "judgeA": 851,
+        "judgeB": 850
+      },
+      "question_field_empty": {
+        "judgeA": 851,
+        "judgeB": 850
+      },
+      "answer_exactly_fixed_message": 1701,
+      "all_rejudge_prompts_by_metric_and_question": {
+        "faithfulness|present": 1889,
+        "relevancy|present": 2,
+        "correctness|present": 2,
+        "explanation_quality|present": 2,
+        "relevancy|empty": 1884,
+        "correctness|empty": 1888,
+        "explanation_quality|empty": 1782
+      },
+      "rejudge_score_distribution_judgeA": {
+        "1.0": 802,
+        "0.0": 49
+      },
+      "rejudge_score_distribution_judgeB": {
+        "0.0": 755,
+        "1.0": 95
+      },
+      "ts_range": [
+        "2026-07-06T17:30:51.077558+00:00",
+        "2026-07-06T18:08:12.147177+00:00"
+      ]
+    },
+    "post_fix_stored_mean_correctness_judgeA": 0.9425837320574163,
+    "post_fix_stored_mean_correctness_judgeB": 0.1163895486935867
+  }
+}
