@@ -1,0 +1,112 @@
+{
+  "run_id": "foodrag_h2_full_20261012T162653Z_1a66f4d",
+  "commit": "1a66f4dfd96a4b72bf1d7ab036b64b9e59e29ee0",
+  "config": "foodrag_h2",
+  "question_set_hash": "700d5f6ec0e1e1464ec7b767c480137d563b4b639b0c0c7ee0fdcc5eaaf61c3e",
+  "corpus_hash": "7f329bfc5e21a87328cae60e22934e5f4d717ce9a57cb6f33aec914e5c11dfbb",
+  "models": {
+    "generator": {
+      "model": "meta-llama/Llama-3.3-70B-Instruct",
+      "provider": "deepinfra",
+      "litellm_model": "openai/meta-llama/Llama-3.3-70B-Instruct"
+    },
+    "judgeA": {
+      "litellm_model": "openai/google/gemma-3-27b-it"
+    },
+    "judgeB": {
+      "litellm_model": "openai/deepseek-ai/DeepSeek-V3"
+    }
+  },
+  "started": "2026-10-12T16:26:53+00:00",
+  "finished": "2026-10-12T18:01:37+00:00",
+  "n_items": 1646,
+  "n_expected": 1646,
+  "n_rows_reconcile": true,
+  "n_by_status": {
+    "ok": 1646
+  },
+  "empty_rate": 0.0006075334143377885,
+  "empty_definition": "n_returned == 0 (final plan has no recipe)",
+  "error_rate": 0.0,
+  "filter_interventions_total": 21,
+  "items_with_any_removal": 20,
+  "filter_candidates_total": 3935,
+  "filter_uninspectable_total": 0,
+  "plans_emptied_by_filter": 1,
+  "removed_ingredient_frequency": {
+    "cooked soba noodles": 2,
+    "leg of lamb": 1,
+    "Canada Dry ginger ale": 1,
+    "Limburger cheese": 1,
+    "kiwi fruits": 1,
+    "cilantro": 1,
+    "parmigiano - reggiano cheese": 1,
+    "agar - agar flakes": 1,
+    "portabella mushroom caps": 1,
+    "frozen orange juice concentrate": 1,
+    "Pillsbury Grands refrigerated buttermilk biscuits": 1,
+    "extra virgin olive oil": 1,
+    "coconut rum": 1,
+    "corn flakes": 1,
+    "turkey breast": 1,
+    "strawberries": 1,
+    "nutella": 1,
+    "noodles": 1,
+    "green onions": 1,
+    "carambola": 1
+  },
+  "gate_fires_total": 0,
+  "gate_bypassed_on_empty_plan_total": 0,
+  "judge_errors": {
+    "judgeA": {
+      "calls": 4938,
+      "not_scored": 0,
+      "by_status": {
+        "scored": 4938
+      },
+      "rate": 0.0
+    },
+    "judgeB": {
+      "calls": 4938,
+      "not_scored": 0,
+      "by_status": {
+        "scored": 4938
+      },
+      "rate": 0.0
+    }
+  },
+  "primary_metric": "correctness_judgeA",
+  "primary_metric_mean_scored": 0.2574422843256379,
+  "primary_metric_n_scored": 1646,
+  "latency": {
+    "min": 15.221724100178108,
+    "median": 39.847878500120714,
+    "p95": 62.073108799988404,
+    "max": 106.03228050004691,
+    "definition": "per-item wall time, generation + judges"
+  },
+  "llm_attempts": {
+    "total": 11522,
+    "failed": 0,
+    "process_total": {
+      "attempts": 11522,
+      "failed": 0,
+      "unattributed": 0
+    }
+  },
+  "provider_reported_models": {
+    "openai/meta-llama/Llama-3.3-70B-Instruct": {
+      "meta-llama/Llama-3.3-70B-Instruct-Turbo": 1646
+    },
+    "openai/google/gemma-3-27b-it": {
+      "google/gemma-3-27b-it": 4938
+    },
+    "openai/deepseek-ai/DeepSeek-V3": {
+      "deepseek-ai/DeepSeek-V3": 4938
+    }
+  },
+  "health_verdict": "HEALTHY",
+  "health_rules": "\u00a77.1 absolute only: VOID = 100% empty or primary 0.0 on every item; DEGRADED = empty_rate >= 0.40; JUDGE-FAIL = either judge not-scored rate >= 0.10 (per judge call). Latency is not a detector.",
+  "runs": 1,
+  "session": "E-6"
+}

@@ -1,0 +1,94 @@
+{
+  "run_id": "foodrag_h2_t2p_full_20261012T180207Z_3e35e89",
+  "commit": "3e35e894d7267327c92d7a3b3c8e45f5c8c38f62",
+  "config": "foodrag_h2_t2p",
+  "question_set_hash": "45ac02c1f890d702473ddcd6adfe00bfde2e51a4ac344abbb1d7c5d91cadd841",
+  "corpus_hash": "7f329bfc5e21a87328cae60e22934e5f4d717ce9a57cb6f33aec914e5c11dfbb",
+  "models": {
+    "generator": {
+      "model": "meta-llama/Llama-3.3-70B-Instruct",
+      "provider": "deepinfra",
+      "litellm_model": "openai/meta-llama/Llama-3.3-70B-Instruct"
+    },
+    "judgeA": {
+      "litellm_model": "openai/google/gemma-3-27b-it"
+    },
+    "judgeB": {
+      "litellm_model": "openai/deepseek-ai/DeepSeek-V3"
+    }
+  },
+  "started": "2026-10-12T18:02:07+00:00",
+  "finished": "2026-10-12T19:38:40+00:00",
+  "n_items": 1646,
+  "n_expected": 1646,
+  "n_rows_reconcile": true,
+  "n_by_status": {
+    "zero_rows": 133,
+    "ok": 1513
+  },
+  "empty_rate": 0.08140947752126367,
+  "empty_definition": "n_returned == 0 (final plan has no recipe)",
+  "error_rate": 0.0,
+  "filter_interventions_total": 3,
+  "items_with_any_removal": 1,
+  "filter_candidates_total": 3633,
+  "filter_uninspectable_total": 0,
+  "plans_emptied_by_filter": 1,
+  "removed_ingredient_frequency": {
+    "green onions": 3
+  },
+  "gate_fires_total": 0,
+  "gate_bypassed_on_empty_plan_total": 0,
+  "judge_errors": {
+    "judgeA": {
+      "calls": 4938,
+      "not_scored": 0,
+      "by_status": {
+        "scored": 4938
+      },
+      "rate": 0.0
+    },
+    "judgeB": {
+      "calls": 4938,
+      "not_scored": 0,
+      "by_status": {
+        "scored": 4938
+      },
+      "rate": 0.0
+    }
+  },
+  "primary_metric": "correctness_judgeA",
+  "primary_metric_mean_scored": 0.5874848116646415,
+  "primary_metric_n_scored": 1646,
+  "latency": {
+    "min": 12.089419499970973,
+    "median": 38.14817630010657,
+    "p95": 78.1706260999199,
+    "max": 128.25107540003955,
+    "definition": "per-item wall time, generation + judges"
+  },
+  "llm_attempts": {
+    "total": 11534,
+    "failed": 12,
+    "process_total": {
+      "attempts": 11534,
+      "failed": 12,
+      "unattributed": 0
+    }
+  },
+  "provider_reported_models": {
+    "openai/meta-llama/Llama-3.3-70B-Instruct": {
+      "meta-llama/Llama-3.3-70B-Instruct-Turbo": 1646
+    },
+    "openai/google/gemma-3-27b-it": {
+      "google/gemma-3-27b-it": 4938
+    },
+    "openai/deepseek-ai/DeepSeek-V3": {
+      "deepseek-ai/DeepSeek-V3": 4938
+    }
+  },
+  "health_verdict": "HEALTHY",
+  "health_rules": "\u00a77.1 absolute only: VOID = 100% empty or primary 0.0 on every item; DEGRADED = empty_rate >= 0.40; JUDGE-FAIL = either judge not-scored rate >= 0.10 (per judge call). Latency is not a detector.",
+  "runs": 1,
+  "session": "E-6"
+}

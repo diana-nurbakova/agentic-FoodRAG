@@ -1,0 +1,100 @@
+{
+  "run_id": "foodrag_h2_t2p_full_20261012T180207Z_3e35e89",
+  "commit": "3e35e894d7267327c92d7a3b3c8e45f5c8c38f62",
+  "branch": "e6-guarded",
+  "src_dirty": false,
+  "config": "foodrag_h2_t2p",
+  "experiment_id": "E-6",
+  "run": 1,
+  "started": "2026-10-12T18:02:07+00:00",
+  "question_set_hash": "45ac02c1f890d702473ddcd6adfe00bfde2e51a4ac344abbb1d7c5d91cadd841",
+  "corpus_hash": "7f329bfc5e21a87328cae60e22934e5f4d717ce9a57cb6f33aec914e5c11dfbb",
+  "t2p_replay_hash": "278e74bd441f8b0fb6048a4452045abd9b7f8ab8b03e0d873242aba4ebca7eb7",
+  "n_expected": 1646,
+  "limit": null,
+  "workers": 12,
+  "models": {
+    "generator": {
+      "model": "meta-llama/Llama-3.3-70B-Instruct",
+      "provider": "deepinfra",
+      "litellm_model": "openai/meta-llama/Llama-3.3-70B-Instruct"
+    },
+    "judgeA": {
+      "litellm_model": "openai/google/gemma-3-27b-it"
+    },
+    "judgeB": {
+      "litellm_model": "openai/deepseek-ai/DeepSeek-V3"
+    }
+  },
+  "judge_config": {
+    "judgeA": {
+      "name": "gemma",
+      "provider": "openrouter",
+      "model": "google/gemma-3-27b-it"
+    },
+    "judgeB": {
+      "name": "deepseek-v3",
+      "provider": "deepinfra",
+      "model": "deepseek-ai/DeepSeek-V3"
+    }
+  },
+  "cross_lineage_check": {
+    "judgeA": {
+      "model": "openai/google/gemma-3-27b-it",
+      "differs_from_generator": true
+    },
+    "judgeB": {
+      "model": "openai/deepseek-ai/DeepSeek-V3",
+      "differs_from_generator": true
+    }
+  },
+  "decoding": {
+    "generator": {
+      "temperature": 0.1,
+      "max_tokens": null,
+      "top_p": "provider default",
+      "seed": "not set"
+    },
+    "judgeA": {
+      "temperature": 0.1,
+      "max_tokens": null,
+      "top_p": "provider default",
+      "seed": "not set"
+    },
+    "judgeB": {
+      "temperature": 0.1,
+      "max_tokens": null,
+      "top_p": "provider default",
+      "seed": "not set"
+    }
+  },
+  "retry_policy": {
+    "llama_index_litellm_max_retries": 5,
+    "request_timeout_s": 120,
+    "logged_llm_retry": {
+      "attempts": 6,
+      "initial_s": 2.0,
+      "max_wait_s": 60.0,
+      "applies_to": "sync complete/chat only"
+    },
+    "attempts_field": "litellm-level invocations per item (every retry layer above litellm counted; litellm-internal retries not visible)"
+  },
+  "time_pin": "13.04.2025 morning",
+  "t2p_replay_run": 1,
+  "wiring": "RagMealPlanAssembler(ReplayRetriever(llama70b run 1 top-10), llm, retrieve_only=True, k=5, ranking_strategy='rating', time='morning', date='13.04.2025', require_explanation=False)",
+  "wiring_shared": {
+    "recipes_df": "foodrag.baselines.runner.load_recipes_df(data/hummus/recipes_df.csv) for tools AND metrics (list-valued ingredient_names, so the in-pipeline filter can inspect every recipe)",
+    "hummus_data": "None \u2014 ExplanationTool only stores it and SubstitutionAgent is built without it at ORIG"
+  },
+  "instrumentation_env": "1",
+  "python": "3.11.16",
+  "platform": "Windows-10-10.0.26200-SP0",
+  "models_yml_sha256": "85a12b9f341ff1a6f2715ce4baa2019e0aae0ac70e082455f3b25c6ba2b6f1ff",
+  "preregistration_sha256": "c74c77c734e09d44e1ba40161d6269394e5bb64b7d52de93ad2e25ec6c776d83",
+  "spec_sha256": "f8841633f33941911c4bd1a48d0d9a1660a399ec1a937d7de59287043edadaed",
+  "preregistration_sha256_committed": {
+    "E6-preregistration.md": "7280b1027ffc8829b0aaa2d95f3483549ae49b8bdb30e320d9eebef00000dbc2",
+    "E6-guarded-rerun-spec.md": "f8841633f33941911c4bd1a48d0d9a1660a399ec1a937d7de59287043edadaed"
+  },
+  "kind": "full"
+}

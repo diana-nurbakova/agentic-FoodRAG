@@ -1,0 +1,109 @@
+{
+  "taken_utc": "2026-10-11T17:31:03+00:00",
+  "commit": "9c89bff794900a647dc9c2bd21b5f2efe8221f28",
+  "branch": "e6-guarded",
+  "worktree_dirty": false,
+  "python": "3.11.16",
+  "platform": "Windows-10-10.0.26200-SP0",
+  "files": {
+    "question_set": {
+      "path": "data/qa/main_10k_tight/recipe_question_answer_set.pkl",
+      "bytes": 3701987,
+      "sha256": "700d5f6ec0e1e1464ec7b767c480137d563b4b639b0c0c7ee0fdcc5eaaf61c3e",
+      "mtime_utc": "2026-06-27T17:16:26+00:00"
+    },
+    "corpus_recipes_df": {
+      "path": "data/hummus/recipes_df.csv",
+      "bytes": 507746677,
+      "sha256": "7f329bfc5e21a87328cae60e22934e5f4d717ce9a57cb6f33aec914e5c11dfbb",
+      "mtime_utc": "2026-06-21T12:25:24+00:00"
+    },
+    "loading_state": {
+      "path": "data/hummus/loading_state.json",
+      "bytes": 277,
+      "sha256": "33784eb01d43af5d9bcf2c0216485bc872d5ac6360484e14b0d8f1041e523051",
+      "mtime_utc": "2026-06-18T10:56:12+00:00"
+    },
+    "t2p_replay_source": {
+      "path": "eval_results_llama/ret_text2pandas@llama70b_per_question.parquet",
+      "bytes": 441953,
+      "sha256": "278e74bd441f8b0fb6048a4452045abd9b7f8ab8b03e0d873242aba4ebca7eb7",
+      "mtime_utc": "2026-06-30T21:35:42+00:00"
+    },
+    "orig_h1_t2p_records": {
+      "path": "eval_results/foodrag_h1_t2p_per_question.parquet",
+      "bytes": 5747396,
+      "sha256": "1e429cf3390c008623797b6fa17b848f9d198f2562a52b3ccee72b9727ff0a8f",
+      "mtime_utc": "2026-07-09T14:00:09+00:00"
+    },
+    "orig_h2_records": {
+      "path": "eval_results/foodrag_h2_per_question.parquet",
+      "bytes": 613248,
+      "sha256": "ccffd420c3a807f8bcb511f5a3cb9ac942087f46d774f7ca9aba3250f4f43861",
+      "mtime_utc": "2026-07-09T14:01:13+00:00"
+    },
+    "orig_h2_t2p_records": {
+      "path": "eval_results/foodrag_h2_t2p_per_question.parquet",
+      "bytes": 299242,
+      "sha256": "4320fb923867c0714710678490f59e54a329eea21d5a927a75b4295088975e49",
+      "mtime_utc": "2026-07-09T14:02:06+00:00"
+    }
+  },
+  "loading_state_json": {
+    "n_clusters": -1,
+    "n_components": 2,
+    "k_user": 2,
+    "k_recipe": 2,
+    "food_class_strategy": "None",
+    "add_additional_meal_type_labels": true,
+    "clean_food_category": true,
+    "feature_weights": null,
+    "similarity_thresholds": false,
+    "include_usda": true,
+    "do_annotate_meal_type": false
+  },
+  "question_set": {
+    "n_items": 1646,
+    "id_scheme": "q_{i:05d} (positional)",
+    "equality_vs_orig_foodrag_h1_t2p": {
+      "1": {
+        "n_orig": 1646,
+        "equal": true,
+        "only_in_qa": 0,
+        "only_in_orig": 0,
+        "answer_size_or_nreq_mismatch": 0
+      },
+      "2": {
+        "n_orig": 1646,
+        "equal": true,
+        "only_in_qa": 0,
+        "only_in_orig": 0,
+        "answer_size_or_nreq_mismatch": 0
+      },
+      "3": {
+        "n_orig": 1646,
+        "equal": true,
+        "only_in_qa": 0,
+        "only_in_orig": 0,
+        "answer_size_or_nreq_mismatch": 0
+      }
+    }
+  },
+  "t2p_replay_source": {
+    "runs": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "rows_per_run": {
+      "1": 1646,
+      "2": 1646,
+      "3": 1646,
+      "4": 1646,
+      "5": 1646
+    },
+    "replayed_run_for_e6": 1
+  }
+}

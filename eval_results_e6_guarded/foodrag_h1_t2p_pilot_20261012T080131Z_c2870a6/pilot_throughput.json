@@ -1,0 +1,33 @@
+{
+  "run_id": "foodrag_h1_t2p_pilot_20261012T080131Z_c2870a6",
+  "workers": 12,
+  "items": 50,
+  "elapsed_s": 1258.016836100025,
+  "effective_s_per_item": 25.1603367220005,
+  "median_item_wall_s": 196.62272730004042,
+  "p95_item_wall_s": 538.8398627000861,
+  "attempts": {
+    "total": 1483,
+    "failed": 0,
+    "process_total": {
+      "attempts": 1483,
+      "failed": 0,
+      "unattributed": 0
+    }
+  },
+  "projection_note": "projection uses Tier A's pilot rate for every tier; B/C make far fewer LLM calls per item, so their projection is an upper bound",
+  "projection": {
+    "foodrag_h1_t2p": {
+      "items": 1646,
+      "hours_at_pilot_rate": 11.5
+    },
+    "foodrag_h2": {
+      "items": 1646,
+      "hours_at_pilot_rate": 11.5
+    },
+    "foodrag_h2_t2p": {
+      "items": 1646,
+      "hours_at_pilot_rate": 11.5
+    }
+  }
+}

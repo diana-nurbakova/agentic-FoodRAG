@@ -1,0 +1,14 @@
+{
+  "taken_utc": "2026-10-12T08:49:20+00:00",
+  "commit": "02fc79e62f7bcbbcd942ff6fe4d3dad28c9832a0",
+  "config": "foodrag_h2",
+  "items": 20,
+  "method": "pass 1 instrumentation ON, every provider response recorded per item; pass 2 instrumentation OFF, the same responses replayed by request hash. Plans, explanations and every metric except wall-clock latency compared.",
+  "replay_misses": 0,
+  "differences": [],
+  "on_status": {
+    "ok": 20
+  },
+  "on_attempts": 140,
+  "passed": true
+}

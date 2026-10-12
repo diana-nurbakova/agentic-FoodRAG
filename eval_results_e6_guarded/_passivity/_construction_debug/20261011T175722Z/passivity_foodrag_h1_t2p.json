@@ -1,0 +1,46 @@
+{
+  "taken_utc": "2026-10-11T18:05:42+00:00",
+  "commit": "9c89bff794900a647dc9c2bd21b5f2efe8221f28",
+  "config": "foodrag_h1_t2p",
+  "items": 1,
+  "method": "pass 1 instrumentation ON, every provider response recorded per item; pass 2 instrumentation OFF, the same responses replayed by request hash. Plans, explanations and every metric except wall-clock latency compared.",
+  "replay_misses": 1,
+  "differences": [
+    {
+      "question_id": "q_00000",
+      "field": "plan"
+    },
+    {
+      "question_id": "q_00000",
+      "field": "explanation_text"
+    },
+    {
+      "question_id": "q_00000",
+      "field": "explanation_structured"
+    },
+    {
+      "question_id": "q_00000",
+      "field": "recommendation_time"
+    },
+    {
+      "question_id": "q_00000",
+      "field": "requested_meal_types"
+    },
+    {
+      "question_id": "q_00000",
+      "field": "metrics"
+    },
+    {
+      "question_id": "q_00000",
+      "field": "status",
+      "on": "zero_rows",
+      "off": "llm_error",
+      "off_error": "[pipeline] Error in step 'run_agent_step': no recorded response for completion call (completion:941dc74c6)\ndnurb\\Documents\\persuasion\\agentic-food-rag-e6\\scripts\\run_e6_guarded.py\", line 358, in run_item\n    rec = run_full_pipeline(assembler, [qa], ctx.recipes_df, judges=ctx.judges, k=K,\n          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\Users\\dnurb\\Documents\\persuasion\\agentic-food-rag-e6\\src\\foodrag\\baselines\\full_pipeline.py\", line 117, in run_full_pipeline\n    assembled = assembler.assemble(qa_item)\n                ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\Users\\dnurb\\Documents\\persuasion\\agentic-food-rag-e6\\src\\foodrag\\baselines\\full_pipeline.py\", line 370, in assemble\n    state, latency = self._run_workflow(self.agent_workflow, question, self.memory)\n                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\Users\\dnurb\\Documents\\persuasion\\agentic-food-rag-e6\\src\\foodrag\\baselines\\full_pipeline.py\", line 461, in _default_workflow_run\n    data = asyncio.run(_go())\n           ^^^^^^^^^^^^^^^^^^\n  File \"D:\\Users\\dnurb\\Documents\\persuasion\\agentic-food-rag\\.venv\\Lib\\site-packages\\nest_asyncio.py\", line 30, in run\n    return loop.run_until_complete(task)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\Users\\dnurb\\Documents\\persuasion\\agentic-food-rag\\.venv\\Lib\\site-packages\\nest_asyncio.py\", line 98, in run_until_complete\n    return f.result()\n           ^^^^^^^^^^\nworkflows.errors.WorkflowRuntimeError: Error in step 'run_agent_step': no recorded response for completion call (completion:941dc74c6)\n"
+    }
+  ],
+  "on_status": {
+    "zero_rows": 1
+  },
+  "on_attempts": 63,
+  "passed": false
+}

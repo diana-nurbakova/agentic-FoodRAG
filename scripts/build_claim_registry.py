@@ -161,6 +161,82 @@ def e7_rows(root: Path) -> list[dict]:
     return rows
 
 
+E6_GUARD = ("E-6: a guarded rerun, one run per configuration (CIs over questions only), never "
+            "'corrected results' or 'true scores'; it replaces no original value. Comparisons with the "
+            "original records are descriptive (cross-session drift, provider snapshot).")
+
+
+def e6_rows(root: Path) -> list[dict]:
+    """E-6 rows from ``eval_results_e6_guarded/E6-results.json`` (the pre-registered analysis,
+    scripts/e6_report.py on branch e6-guarded), flagged runs = 1, registry_id = E-6."""
+    res_path = root / "eval_results_e6_guarded" / "E6-results.json"
+    if not res_path.exists():
+        return []
+    res = json.loads(res_path.read_text(encoding="utf-8"))
+    src = last_commit(res_path)
+    rows: list[dict] = []
+
+    def ci(c):
+        return "" if c.get("lo") is None else f"[{c['lo']:.4f}, {c['hi']:.4f}]"
+
+    def row(config, run_id, metric, value, n, verdict, guard, ci_str="", stratum="aggregate"):
+        rows.append({"registry_id": "E-6", "config": config,
+                     "source_dir": f"eval_results_e6_guarded/{run_id}", "metric": metric, "stratum": stratum,
+                     "value": None if value is None else round(float(value), 6), "ci": ci_str, "n": n,
+                     "runs": 1, "convention": "zero-on-empty (retrieval); judge NaN excluded",
+                     "verdict": verdict, "empty_class": "", "patched": "no", "source": src,
+                     "guard": f"{E6_GUARD} {guard}".strip()})
+
+    for tier, t in res["tiers"].items():
+        if t.get("status") != "complete":
+            continue
+        pa, cfg, rid = t["preregistered_analysis"], t["config"], t["preregistered_analysis"]["run_id"]
+        v, n = pa["health_verdict"], pa["n_items"]
+        for j in ("judgeA", "judgeB"):
+            c = pa["correctness"][j]["overall"]
+            extra = ("Tier A: original 0.689 pre-fix / 0.765 post-fix patch, side by side only (spec §8.3)."
+                     if tier == "A" and j == "judgeA" else "")
+            row(cfg, rid, f"correctness_{j}", c["mean"], c["n"], v, extra, ci(c))
+        for m, c in pa["continuity"].items():
+            if not c.get("n"):          # undefined for this config (e.g. no explanation on H2)
+                continue
+            g = ("By construction: the filter removes exactly what this metric flags (spec §7.2). "
+                 "NOT a result; never report it as one." if m == "allergen_violation" else "")
+            row(cfg, rid, m, c["mean"], c["n"], v, g, ci(c))
+        f = pa["filter"]
+        row(cfg, rid, "filter_removals_total", f["removals_total"], n, v,
+            f"Items with >= 1 removal: {f['items_with_any_removal']}; original pre-fix violations "
+            f"{f['pre_fix_violations_per_run']:.1f} per run (descriptive).")
+        row(cfg, rid, "filter_removals_per_1000_candidates", f["removals_per_1000_candidates"],
+            f["candidates_total"], v, "Comparable across configurations with different requested-slot counts.")
+        row(cfg, rid, "empty_rate", pa["empty_rate"], n, v, "Final plan has no recipe (n_returned = 0).")
+        if tier == "A":
+            row(cfg, rid, "gate_fires", pa["gate"]["fires"], n, v,
+                "Pre-registered expectation ~140. The gate checked the non-empty substitution, not the empty plan.")
+            ex = t["exploratory"]
+            row(cfg, rid, "gate_bypassed_on_empty_plan", ex.get("gate_bypassed_on_empty_plan"), ex["empty_plans"], v,
+                "Empty final plans explained by the LLM instead of the gate.")
+            for kind in ("empty_plans", "non_empty_plans"):
+                c = ex["empty_vs_nonempty_correctness"]["judgeA"][kind]
+                row(cfg, rid, f"correctness_judgeA:{kind}", c["mean"], c["n"], v,
+                    "EXPLORATORY, not pre-registered (stands in for the empty gate-fired split).", ci(c),
+                    stratum=kind.replace("_", "-"))
+    for a in res["attempts"]:
+        if a["status"] == "aborted_by_operator":
+            row(TIER_CONFIG.get(a["tier"], a["tier"]), a["run_id"], "*", None, None, "ABORTED_BY_OPERATOR",
+                "Spec §7.3: reported, never resumed or stitched; the tier was re-run as a fresh attempt.")
+    g = res.get("gain_A_minus_C_correctness_judgeA", {})
+    if "overall" in g:
+        c = g["overall"]
+        row("e6_gain_h1_t2p_minus_h2_t2p", "E6-results.json", "correctness_judgeA:A-C", c["mean"],
+            c["n_paired"], "n/a", "The only gain E-6 may report: fresh-vs-fresh, same session and time pin. "
+            "Never combine with original records.", ci(c), stratum="paired")
+    return rows
+
+
+TIER_CONFIG = {"A": "foodrag_h1_t2p", "B": "foodrag_h2", "C": "foodrag_h2_t2p"}
+
+
 def main(argv: Optional[list[str]] = None) -> int:
     p = argparse.ArgumentParser(description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -312,6 +388,7 @@ def main(argv: Optional[list[str]] = None) -> int:
             del recs, agg
             gc.collect()
 
+    rows.extend(e6_rows(root))
     rows.extend(e7_rows(root))
     reg = pd.DataFrame(rows)
     reg["registry_id"] = reg["registry_id"].fillna("") if "registry_id" in reg else ""

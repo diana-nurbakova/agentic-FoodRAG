@@ -1,0 +1,1216 @@
+{
+  "generated_utc": "2026-10-12T19:39:24+00:00",
+  "experiment": "E-6 guarded, instrumented rerun",
+  "runs_per_configuration": 1,
+  "naming": "a guarded rerun \u2014 never 'corrected results' or 'true scores' (prereg \u00a78.5)",
+  "tiers": {
+    "A": {
+      "config": "foodrag_h1_t2p",
+      "status": "complete",
+      "preregistered_analysis": {
+        "run_id": "foodrag_h1_t2p_full_20261012T082328Z_02fc79e",
+        "config": "foodrag_h1_t2p",
+        "commit": "02fc79e62f7bcbbcd942ff6fe4d3dad28c9832a0",
+        "runs": 1,
+        "session": "E-6",
+        "health_verdict": "HEALTHY",
+        "n_items": 1646,
+        "n_by_status": {
+          "zero_rows": 133,
+          "ok": 1502,
+          "llm_error": 8,
+          "judge_error": 3
+        },
+        "empty_rate": 0.08566221142162819,
+        "filter": {
+          "removals_total": 1,
+          "items_with_any_removal": 1,
+          "removals_per_1000_items": 0.6075334143377886,
+          "candidates_total": 3773,
+          "removals_per_1000_candidates": 0.26504108136761195,
+          "matched_ingredient_frequency": {
+            "green onions": 1
+          },
+          "uninspectable_total": 0,
+          "plans_emptied_by_filter": 0,
+          "pre_fix_violations_per_run": 1.0
+        },
+        "gate": {
+          "fires": 0,
+          "share": 0.0,
+          "bypassed_on_empty_plan": 133,
+          "empty_plans": 141
+        },
+        "correctness": {
+          "judgeA": {
+            "overall": {
+              "mean": 0.6704892966360856,
+              "lo": 0.6547400611620795,
+              "hi": 0.6863914373088685,
+              "n": 1635
+            },
+            "gate_fired": {
+              "mean": null,
+              "lo": null,
+              "hi": null,
+              "n": 0
+            },
+            "not_gate_fired": {
+              "mean": 0.6704892966360856,
+              "lo": 0.6547400611620795,
+              "hi": 0.6863914373088685,
+              "n": 1635
+            }
+          },
+          "judgeB": {
+            "overall": {
+              "mean": 0.7177960927960928,
+              "lo": 0.7014652014652014,
+              "hi": 0.7339743589743589,
+              "n": 1638
+            },
+            "gate_fired": {
+              "mean": null,
+              "lo": null,
+              "hi": null,
+              "n": 0
+            },
+            "not_gate_fired": {
+              "mean": 0.7177960927960928,
+              "lo": 0.7014652014652014,
+              "hi": 0.7339743589743589,
+              "n": 1638
+            }
+          }
+        },
+        "disagreement": {
+          "faithfulness": {
+            "overall": {
+              "mean": 0.009768009768009768,
+              "lo": 0.005494505494505495,
+              "hi": 0.014652014652014652,
+              "n": 1638
+            },
+            "gate_fired": {
+              "mean": null,
+              "lo": null,
+              "hi": null,
+              "n": 0
+            }
+          },
+          "relevancy": {
+            "overall": {
+              "mean": 0.17399267399267399,
+              "lo": 0.1562881562881563,
+              "hi": 0.19230769230769232,
+              "n": 1638
+            },
+            "gate_fired": {
+              "mean": null,
+              "lo": null,
+              "hi": null,
+              "n": 0
+            }
+          },
+          "correctness": {
+            "overall": {
+              "mean": 0.1463302752293578,
+              "lo": 0.13685015290519878,
+              "hi": 0.15581039755351683,
+              "n": 1635
+            },
+            "gate_fired": {
+              "mean": null,
+              "lo": null,
+              "hi": null,
+              "n": 0
+            }
+          },
+          "explanation_quality": {
+            "overall": {
+              "mean": 0.16737935247403787,
+              "lo": 0.1583689676237019,
+              "hi": 0.17684789248625535,
+              "n": 1637
+            },
+            "gate_fired": {
+              "mean": null,
+              "lo": null,
+              "hi": null,
+              "n": 0
+            }
+          }
+        },
+        "continuity": {
+          "hit_at_10": {
+            "mean": 0.7936507936507936,
+            "lo": 0.7741147741147741,
+            "hi": 0.8131868131868132,
+            "n": 1638
+          },
+          "claim_grounding_rate": {
+            "mean": 0.6832009736802068,
+            "lo": 0.6661793574724886,
+            "hi": 0.6997940374765454,
+            "n": 1565
+          },
+          "allergen_violation": {
+            "mean": 0.0,
+            "lo": 0.0,
+            "hi": 0.0,
+            "n": 1638
+          }
+        },
+        "caveats": [
+          "one run per configuration: per-question CIs only, no run-to-run variance",
+          "allergen_violation is 0.000 by construction (spec \u00a77.2) and is not a result"
+        ]
+      },
+      "exploratory": {
+        "label": "EXPLORATORY \u2014 not pre-registered",
+        "empty_vs_nonempty_correctness": {
+          "judgeA": {
+            "empty_plans": {
+              "mean": 0.06060606060606061,
+              "lo": 0.028409090909090908,
+              "hi": 0.09848484848484848,
+              "n": 132
+            },
+            "non_empty_plans": {
+              "mean": 0.7240518962075848,
+              "lo": 0.709414504324684,
+              "hi": 0.7383566200931471,
+              "n": 1503
+            }
+          },
+          "judgeB": {
+            "empty_plans": {
+              "mean": 0.13721804511278196,
+              "lo": 0.10150375939849623,
+              "hi": 0.17481203007518797,
+              "n": 133
+            },
+            "non_empty_plans": {
+              "mean": 0.7691029900332226,
+              "lo": 0.7539867109634552,
+              "hi": 0.7835589700996677,
+              "n": 1505
+            }
+          }
+        },
+        "empty_plans": 141,
+        "gate_bypassed_on_empty_plan": 133,
+        "explanation_source": {
+          "llm": 1638,
+          "None": 8
+        },
+        "filter_removals": [
+          {
+            "question_id": "q_01495",
+            "removed_recipe_ids": [
+              "https://www.food.com/recipe/lindas-lobster-rangoon-205992"
+            ],
+            "matched_ingredients": [
+              [
+                "green onions"
+              ]
+            ],
+            "n_candidates_pre_filter": 3,
+            "n_returned": 1
+          }
+        ]
+      },
+      "provenance": {
+        "run_id": "foodrag_h1_t2p_full_20261012T082328Z_02fc79e",
+        "commit": "02fc79e62f7bcbbcd942ff6fe4d3dad28c9832a0",
+        "started": "2026-10-12T08:23:29+00:00",
+        "workers": 12,
+        "question_set_hash": "700d5f6ec0e1e1464ec7b767c480137d563b4b639b0c0c7ee0fdcc5eaaf61c3e",
+        "corpus_hash": "7f329bfc5e21a87328cae60e22934e5f4d717ce9a57cb6f33aec914e5c11dfbb",
+        "t2p_replay_hash": "278e74bd441f8b0fb6048a4452045abd9b7f8ab8b03e0d873242aba4ebca7eb7",
+        "time_pin": "13.04.2025 morning",
+        "wiring": "WorkflowMealPlanAssembler(build_heuristic_workflow_builder(llm, hummus_data=None, recipes_df, time='morning', date='13.04.2025')(RecipeRAGQueryEngine(retriever, llm, return_meal_plan=True, ranking_strategy='rating', k=5), retriever), retriever=RotatingReplayRetriever(llama70b run 1 top-10), query_field='question')",
+        "preregistration_sha256": "0e2dc8bf7eda532105f5343b10609c8478404cdb0e861e44707e8379321d4a79",
+        "decoding": {
+          "generator": {
+            "temperature": 0.1,
+            "max_tokens": null,
+            "top_p": "provider default",
+            "seed": "not set"
+          },
+          "judgeA": {
+            "temperature": 0.1,
+            "max_tokens": null,
+            "top_p": "provider default",
+            "seed": "not set"
+          },
+          "judgeB": {
+            "temperature": 0.1,
+            "max_tokens": null,
+            "top_p": "provider default",
+            "seed": "not set"
+          }
+        },
+        "retry_policy": {
+          "llama_index_litellm_max_retries": 5,
+          "request_timeout_s": 120,
+          "logged_llm_retry": {
+            "attempts": 6,
+            "initial_s": 2.0,
+            "max_wait_s": 60.0,
+            "applies_to": "sync complete/chat only"
+          },
+          "attempts_field": "litellm-level invocations per item (every retry layer above litellm counted; litellm-internal retries not visible)"
+        }
+      },
+      "provider_reported_models": {
+        "openai/meta-llama/Llama-3.3-70B-Instruct": {
+          "meta-llama/Llama-3.3-70B-Instruct-Turbo": 32045
+        },
+        "openai/google/gemma-3-27b-it": {
+          "google/gemma-3-27b-it": 6552
+        },
+        "openai/deepseek-ai/DeepSeek-V3": {
+          "deepseek-ai/DeepSeek-V3": 6552
+        }
+      },
+      "judge_errors": {
+        "judgeA": {
+          "calls": 6552,
+          "not_scored": 4,
+          "by_status": {
+            "scored": 6548,
+            "parse_error": 4
+          },
+          "rate": 0.0006105006105006105
+        },
+        "judgeB": {
+          "calls": 6552,
+          "not_scored": 0,
+          "by_status": {
+            "scored": 6552
+          },
+          "rate": 0.0
+        }
+      },
+      "latency": {
+        "min": 57.52906849980354,
+        "median": 177.46658040001057,
+        "p95": 443.0096034000162,
+        "max": 856.6090533998795,
+        "definition": "per-item wall time, generation + judges"
+      }
+    },
+    "B": {
+      "config": "foodrag_h2",
+      "status": "complete",
+      "preregistered_analysis": {
+        "run_id": "foodrag_h2_full_20261012T162653Z_1a66f4d",
+        "config": "foodrag_h2",
+        "commit": "1a66f4dfd96a4b72bf1d7ab036b64b9e59e29ee0",
+        "runs": 1,
+        "session": "E-6",
+        "health_verdict": "HEALTHY",
+        "n_items": 1646,
+        "n_by_status": {
+          "ok": 1646
+        },
+        "empty_rate": 0.0006075334143377885,
+        "filter": {
+          "removals_total": 21,
+          "items_with_any_removal": 20,
+          "removals_per_1000_items": 12.75820170109356,
+          "candidates_total": 3935,
+          "removals_per_1000_candidates": 5.336721728081321,
+          "matched_ingredient_frequency": {
+            "cooked soba noodles": 2,
+            "leg of lamb": 1,
+            "extra virgin olive oil": 1,
+            "green onions": 1,
+            "noodles": 1,
+            "nutella": 1,
+            "strawberries": 1,
+            "turkey breast": 1,
+            "corn flakes": 1,
+            "coconut rum": 1,
+            "Pillsbury Grands refrigerated buttermilk biscuits": 1,
+            "Canada Dry ginger ale": 1,
+            "frozen orange juice concentrate": 1,
+            "portabella mushroom caps": 1,
+            "agar - agar flakes": 1,
+            "parmigiano - reggiano cheese": 1,
+            "cilantro": 1,
+            "kiwi fruits": 1,
+            "Limburger cheese": 1,
+            "carambola": 1
+          },
+          "uninspectable_total": 0,
+          "plans_emptied_by_filter": 1,
+          "pre_fix_violations_per_run": 13.0
+        },
+        "gate": {
+          "fires": 0,
+          "share": 0.0,
+          "bypassed_on_empty_plan": 0,
+          "empty_plans": 1
+        },
+        "correctness": {
+          "judgeA": {
+            "overall": {
+              "mean": 0.2574422843256379,
+              "lo": 0.24589914945321992,
+              "hi": 0.26883353584447145,
+              "n": 1646
+            },
+            "gate_fired": {
+              "mean": null,
+              "lo": null,
+              "hi": null,
+              "n": 0
+            },
+            "not_gate_fired": {
+              "mean": 0.2574422843256379,
+              "lo": 0.24589914945321992,
+              "hi": 0.26883353584447145,
+              "n": 1646
+            }
+          },
+          "judgeB": {
+            "overall": {
+              "mean": 0.22342041312272176,
+              "lo": 0.2120291616038882,
+              "hi": 0.23496354799513974,
+              "n": 1646
+            },
+            "gate_fired": {
+              "mean": null,
+              "lo": null,
+              "hi": null,
+              "n": 0
+            },
+            "not_gate_fired": {
+              "mean": 0.22342041312272176,
+              "lo": 0.2120291616038882,
+              "hi": 0.23496354799513974,
+              "n": 1646
+            }
+          }
+        },
+        "disagreement": {
+          "faithfulness": {
+            "overall": {
+              "mean": 0.16099635479951396,
+              "lo": 0.1433778857837181,
+              "hi": 0.17922235722964763,
+              "n": 1646
+            },
+            "gate_fired": {
+              "mean": null,
+              "lo": null,
+              "hi": null,
+              "n": 0
+            }
+          },
+          "relevancy": {
+            "overall": {
+              "mean": 0.21506682867557717,
+              "lo": 0.19501822600243013,
+              "hi": 0.23511543134872417,
+              "n": 1646
+            },
+            "gate_fired": {
+              "mean": null,
+              "lo": null,
+              "hi": null,
+              "n": 0
+            }
+          },
+          "correctness": {
+            "overall": {
+              "mean": 0.10905224787363305,
+              "lo": 0.10221749696233293,
+              "hi": 0.11603888213851762,
+              "n": 1646
+            },
+            "gate_fired": {
+              "mean": null,
+              "lo": null,
+              "hi": null,
+              "n": 0
+            }
+          },
+          "explanation_quality": {
+            "overall": {
+              "mean": null,
+              "lo": null,
+              "hi": null,
+              "n": 0
+            },
+            "gate_fired": {
+              "mean": null,
+              "lo": null,
+              "hi": null,
+              "n": 0
+            }
+          }
+        },
+        "continuity": {
+          "hit_at_10": {
+            "mean": 0.026731470230862697,
+            "lo": 0.019441069258809233,
+            "hi": 0.03462940461725395,
+            "n": 1646
+          },
+          "claim_grounding_rate": {
+            "mean": null,
+            "lo": null,
+            "hi": null,
+            "n": 0
+          },
+          "allergen_violation": {
+            "mean": 0.0,
+            "lo": 0.0,
+            "hi": 0.0,
+            "n": 1646
+          }
+        },
+        "caveats": [
+          "one run per configuration: per-question CIs only, no run-to-run variance",
+          "allergen_violation is 0.000 by construction (spec \u00a77.2) and is not a result"
+        ]
+      },
+      "exploratory": {
+        "label": "EXPLORATORY \u2014 not pre-registered",
+        "empty_vs_nonempty_correctness": {
+          "judgeA": {
+            "empty_plans": {
+              "mean": 0.0,
+              "lo": 0.0,
+              "hi": 0.0,
+              "n": 1
+            },
+            "non_empty_plans": {
+              "mean": 0.25759878419452886,
+              "lo": 0.24620060790273557,
+              "hi": 0.2691489361702128,
+              "n": 1645
+            }
+          },
+          "judgeB": {
+            "empty_plans": {
+              "mean": 0.0,
+              "lo": 0.0,
+              "hi": 0.0,
+              "n": 1
+            },
+            "non_empty_plans": {
+              "mean": 0.2235562310030395,
+              "lo": 0.21246200607902735,
+              "hi": 0.2351063829787234,
+              "n": 1645
+            }
+          }
+        },
+        "empty_plans": 1,
+        "gate_bypassed_on_empty_plan": 0,
+        "explanation_source": {
+          "None": 1646
+        },
+        "filter_removals": [
+          {
+            "question_id": "q_00157",
+            "removed_recipe_ids": [
+              "https://www.food.com/recipe/slow-roasted-paper-wrapped-leg-of-lamb-from-olive-magazine-april-417783"
+            ],
+            "matched_ingredients": [
+              [
+                "leg of lamb"
+              ]
+            ],
+            "n_candidates_pre_filter": 4,
+            "n_returned": 3
+          },
+          {
+            "question_id": "q_00241",
+            "removed_recipe_ids": [
+              "https://www.food.com/recipe/moms-holiday-punch-15546"
+            ],
+            "matched_ingredients": [
+              [
+                "Canada Dry ginger ale"
+              ]
+            ],
+            "n_candidates_pre_filter": 2,
+            "n_returned": 1
+          },
+          {
+            "question_id": "q_00255",
+            "removed_recipe_ids": [
+              "https://www.food.com/recipe/butter-with-limburger-58080"
+            ],
+            "matched_ingredients": [
+              [
+                "Limburger cheese"
+              ]
+            ],
+            "n_candidates_pre_filter": 2,
+            "n_returned": 1
+          },
+          {
+            "question_id": "q_00280",
+            "removed_recipe_ids": [
+              "https://www.food.com/recipe/kiwi-slushi-vegan-low-fat-476455"
+            ],
+            "matched_ingredients": [
+              [
+                "kiwi fruits"
+              ]
+            ],
+            "n_candidates_pre_filter": 4,
+            "n_returned": 3
+          },
+          {
+            "question_id": "q_00328",
+            "removed_recipe_ids": [
+              "https://www.food.com/recipe/cold-peanut-soba-noodles-84038",
+              "https://www.food.com/recipe/cold-peanut-soba-noodles-84038"
+            ],
+            "matched_ingredients": [
+              [
+                "cooked soba noodles"
+              ],
+              [
+                "cooked soba noodles"
+              ]
+            ],
+            "n_candidates_pre_filter": 2,
+            "n_returned": 0
+          },
+          {
+            "question_id": "q_00401",
+            "removed_recipe_ids": [
+              "https://www.food.com/recipe/cambodian-salad-dressing-505804"
+            ],
+            "matched_ingredients": [
+              [
+                "cilantro"
+              ]
+            ],
+            "n_candidates_pre_filter": 3,
+            "n_returned": 2
+          },
+          {
+            "question_id": "q_00619",
+            "removed_recipe_ids": [
+              "https://www.food.com/recipe/beef-short-ribs-with-rigatoni-291145"
+            ],
+            "matched_ingredients": [
+              [
+                "parmigiano - reggiano cheese"
+              ]
+            ],
+            "n_candidates_pre_filter": 4,
+            "n_returned": 3
+          },
+          {
+            "question_id": "q_00663",
+            "removed_recipe_ids": [
+              "https://www.food.com/recipe/vegan-sharp-cheddar-cheese-130826"
+            ],
+            "matched_ingredients": [
+              [
+                "agar - agar flakes"
+              ]
+            ],
+            "n_candidates_pre_filter": 2,
+            "n_returned": 1
+          },
+          {
+            "question_id": "q_00819",
+            "removed_recipe_ids": [
+              "https://www.food.com/recipe/low-carb-portabella-pizzas-222213"
+            ],
+            "matched_ingredients": [
+              [
+                "portabella mushroom caps"
+              ]
+            ],
+            "n_candidates_pre_filter": 2,
+            "n_returned": 1
+          },
+          {
+            "question_id": "q_00856",
+            "removed_recipe_ids": [
+              "https://www.food.com/recipe/banana-orange-smoothie-203230"
+            ],
+            "matched_ingredients": [
+              [
+                "frozen orange juice concentrate"
+              ]
+            ],
+            "n_candidates_pre_filter": 4,
+            "n_returned": 3
+          },
+          {
+            "question_id": "q_00989",
+            "removed_recipe_ids": [
+              "https://www.food.com/recipe/pillsbury-grands-doughnuts-bakery-size-177252"
+            ],
+            "matched_ingredients": [
+              [
+                "Pillsbury Grands refrigerated buttermilk biscuits"
+              ]
+            ],
+            "n_candidates_pre_filter": 2,
+            "n_returned": 1
+          },
+          {
+            "question_id": "q_01060",
+            "removed_recipe_ids": [
+              "https://www.food.com/recipe/olive-puree-61465"
+            ],
+            "matched_ingredients": [
+              [
+                "extra virgin olive oil"
+              ]
+            ],
+            "n_candidates_pre_filter": 4,
+            "n_returned": 2
+          },
+          {
+            "question_id": "q_01119",
+            "removed_recipe_ids": [
+              "https://www.food.com/recipe/dark-sunset-adult-beverage-157585"
+            ],
+            "matched_ingredients": [
+              [
+                "coconut rum"
+              ]
+            ],
+            "n_candidates_pre_filter": 4,
+            "n_returned": 3
+          },
+          {
+            "question_id": "q_01197",
+            "removed_recipe_ids": [
+              "https://www.food.com/recipe/corn-flakes-chivda-spicy-indian-snack-mix-144190"
+            ],
+            "matched_ingredients": [
+              [
+                "corn flakes"
+              ]
+            ],
+            "n_candidates_pre_filter": 4,
+            "n_returned": 3
+          },
+          {
+            "question_id": "q_01229",
+            "removed_recipe_ids": [
+              "https://www.food.com/recipe/turkey-and-egg-salad-465227"
+            ],
+            "matched_ingredients": [
+              [
+                "turkey breast"
+              ]
+            ],
+            "n_candidates_pre_filter": 4,
+            "n_returned": 3
+          },
+          {
+            "question_id": "q_01262",
+            "removed_recipe_ids": [
+              "https://www.food.com/recipe/gourmet-balsamic-strawberries-188622"
+            ],
+            "matched_ingredients": [
+              [
+                "strawberries"
+              ]
+            ],
+            "n_candidates_pre_filter": 4,
+            "n_returned": 3
+          },
+          {
+            "question_id": "q_01410",
+            "removed_recipe_ids": [
+              "https://www.food.com/recipe/no-ice-cream-nutella-cones-328906"
+            ],
+            "matched_ingredients": [
+              [
+                "nutella"
+              ]
+            ],
+            "n_candidates_pre_filter": 2,
+            "n_returned": 1
+          },
+          {
+            "question_id": "q_01431",
+            "removed_recipe_ids": [
+              "https://www.food.com/recipe/south-american-noodles-455652"
+            ],
+            "matched_ingredients": [
+              [
+                "noodles"
+              ]
+            ],
+            "n_candidates_pre_filter": 4,
+            "n_returned": 3
+          },
+          {
+            "question_id": "q_01495",
+            "removed_recipe_ids": [
+              "https://www.food.com/recipe/tuna-crunch-lunch-357789"
+            ],
+            "matched_ingredients": [
+              [
+                "green onions"
+              ]
+            ],
+            "n_candidates_pre_filter": 3,
+            "n_returned": 2
+          },
+          {
+            "question_id": "q_01531",
+            "removed_recipe_ids": [
+              "https://www.food.com/recipe/carambola-juice-54241"
+            ],
+            "matched_ingredients": [
+              [
+                "carambola"
+              ]
+            ],
+            "n_candidates_pre_filter": 2,
+            "n_returned": 1
+          }
+        ]
+      },
+      "provenance": {
+        "run_id": "foodrag_h2_full_20261012T162653Z_1a66f4d",
+        "commit": "1a66f4dfd96a4b72bf1d7ab036b64b9e59e29ee0",
+        "started": "2026-10-12T16:26:53+00:00",
+        "workers": 12,
+        "question_set_hash": "700d5f6ec0e1e1464ec7b767c480137d563b4b639b0c0c7ee0fdcc5eaaf61c3e",
+        "corpus_hash": "7f329bfc5e21a87328cae60e22934e5f4d717ce9a57cb6f33aec914e5c11dfbb",
+        "t2p_replay_hash": null,
+        "time_pin": "13.04.2025 morning",
+        "wiring": "RagMealPlanAssembler(RecipeRetriever(pgvector hummus_recipes, mode='default', similarity_top_k=10, split_node_ratio=2), llm, retrieve_only=True, k=5, ranking_strategy='rating', time='morning', date='13.04.2025', require_explanation=False)",
+        "preregistration_sha256": "c74c77c734e09d44e1ba40161d6269394e5bb64b7d52de93ad2e25ec6c776d83",
+        "decoding": {
+          "generator": {
+            "temperature": 0.1,
+            "max_tokens": null,
+            "top_p": "provider default",
+            "seed": "not set"
+          },
+          "judgeA": {
+            "temperature": 0.1,
+            "max_tokens": null,
+            "top_p": "provider default",
+            "seed": "not set"
+          },
+          "judgeB": {
+            "temperature": 0.1,
+            "max_tokens": null,
+            "top_p": "provider default",
+            "seed": "not set"
+          }
+        },
+        "retry_policy": {
+          "llama_index_litellm_max_retries": 5,
+          "request_timeout_s": 120,
+          "logged_llm_retry": {
+            "attempts": 6,
+            "initial_s": 2.0,
+            "max_wait_s": 60.0,
+            "applies_to": "sync complete/chat only"
+          },
+          "attempts_field": "litellm-level invocations per item (every retry layer above litellm counted; litellm-internal retries not visible)"
+        }
+      },
+      "provider_reported_models": {
+        "openai/meta-llama/Llama-3.3-70B-Instruct": {
+          "meta-llama/Llama-3.3-70B-Instruct-Turbo": 1646
+        },
+        "openai/google/gemma-3-27b-it": {
+          "google/gemma-3-27b-it": 4938
+        },
+        "openai/deepseek-ai/DeepSeek-V3": {
+          "deepseek-ai/DeepSeek-V3": 4938
+        }
+      },
+      "judge_errors": {
+        "judgeA": {
+          "calls": 4938,
+          "not_scored": 0,
+          "by_status": {
+            "scored": 4938
+          },
+          "rate": 0.0
+        },
+        "judgeB": {
+          "calls": 4938,
+          "not_scored": 0,
+          "by_status": {
+            "scored": 4938
+          },
+          "rate": 0.0
+        }
+      },
+      "latency": {
+        "min": 15.221724100178108,
+        "median": 39.847878500120714,
+        "p95": 62.073108799988404,
+        "max": 106.03228050004691,
+        "definition": "per-item wall time, generation + judges"
+      }
+    },
+    "C": {
+      "config": "foodrag_h2_t2p",
+      "status": "complete",
+      "preregistered_analysis": {
+        "run_id": "foodrag_h2_t2p_full_20261012T180207Z_3e35e89",
+        "config": "foodrag_h2_t2p",
+        "commit": "3e35e894d7267327c92d7a3b3c8e45f5c8c38f62",
+        "runs": 1,
+        "session": "E-6",
+        "health_verdict": "HEALTHY",
+        "n_items": 1646,
+        "n_by_status": {
+          "zero_rows": 133,
+          "ok": 1513
+        },
+        "empty_rate": 0.08140947752126367,
+        "filter": {
+          "removals_total": 3,
+          "items_with_any_removal": 1,
+          "removals_per_1000_items": 1.8226002430133657,
+          "candidates_total": 3633,
+          "removals_per_1000_candidates": 0.8257638315441783,
+          "matched_ingredient_frequency": {
+            "green onions": 3
+          },
+          "uninspectable_total": 0,
+          "plans_emptied_by_filter": 1,
+          "pre_fix_violations_per_run": 1.0
+        },
+        "gate": {
+          "fires": 0,
+          "share": 0.0,
+          "bypassed_on_empty_plan": 0,
+          "empty_plans": 134
+        },
+        "correctness": {
+          "judgeA": {
+            "overall": {
+              "mean": 0.5874848116646415,
+              "lo": 0.5715370595382746,
+              "hi": 0.6034325637910085,
+              "n": 1646
+            },
+            "gate_fired": {
+              "mean": null,
+              "lo": null,
+              "hi": null,
+              "n": 0
+            },
+            "not_gate_fired": {
+              "mean": 0.5874848116646415,
+              "lo": 0.5715370595382746,
+              "hi": 0.6034325637910085,
+              "n": 1646
+            }
+          },
+          "judgeB": {
+            "overall": {
+              "mean": 0.5976609963547995,
+              "lo": 0.5811057108140948,
+              "hi": 0.6145200486026732,
+              "n": 1646
+            },
+            "gate_fired": {
+              "mean": null,
+              "lo": null,
+              "hi": null,
+              "n": 0
+            },
+            "not_gate_fired": {
+              "mean": 0.5976609963547995,
+              "lo": 0.5811057108140948,
+              "hi": 0.6145200486026732,
+              "n": 1646
+            }
+          }
+        },
+        "disagreement": {
+          "faithfulness": {
+            "overall": {
+              "mean": 0.17193195625759417,
+              "lo": 0.15370595382746052,
+              "hi": 0.19015795868772783,
+              "n": 1646
+            },
+            "gate_fired": {
+              "mean": null,
+              "lo": null,
+              "hi": null,
+              "n": 0
+            }
+          },
+          "relevancy": {
+            "overall": {
+              "mean": 0.3487241798298906,
+              "lo": 0.32624544349939244,
+              "hi": 0.3724179829890644,
+              "n": 1646
+            },
+            "gate_fired": {
+              "mean": null,
+              "lo": null,
+              "hi": null,
+              "n": 0
+            }
+          },
+          "correctness": {
+            "overall": {
+              "mean": 0.13107533414337788,
+              "lo": 0.12226609963547995,
+              "hi": 0.13988456865127583,
+              "n": 1646
+            },
+            "gate_fired": {
+              "mean": null,
+              "lo": null,
+              "hi": null,
+              "n": 0
+            }
+          },
+          "explanation_quality": {
+            "overall": {
+              "mean": null,
+              "lo": null,
+              "hi": null,
+              "n": 0
+            },
+            "gate_fired": {
+              "mean": null,
+              "lo": null,
+              "hi": null,
+              "n": 0
+            }
+          }
+        },
+        "continuity": {
+          "hit_at_10": {
+            "mean": 0.7132442284325637,
+            "lo": 0.6919805589307412,
+            "hi": 0.7351154313487241,
+            "n": 1646
+          },
+          "claim_grounding_rate": {
+            "mean": null,
+            "lo": null,
+            "hi": null,
+            "n": 0
+          },
+          "allergen_violation": {
+            "mean": 0.0,
+            "lo": 0.0,
+            "hi": 0.0,
+            "n": 1646
+          }
+        },
+        "caveats": [
+          "one run per configuration: per-question CIs only, no run-to-run variance",
+          "allergen_violation is 0.000 by construction (spec \u00a77.2) and is not a result"
+        ]
+      },
+      "exploratory": {
+        "label": "EXPLORATORY \u2014 not pre-registered",
+        "empty_vs_nonempty_correctness": {
+          "judgeA": {
+            "empty_plans": {
+              "mean": 0.014925373134328358,
+              "lo": 0.0,
+              "hi": 0.03731343283582089,
+              "n": 134
+            },
+            "non_empty_plans": {
+              "mean": 0.6382275132275133,
+              "lo": 0.6236772486772487,
+              "hi": 0.6536044973544973,
+              "n": 1512
+            }
+          },
+          "judgeB": {
+            "empty_plans": {
+              "mean": 0.11380597014925373,
+              "lo": 0.06343283582089553,
+              "hi": 0.17164179104477612,
+              "n": 134
+            },
+            "non_empty_plans": {
+              "mean": 0.640542328042328,
+              "lo": 0.625,
+              "hi": 0.656415343915344,
+              "n": 1512
+            }
+          }
+        },
+        "empty_plans": 134,
+        "gate_bypassed_on_empty_plan": 0,
+        "explanation_source": {
+          "None": 1646
+        },
+        "filter_removals": [
+          {
+            "question_id": "q_01495",
+            "removed_recipe_ids": [
+              "https://www.food.com/recipe/lindas-lobster-rangoon-205992",
+              "https://www.food.com/recipe/lindas-lobster-rangoon-205992",
+              "https://www.food.com/recipe/lindas-lobster-rangoon-205992"
+            ],
+            "matched_ingredients": [
+              [
+                "green onions"
+              ],
+              [
+                "green onions"
+              ],
+              [
+                "green onions"
+              ]
+            ],
+            "n_candidates_pre_filter": 3,
+            "n_returned": 0
+          }
+        ]
+      },
+      "provenance": {
+        "run_id": "foodrag_h2_t2p_full_20261012T180207Z_3e35e89",
+        "commit": "3e35e894d7267327c92d7a3b3c8e45f5c8c38f62",
+        "started": "2026-10-12T18:02:07+00:00",
+        "workers": 12,
+        "question_set_hash": "45ac02c1f890d702473ddcd6adfe00bfde2e51a4ac344abbb1d7c5d91cadd841",
+        "corpus_hash": "7f329bfc5e21a87328cae60e22934e5f4d717ce9a57cb6f33aec914e5c11dfbb",
+        "t2p_replay_hash": "278e74bd441f8b0fb6048a4452045abd9b7f8ab8b03e0d873242aba4ebca7eb7",
+        "time_pin": "13.04.2025 morning",
+        "wiring": "RagMealPlanAssembler(ReplayRetriever(llama70b run 1 top-10), llm, retrieve_only=True, k=5, ranking_strategy='rating', time='morning', date='13.04.2025', require_explanation=False)",
+        "preregistration_sha256": "c74c77c734e09d44e1ba40161d6269394e5bb64b7d52de93ad2e25ec6c776d83",
+        "decoding": {
+          "generator": {
+            "temperature": 0.1,
+            "max_tokens": null,
+            "top_p": "provider default",
+            "seed": "not set"
+          },
+          "judgeA": {
+            "temperature": 0.1,
+            "max_tokens": null,
+            "top_p": "provider default",
+            "seed": "not set"
+          },
+          "judgeB": {
+            "temperature": 0.1,
+            "max_tokens": null,
+            "top_p": "provider default",
+            "seed": "not set"
+          }
+        },
+        "retry_policy": {
+          "llama_index_litellm_max_retries": 5,
+          "request_timeout_s": 120,
+          "logged_llm_retry": {
+            "attempts": 6,
+            "initial_s": 2.0,
+            "max_wait_s": 60.0,
+            "applies_to": "sync complete/chat only"
+          },
+          "attempts_field": "litellm-level invocations per item (every retry layer above litellm counted; litellm-internal retries not visible)"
+        }
+      },
+      "provider_reported_models": {
+        "openai/meta-llama/Llama-3.3-70B-Instruct": {
+          "meta-llama/Llama-3.3-70B-Instruct-Turbo": 1646
+        },
+        "openai/google/gemma-3-27b-it": {
+          "google/gemma-3-27b-it": 4938
+        },
+        "openai/deepseek-ai/DeepSeek-V3": {
+          "deepseek-ai/DeepSeek-V3": 4938
+        }
+      },
+      "judge_errors": {
+        "judgeA": {
+          "calls": 4938,
+          "not_scored": 0,
+          "by_status": {
+            "scored": 4938
+          },
+          "rate": 0.0
+        },
+        "judgeB": {
+          "calls": 4938,
+          "not_scored": 0,
+          "by_status": {
+            "scored": 4938
+          },
+          "rate": 0.0
+        }
+      },
+      "latency": {
+        "min": 12.089419499970973,
+        "median": 38.14817630010657,
+        "p95": 78.1706260999199,
+        "max": 128.25107540003955,
+        "definition": "per-item wall time, generation + judges"
+      }
+    }
+  },
+  "attempts": [
+    {
+      "tier": "A",
+      "run_id": "foodrag_h1_t2p_full_20261012T082328Z_02fc79e",
+      "commit": "02fc79e62f7bcbbcd942ff6fe4d3dad28c9832a0",
+      "status": "complete"
+    },
+    {
+      "tier": "B",
+      "run_id": "foodrag_h2_full_20261012T144843Z_02fc79e",
+      "commit": "02fc79e62f7bcbbcd942ff6fe4d3dad28c9832a0",
+      "status": "aborted_by_operator"
+    },
+    {
+      "tier": "B",
+      "run_id": "foodrag_h2_full_20261012T162653Z_1a66f4d",
+      "commit": "1a66f4dfd96a4b72bf1d7ab036b64b9e59e29ee0",
+      "status": "complete"
+    },
+    {
+      "tier": "C",
+      "run_id": "foodrag_h2_t2p_full_20261012T180207Z_3e35e89",
+      "commit": "3e35e894d7267327c92d7a3b3c8e45f5c8c38f62",
+      "status": "complete"
+    }
+  ],
+  "three_numbers_h1_t2p_correctness_judgeA": {
+    "pre_fix": 0.689,
+    "post_fix": 0.765,
+    "e6": {
+      "mean": 0.6704892966360856,
+      "lo": 0.6547400611620795,
+      "hi": 0.6863914373088685,
+      "n": 1635
+    },
+    "caveat": "descriptive; cross-session (~3 months), one E-6 run vs three original runs; provider snapshot may differ (generator served as Llama-3.3-70B-Instruct-Turbo)"
+  },
+  "decision_table_outcome": "\u22480.689 \u2014 post-fix value NOT reproduced by the guarded system (spec \u00a79 row 2)",
+  "gain_A_minus_C_correctness_judgeA": {
+    "label": "the only gain E-6 may report (fresh-vs-fresh, same session, same time pin)",
+    "overall": {
+      "mean": 0.08318042813455657,
+      "lo": 0.06743119266055046,
+      "hi": 0.09908256880733946,
+      "n": 1635,
+      "n_paired": 1635
+    }
+  }
+}

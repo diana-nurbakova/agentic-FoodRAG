@@ -1,0 +1,13 @@
+{
+  "run_id": "foodrag_h2_full_20261012T144843Z_02fc79e",
+  "attempt": 1,
+  "status": "ABORTED_BY_OPERATOR",
+  "aborted_utc": "2026-10-12T16:09:39+00:00",
+  "reason": "author decision: run tiers strictly sequentially (wait for Tier A to finish), so this overlapping attempt was stopped; not a failure",
+  "items_completed": 1284,
+  "n_by_status": {
+    "ok": 1283,
+    "judge_error": 1
+  },
+  "policy": "spec \u00a77.3: reported, never completed or stitched; Tier B attempt 2 is a fresh run_id from item 0; this was Tier B's one permitted re-attempt"
+}
